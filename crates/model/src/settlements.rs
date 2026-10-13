@@ -134,6 +134,9 @@ impl State {
                 .clone(),
         );
         for id in &accrual.transaction_ids {
+            if let Some((booking, _)) = self.booking_for_transaction(id) {
+                names.extend(booking.quote_contributors.iter().cloned());
+            }
             if let Some(correction) = self.corrections.values().find(|c| {
                 c.status == RecordStatus::Approved
                     && c.proposal.replacement.as_ref().is_some_and(|t| &t.id == id)

@@ -28,6 +28,10 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                 .ok_or_else(|| error("Original invoice not found"))?
                 .clone();
             ensure(
+                s.booking_for_transaction(&original.id).is_none() || proposal.replacement.is_none(),
+                "Booked invoices support full reversal only; use a distinct approved quote for replacement",
+            )?;
+            ensure(
                 proposal.effective_date >= original.date,
                 "Correction record date precedes original invoice",
             )?;

@@ -12,11 +12,26 @@ pub struct ReportingRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConvertedInvoice {
+    /// Legacy wire name: the recorded actual, in booked currency/UOM for bookings.
     pub native: Transaction,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub booking: Option<BookingReportEvidence>,
     pub reversed_by: Option<String>,
     pub fx: Option<RateEvidence>,
     pub invoice: Money,
     pub cost: Money,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BookingReportEvidence {
+    pub booking_id: String,
+    pub quote_id: String,
+    pub quote_version: u64,
+    pub line_index: usize,
+    pub booking_revision: u64,
+    pub rate_knowledge_revision: u64,
+    /// Non-posted pricing basis; never substituted for recorded actuals.
+    pub native_basis: NativeBookingBasis,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -92,6 +107,26 @@ impl State {
                 rows.len() < 5000,
                 "Converted report is limited to 5,000 invoice rows",
             )?;
+            let booking = if let Some((b, line)) = self.booking_for_transaction(&t.id) {
+                Some(BookingReportEvidence {
+                    booking_id: b.request.id.clone(),
+                    quote_id: b.request.quote_id.clone(),
+                    quote_version: b.request.quote_version,
+                    line_index: line.index,
+                    booking_revision: b.created_revision,
+                    rate_knowledge_revision: b
+                        .created_revision
+                        .checked_sub(1)
+                        .ok_or_else(|| error("Invalid booking revision in report"))?,
+                    native_basis: line.native_basis.clone(),
+                })
+            } else {
+                None
+            };
+            let rate_revision = booking
+                .as_ref()
+                .map(|b| b.rate_knowledge_revision)
+                .unwrap_or(revision);
             let fx = if t.currency == request.currency {
                 None
             } else {
@@ -101,8 +136,10 @@ impl State {
                         to: request.currency,
                     },
                     &t.date,
-                    revision,
-                )?)
+                    rate_revision,
+                ).map_err(|e| if booking.is_some() {
+                    error(format!("Reporting FX for booked invoice {} was not approved when booked: {e}", t.id))
+                } else { e })?)
             };
             let ratio = fx.as_ref().map(|r| r.entry.ratio).unwrap_or(Rational::ONE);
             let invoice = ratio.money(t.invoice_total)?;
@@ -146,6 +183,7 @@ impl State {
             }
             rows.push(ConvertedInvoice {
                 native: t.clone(),
+                booking,
                 reversed_by,
                 fx,
                 invoice,

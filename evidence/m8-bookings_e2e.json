@@ -1,0 +1,25 @@
+{
+  "result": "PASS",
+  "process_and_api_calls": 116,
+  "committed_revisions": 41,
+  "booked_rows": 2,
+  "booked_invoice_cents": 288684,
+  "reporting_gross_usd_cents": 360855,
+  "booking_csv_sha256": "2246f7af7cafb7d5bd9977e36b131bb7e27c91aaa1e8fa40fda685a1076e8860",
+  "original_quote_csv_sha256": "efec89121e5b2eb4f0e370aa71ea0a798c78891c509dbe1d7f37a94d0907ab6d",
+  "verified": [
+    "full converted quote atomic booking",
+    "CLI/API exact preview and shared command",
+    "draft/pending/stale/role/partial-input rejection preserves state and disk",
+    "reserved invoice ID and duplicate booking protection",
+    "strict raw native ingestion",
+    "superseded contract and dated FX do not reprice the frozen quote",
+    "booked ledger versus non-posted native basis",
+    "booking-time direct reporting rates; no later backfill",
+    "post-booking quote revision preserves frozen evidence",
+    "full reversals and original reporting cancellation",
+    "independent actual rebates and quote-contributor settlement exclusion",
+    "immutable report/export and no-overwrite CLI export",
+    "receipt replay, reopen and complete archive restoration"
+  ]
+}

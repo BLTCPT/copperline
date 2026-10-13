@@ -47,3 +47,5 @@ Approved settlement CSV uses frozen evidence and includes source/accrual/prior-r
 ## Limits and deferred work
 
 Full invoice reversals and atomic replacements only; partial returns/credit allocation, credit-note document delivery, tax/freight corrections, accounting-period close/reopen, currency conversion, agreement amendments and actual payment/ERP reconciliation remain gaps. Settlement approval recognizes a local obligation only. No Paid status or external transaction acknowledgement exists. Full-state snapshot size and single-writer limits remain in force.
+
+M8 booked quote rows permit exact full reversal only. Raw replacement is rejected because it cannot preserve an approved quote's frozen provenance. A replacement commercial transaction requires a distinct approved quote and booking. Each line may be fully reversed independently, but the source quote remains permanently consumed. Reporting reversals cancel exact recorded amounts at the original booking-time FX evidence; native pricing basis is not a posting. See [bookings](bookings.md).

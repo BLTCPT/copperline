@@ -1,0 +1,20 @@
+{
+  "result": "PASS",
+  "connection_limit": 16,
+  "timeout_seconds": 5,
+  "verified": [
+    "concurrent open clients",
+    "optimistic conflict serialization",
+    "simultaneous exact retry",
+    "changed-content retry rejection",
+    "malformed input survival",
+    "oversized client isolation",
+    "connection limit and permit return",
+    "idle timeout",
+    "restart persistence",
+    "exclusive recovery lock",
+    "pending inspection and checksum mismatch",
+    "evidence quarantine without promotion",
+    "retry after interrupted write"
+  ]
+}

@@ -151,7 +151,7 @@ fn author_command(command: &str) -> bool {
             | "quote_revise"
     )
 }
-fn legacy_author(a: &Audit, id: &str) -> bool {
+pub(crate) fn legacy_author(a: &Audit, id: &str) -> bool {
     match a.command.as_str() {
         "quote_create" => a.detail == format!("Created quote {id}"),
         "quote_add_line" => a.detail == format!("Added line and recalculated {id}"),
@@ -165,9 +165,12 @@ fn legacy_author(a: &Audit, id: &str) -> bool {
 }
 impl State {
     pub fn quote_contributors(&self, q: &Quote) -> BTreeSet<String> {
+        self.quote_contributors_at(q, self.revision)
+    }
+    pub fn quote_contributors_at(&self, q: &Quote, revision: u64) -> BTreeSet<String> {
         let target = quote_target(&q.id);
         let mut result = BTreeSet::from([q.owner.clone()]);
-        for a in &self.audit {
+        for a in self.audit.iter().filter(|a| a.revision <= revision) {
             if (a.target.as_deref() == Some(&target) && author_command(&a.command))
                 || (a.target.is_none() && legacy_author(a, &q.id))
             {

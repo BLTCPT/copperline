@@ -19,6 +19,7 @@ pub(super) fn target(c: &Command) -> Option<String> {
         return Some(quote_target(id));
     }
     match c {
+        Command::QuoteBook { request } => Some(booking_target(&request.id)),
         Command::ConversionCreate { terms } => Some(conversion_target(&terms.id)),
         Command::ConversionImport { id, .. }
         | Command::ConversionSubmit { id, .. }

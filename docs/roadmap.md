@@ -22,9 +22,9 @@ Approved immutable direct FX/product-UOM books, exact native quantity qualificat
 
 M7 implements portable exact-history archives, safe restore into a new workspace, fault/corruption regressions and matched synthetic workload measurements. See [acceptance plan](m7-plan.md) and [backup contract](backup.md). Final results are recorded in milestone status and evidence; no migration, retention deletion or enterprise scale is implied.
 
-## Next — converted quote-to-actual provenance
+## M8 — converted quote-to-actual provenance (implemented full-booking subset)
 
-A converted EUR/box quote cannot yet become an EUR/box actual invoice for a USD/each catalog product. Preserve booked and native quantities/totals, approved quote/line versions, frozen conversion factors and an explicit rounding reconciliation in a dedicated booking command. Connect exact full reversal/replacement, historical reporting and original receipt replay to that provenance. Do not loosen native invoice validation as a substitute. Partial credits and period-close follow this coherent ledger model.
+M8 preserves exact booked amounts, non-posted native basis, approved cycle, quote contributors and frozen conversion evidence. It supports one entire-quote booking per quote ID lifetime, original-evidence full reversals, reporting at booking-time known rates and exact receipt replay. Ordinary native ingestion remains strict. See [booking semantics](bookings.md). Partial booking, partial credits, customer invoice delivery and period-close remain open.
 
 ## Later — richer quoting and document delivery
 
@@ -32,25 +32,25 @@ Build typed quote sections, explicit optional lines, reusable versioned quote te
 
 Acceptance: choose a template, resolve required/optional products and allowed quantity relationships, reject an invalid configuration atomically, price the resolved lines, route review, export a readable quote document and reopen it unchanged. Test rounding, aggregate margins, missing products, stale template versions, mixed currencies and revision conflicts. Generated documents must identify synthetic demo identities and cannot imply an electronic signature or customer delivery.
 
-## M8 — promotion and channel workflows
+## Later — promotion and channel workflows
 
 Model effective periods, eligibility, budgets and explicit precedence/stacking decisions for promotion plans. Channel claims require a source invoice or other declared evidence, duplicate detection and independent review. Every plan must explain its impact on invoice and pocket values.
 
 Acceptance: plan approval, eligible/ineligible calculation, deterministic explanation, claim validation and audit. Historical projections must remain separate from recorded actuals. Do not claim uplift or causal effectiveness from synthetic scenarios.
 
-## M9 — governed data and enterprise boundaries
+## Later — governed data and enterprise boundaries
 
 Introduce an adapter boundary for authenticated immutable actor IDs, organization scope, delegated review rules and trusted role assignment. Replace caller-selected identities only after a concrete local or enterprise authentication design is reviewed. Add a storage adapter with explicit schema migrations, backups, restore drills and transaction-boundary tests before raising dataset limits.
 
 Acceptance: actor/tenant isolation, denied impersonation, contributor exclusions across identity changes, migration rollback/recovery, retention behavior and load tests. Real identity providers, credentials and external integrations require separately authorized setup; prototype role labels never count as enterprise access control.
 
-## M10 — integration delivery and operational analytics
+## Later — integration delivery and operational analytics
 
 Implement synthetic adapter fixtures before any live system. Imports stage validation and record source provenance. Outbound approved-price or quote delivery uses an outbox, stable external keys, acknowledgements and reconciliation. Analytics require explicit grain, currency partitioning, source revision and actual/projection distinction.
 
 Acceptance: retries, partial failures, duplicate deliveries, out-of-order events, dead-letter inspection and exact reconciliation in a local simulator. A simulator does not establish SAP/BW/ERP API compatibility. Live read/write connections are separate deployment decisions.
 
-## M11 — optimization research
+## Later — optimization research
 
 Optimization starts with a stated decision, objective, constraints and data provenance. Demand/elasticity estimates need chronological validation and uncertainty measures. Compare against deterministic baselines and preserve guardrails, explanation, overrides and review provenance.
 

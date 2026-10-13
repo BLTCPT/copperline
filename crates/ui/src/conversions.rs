@@ -32,7 +32,7 @@ fn currency_picker(ui: &mut egui::Ui, key: &str, currency: &mut Currency) {
             }
         });
 }
-fn write_export(path: &str, content: Result<String>) -> Result<()> {
+pub(super) fn write_export(path: &str, content: Result<String>) -> Result<()> {
     use std::io::Write;
     let content = content?;
     let mut f = std::fs::OpenOptions::new()
@@ -355,7 +355,7 @@ impl Workbench {
     }
     pub(super) fn converted_reports_view(&mut self, ui: &mut egui::Ui) {
         egui::CollapsingHeader::new("Reporting currency · frozen actuals").default_open(true).show(ui,|ui|{
-            ui.label("Convert recorded invoice and cost totals at each original invoice date. Approved reversals cancel those exact converted amounts. Quantities remain in native product units.");
+            ui.label("Convert recorded invoice and cost totals at each original invoice date. Approved reversals cancel those exact converted amounts. Quantities retain each recorded invoice unit; no unit aggregation.");
             ui.horizontal_wrapped(|ui|{field(ui,"Period from",&mut self.conversion_form.start);field(ui,"Until (exclusive)",&mut self.conversion_form.end);});
             ui.horizontal(|ui|{ui.label("Reporting currency");currency_picker(ui,"report-currency",&mut self.conversion_form.report_currency);field(ui,"New report ID",&mut self.conversion_form.report_id);});
             if primary(ui,"Freeze converted actuals") {
@@ -371,7 +371,34 @@ impl Workbench {
                     for h in ["Customer","Gross invoices","Reversed","Net invoice","Net cost","Net margin"] {ui.strong(h);}ui.end_row();
                     for g in &c.groups {ui.label(&g.customer_id);ui.label(g.gross_count.to_string());ui.label(g.reversal_count.to_string());ui.label(g.invoice.to_string());ui.label(g.cost.to_string());ui.label(g.margin.to_string());ui.end_row();}
                 });
-                egui::CollapsingHeader::new("Frozen invoice and rate evidence").show(ui,|ui|{for row in &c.rows{ui.label(format!("{} · {} {} / {} {} · {} invoice → {} {} · {}",row.native.id,row.native.quantity,row.native.unit,row.native.currency,row.native.invoice_total,row.native.date,c.request.currency,row.invoice,row.reversed_by.as_deref().unwrap_or("active")));if let Some(fx)=&row.fx{ui.small(format!("{} × {}/{} · {} / {} v{} · [{} , {}) · approval r{}",fx.entry.conversion.label(),fx.entry.ratio.numerator,fx.entry.ratio.denominator,fx.book_id,fx.entry.id,fx.book_version,fx.entry.start,fx.entry.end,fx.approval_revision));}}});
+                egui::CollapsingHeader::new("Frozen invoice and rate evidence").show(ui, |ui| {
+                    for row in &c.rows {
+                        ui.label(format!(
+                            "Recorded {} · {} {} / {} {} · {} invoice → {} {} · {}",
+                            row.native.id, row.native.quantity, row.native.unit,
+                            row.native.currency, row.native.invoice_total, row.native.date,
+                            c.request.currency, row.invoice,
+                            row.reversed_by.as_deref().unwrap_or("active")
+                        ));
+                        if let Some(b) = &row.booking {
+                            ui.small(format!(
+                                "Booking {} · quote {} v{} · line {} · booked r{} · nonposted pricing basis {} {} / {} {}",
+                                b.booking_id, b.quote_id, b.quote_version,
+                                b.line_index.saturating_add(1), b.booking_revision,
+                                b.native_basis.quantity, b.native_basis.unit,
+                                b.native_basis.currency, b.native_basis.invoice_total
+                            ));
+                        }
+                        if let Some(fx) = &row.fx {
+                            ui.small(format!(
+                                "{} × {}/{} · {} / {} v{} · [{} , {}) · approval r{}",
+                                fx.entry.conversion.label(), fx.entry.ratio.numerator,
+                                fx.entry.ratio.denominator, fx.book_id, fx.entry.id,
+                                fx.book_version, fx.entry.start, fx.entry.end, fx.approval_revision
+                            ));
+                        }
+                    }
+                });
                 field(ui,"Export file",&mut self.export_path);
                 if ui.button("Export frozen report").clicked(){let result=write_export(&self.export_path,copperline_engine::export_report(self.engine.state(),&r.id));self.result(result,"Frozen reporting-currency actuals exported.");}
             }

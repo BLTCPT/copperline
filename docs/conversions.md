@@ -44,7 +44,7 @@ An approved full reversal subtracts the exact original converted invoice/cost pa
 
 ### Quote-to-actual boundary
 
-Converted quotes and reporting views do not create actual invoices. `transaction_add` and transaction CSV ingestion currently require the catalog product's native currency and unit. An approved EUR/box quote for a USD/each product therefore cannot be booked as an EUR/box actual through those commands. This is an integration gap, not an implicit inverse conversion. A future dedicated booking path must retain approved quote/line provenance, booked and native amounts, exact quantity normalization, frozen schedules and explicit reconciliation of unit-first quote rounding with booked totals. Existing validation must remain strict until those records and invariants exist.
+A converted quote remains a projection until explicitly booked through the M8 approved quote booking command. `transaction_add` and ordinary CSV ingestion still require catalog-native currency/unit. The dedicated booking path preserves exact approved actuals, separate native basis and frozen provenance; see [bookings](bookings.md). Reporting snapshots do not themselves create invoices.
 
 ### Import and export
 
@@ -53,3 +53,5 @@ Import columns are `id,kind,product_id,from,to,start,end,numerator,denominator`.
 Approved-book CSV includes terms, direction, dates, ratio, reviewer, version and fingerprint. Converted-quote CSV conditionally appends native context, rounding policy and full FX/UOM evidence JSON. Old quotes without conversion retain their original CSV bytes. Frozen-report CSV includes native and converted amounts, original date/UOM, reversal ID, net contribution, rounding and full FX evidence. CSV cells are formula-safe; CLI/UI exports create new files only. Empty conversion maps and absent optional fields preserve old snapshot/receipt serialization.
 
 Deferred: live rate acquisition, rate amendment/revocation, bid/ask/feed conventions, arbitrary currency precision, inferred or multihop conversion, dimension inference, analytics UOM aggregation, tax/accounting FX treatment, enterprise authentication, and external postings. These are explicit boundaries, not silently assumed behavior.
+
+M8 extends actual reporting to [approved quote bookings](bookings.md). Their ledger denomination is the frozen booked currency/UOM, with separate non-posted native basis. Report FX must be direct from booked currency and known before booking; approved quote-native evidence is never relabeled as an actual invoice. Reports without bookings retain earlier behavior and serialized/exported bytes.

@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 mod approval;
 pub use approval::*;
+mod bookings;
+pub use bookings::*;
 mod reporting;
 pub use reporting::*;
 mod conversions;
@@ -334,6 +336,8 @@ pub struct State {
     pub conversion_books: BTreeMap<String, ConversionBook>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub conversion_reports: BTreeMap<String, ConversionReport>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub quote_bookings: BTreeMap<String, QuoteBooking>,
     pub policy: Policy,
     pub audit: Vec<Audit>,
     pub receipts: Vec<Receipt>,
@@ -398,6 +402,7 @@ impl Default for State {
             price_contracts: BTreeMap::new(),
             conversion_books: BTreeMap::new(),
             conversion_reports: BTreeMap::new(),
+            quote_bookings: BTreeMap::new(),
             policy: Policy::default(),
             audit: vec![],
             receipts: vec![],
@@ -524,6 +529,7 @@ impl State {
         self.validate_price_contracts()?;
         self.validate_documents()?;
         self.validate_quote_governance()?;
+        self.validate_quote_bookings()?;
         self.validate_grid()?;
         self.validate_commercial()?;
         self.validate_settlements()?;
@@ -1095,8 +1101,14 @@ impl State {
                         c.approved_revision() == Some(source)
                             && c.proposal.replacement.as_ref() == Some(t)
                     });
+            let booked_ingestion = a.command == "quote_book"
+                && self.booking_for_transaction(key).is_some_and(|(b, line)| {
+                    b.created_revision == source
+                        && &line.booked == t
+                        && a.target.as_deref() == Some(&booking_target(&b.request.id))
+                });
             ensure(
-                ordinary_ingestion || corrected_ingestion,
+                ordinary_ingestion || corrected_ingestion || booked_ingestion,
                 "Transaction ingestion audit invalid",
             )?;
             if a.command == "transaction_add" {
@@ -1121,7 +1133,7 @@ impl State {
             g.0 = g.0.add(t.invoice_total)?;
             g.1 = g.1.add(t.cost_total)?;
             ensure(key == &t.id, "Transaction key mismatch")?;
-            self.validate_transaction(t)?;
+            self.validate_recorded_transaction(t)?;
         }
         for c in self
             .corrections

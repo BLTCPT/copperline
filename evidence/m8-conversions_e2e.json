@@ -1,0 +1,18 @@
+{
+  "result": "PASS",
+  "api_requests": 62,
+  "committed_revisions": 26,
+  "verified": [
+    "independent immutable conversion approval",
+    "native quantity bands",
+    "half-open dated direct rates",
+    "missing/identity/chained conversion rejection",
+    "atomic whole-quote currency transition",
+    "frozen direction/rational/version/date/rounding export",
+    "original-date reversal cancellation",
+    "frozen historical reports",
+    "overlap rejection and adjacent schedules",
+    "restart and idempotent retry",
+    "UTF-8 byte-stable and no-overwrite CLI exports"
+  ]
+}

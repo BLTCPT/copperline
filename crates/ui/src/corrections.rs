@@ -14,6 +14,13 @@ pub(super) struct CorrectionForm {
     cost_total: String,
 }
 impl Workbench {
+    pub(super) fn open_booked_reversal(&mut self, invoice: &str) {
+        self.correction_form.invoice = invoice.into();
+        self.correction_form.loaded.clear();
+        self.correction_form.replace = false;
+        self.view = View::Corrections;
+    }
+
     pub(super) fn corrections_view(&mut self, ui: &mut egui::Ui) {
         ui.label("Correct recorded actuals through a full reversal, optionally with an atomic replacement. Originals and earlier accruals remain immutable. No payment or ERP posting.");
         let ids: Vec<_> = self.engine.state().transactions.keys().cloned().collect();
@@ -69,10 +76,21 @@ impl Workbench {
             );
             field(ui, "Reason", &mut self.correction_form.reason);
             ui.small("The record date is provenance, not scheduled activation. Approval immediately restates the original invoice period.");
-            ui.checkbox(
-                &mut self.correction_form.replace,
-                "Replace with a corrected invoice atomically",
-            );
+            let booking = self
+                .engine
+                .state()
+                .booking_for_transaction(&original.id)
+                .map(|(b, _)| (b.request.id.clone(), b.request.quote_id.clone()));
+            if let Some((booking, quote)) = &booking {
+                self.correction_form.replace = false;
+                ui.colored_label(COPPER, format!("Booked invoice · {booking} / {quote}. Only a full reversal is allowed. A replacement requires a distinct independently approved quote and a new booking."));
+            }
+            ui.add_enabled_ui(booking.is_none(), |ui| {
+                ui.checkbox(
+                    &mut self.correction_form.replace,
+                    "Replace with a corrected invoice atomically",
+                );
+            });
             if self.correction_form.replace {
                 field(
                     ui,

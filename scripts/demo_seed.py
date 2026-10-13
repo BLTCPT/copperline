@@ -2,7 +2,7 @@
 """Create reviewable synthetic documents via the same public command API as the UI."""
 import argparse,json,subprocess
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--binary',default='target/debug/copperline-cli');p.add_argument('--data',default='data/review-demo');a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--binary',default='target/debug/copperline-cli');p.add_argument('--data',default='data/review-demo');p.add_argument('--bookings',action='store_true',help='Include the M8 converted quote booking');a=p.parse_args()
 process=subprocess.Popen([str(Path(a.binary).resolve()),'--data',a.data,'api'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True, encoding="utf-8")
 def call(method,params=None):
     process.stdin.write(json.dumps({'method':method,'params':params})+'\n');process.stdin.flush();out=json.loads(process.stdout.readline());assert out['ok'],out;return out['result']
@@ -69,5 +69,8 @@ else:
     run('quote_submit',{'id':'Q-4001','version':2},'sales','Alex / Sales')
     run('quote_decide',{'id':'Q-4001','version':3,'approve':True,'note':'Native band and dated FX/UOM evidence reviewed'},'approver','Riley / Approval')
     run('report_convert',{'id':'R-EUR-OCT','request':{'start':'2026-10-01','end':'2026-11-01','currency':'EUR'}})
-    print('Created synthetic M6 review workspace at revision',revision)
+    if a.bookings:
+        run('quote_book',{'request':{'id':'BK-EUR-4001','quote_id':'Q-4001','quote_version':4,'invoice_date':'2026-10-20','source':'synthetic-approved-quote'}})
+        run('report_convert',{'id':'R-EUR-BOOKED','request':{'start':'2026-10-01','end':'2026-11-01','currency':'EUR'}})
+    print('Created synthetic M8' if a.bookings else 'Created synthetic M6','review workspace at revision',revision)
 process.stdin.close();assert process.wait(timeout=10)==0

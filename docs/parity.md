@@ -19,7 +19,7 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 | Interrupted-write recovery and concurrent local API | Implemented local subset | Locked inspect/hash-verified quarantine, 16 bounded clients and per-command optimistic conflicts |
 | Portable backup and new-workspace restore | Implemented local subset | Complete raw-byte history/evidence, schema/checksums, all-revision validation, guarded failure states and no-overwrite restore; no migration/retention/resume |
 | Explicit FX and UOM conversion | Implemented bounded subset | Dated approved direct rational schedules; native band qualification, combined unit rounding and frozen quote/report evidence; no inverse/multihop/feed/amendments |
-| Converted quote-to-actual booking | Missing | Actual invoices require catalog-native currency/unit; converted quotes cannot yet be booked with both booked/native amounts and frozen quote/conversion provenance |
+| Converted quote-to-actual booking | Implemented full-booking subset | One full current approved quote per quote ID lifetime; exact booked/non-posted native basis, frozen approval/conversion/contributors, retry/reopen and full reversal; no partial booking or raw replacement |
 | Scenario comparison | Implemented deterministic subset | Same product/customer comparison; no demand estimation |
 | Analytics actuals, segmentation, dashboards, alerts | Partial | Gross/reversed/net invoice ledger, customer/currency weighted margin and explicit immutable reporting-currency snapshots; no warehouse, alerting or advanced segmentation |
 | Customer agreements / contract terms / renewals | Partial | Approved customer price-contract editions with periods, quantity bands and frozen origins; separate retrospective rebate terms; broader amendments/renewals remain |
@@ -47,3 +47,5 @@ No vendor screenshots, examples, assets or implementation were imported. Advance
 M5 adds a working local customer-contract subset: immutable editions, date/quantity qualification, explicit automatic priority, overlap rejection, origin snapshots and atomic quote-line replacement. It does not add FX/UOM conversion, enterprise contract delivery or full CPQ. See [contract semantics](customer-price-agreements.md).
 
 M6 adds explicit dated direct FX and product-UOM conversion, exact native quantity qualification, immutable reporting-currency actuals and atomic multi-line quote edits. All roundtrip, missing-rate, historical evidence and source-authoring boundaries are documented in [conversion semantics](conversions.md).
+
+M8 adds immutable approved quote booking and original-evidence reversals/reporting. [Booking semantics](bookings.md) define full-only capacity, native non-posted basis and historical FX cutoff; no accounting or invoice delivery integration is claimed.

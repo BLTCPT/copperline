@@ -36,6 +36,9 @@ jobs:
       - name: Explicit FX and UOM workflow
         shell: bash
         run: python scripts/conversions_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
+      - name: Frozen quote booking and original-basis reversal workflow
+        shell: bash
+        run: python scripts/bookings_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
       - name: Concurrent local API and recovery workflow
         shell: bash
         run: python scripts/transport_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}

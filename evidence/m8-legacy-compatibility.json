@@ -1,0 +1,35 @@
+{
+  "result": "PASS",
+  "old_binary_sha256": "f1c3f4730fa94924ea1d57cbb557682bdc1f43a48324d55de1fc0a864abc69d4",
+  "new_binary_sha256": "87dc9f1ba058325086751eabe6d60bc585ea5c1bb27ef3948675763f356a9f56",
+  "legacy_revision": 49,
+  "preserved_snapshots": 50,
+  "preserved_snapshot_bytes": 1161518,
+  "unchanged_exports": 5,
+  "booked_revision": 50,
+  "booked_invoice_eur_cents": 97200,
+  "native_basis_usd_cents": 108000,
+  "backup": {
+    "committed_revision": 50,
+    "format_version": 1,
+    "head_hash": "7405f7e8f8277096542ab52eff09127029979cd8c0ba98d167acdf4a4ed6a906",
+    "pending_count": 0,
+    "recovery_directory_count": 0,
+    "recovery_file_count": 0,
+    "schema_version": 1,
+    "sha256": "7706e20edb90de1f6e0ef0aab604f9776de4a8c30e6f6927d171bd2176af5b10",
+    "snapshot_count": 51,
+    "total_bytes": 1221017,
+    "warnings": []
+  },
+  "checks": [
+    "genuine M7 binary unchanged",
+    "original M7 workspace unchanged",
+    "all original snapshot bytes and entire state equal",
+    "five prior quote/conversion/report exports unchanged before and after booking",
+    "original seed receipt replay",
+    "old approved converted quote books through M8",
+    "booking retry and CSV stable after reopen",
+    "all 51 snapshots exact after full archive restore"
+  ]
+}

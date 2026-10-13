@@ -4,6 +4,7 @@ use copperline_model::*;
 use copperline_money::{Bps, Money, Quantity};
 use eframe::egui::{self, Color32, RichText};
 mod backup;
+mod bookings;
 mod contracts;
 mod conversions;
 mod corrections;
@@ -22,6 +23,7 @@ pub enum View {
     Conversions,
     Lists,
     Quotes,
+    Bookings,
     Approvals,
     Agreements,
     Analytics,
@@ -43,6 +45,7 @@ impl View {
             Self::Contracts => "Customer price agreements",
             Self::Lists => "Price lists",
             Self::Quotes => "Quotes",
+            Self::Bookings => "Quote bookings",
             Self::Approvals => "Approvals",
             Self::Agreements => "Agreements & rebates",
             Self::Analytics => "Invoice analytics",
@@ -63,6 +66,7 @@ pub struct Workbench {
     correction_form: corrections::CorrectionForm,
     settlement_form: settlements::SettlementForm,
     backup_form: backup::BackupForm,
+    booking_form: bookings::BookingForm,
     role: usize,
     pricing_source: Option<PriceSource>,
     approval_discount: String,
@@ -148,6 +152,7 @@ impl Workbench {
             correction_form: Default::default(),
             settlement_form: Default::default(),
             backup_form: Default::default(),
+            booking_form: Default::default(),
             role: 0,
             pricing_source: None,
             contract_form: contracts::ContractForm::default(),
@@ -325,6 +330,7 @@ impl Workbench {
                         View::Conversions,
                         View::Lists,
                         View::Quotes,
+                        View::Bookings,
                         View::Approvals,
                         View::Agreements,
                         View::Analytics,
@@ -398,7 +404,7 @@ impl Workbench {
         egui::CentralPanel::default().frame(egui::Frame::new().fill(Color32::from_rgb(241,245,248)).inner_margin(24.0)).show(ui,|ui|{egui::ScrollArea::both().auto_shrink([false,false]).show(ui,|ui|{
    if self.view == View::Backup { self.backup_view(ui); return; }
    if self.engine.state().products.is_empty(){ui.heading("Start a pricing workspace");ui.label("Load six synthetic industrial products, three customers, costs and a volume rule.");if ui.button("Load synthetic demo").clicked(){self.role=3;self.run(Command::SeedDemo);}return;}
-   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Contracts=>self.contracts_view(ui),View::Conversions=>self.conversions_view(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Corrections=>self.corrections_view(ui),View::Settlements=>self.settlements_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui),View::Backup=>self.backup_view(ui)}
+   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Contracts=>self.contracts_view(ui),View::Conversions=>self.conversions_view(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Bookings=>self.bookings_view(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Corrections=>self.corrections_view(ui),View::Settlements=>self.settlements_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui),View::Backup=>self.backup_view(ui)}
   });});
     }
     fn context(&mut self, ui: &mut egui::Ui) {
@@ -1025,6 +1031,7 @@ impl Workbench {
             q.id, q.status, q.version, q.source_revision, q.date
         ));
         ui.add_space(10.0);
+        self.booking_quote_shortcut(ui, &q);
         Self::quote_route(ui, &q);
         Self::lines_table(ui, &q.lines);
         Self::line_conversion_evidence(ui, &q.lines);
@@ -1169,6 +1176,7 @@ impl Workbench {
                 "Owner {} · Version {} · Source r{}",
                 q.owner, q.version, q.source_revision
             ));
+            self.booking_quote_shortcut(ui, &q);
             Self::quote_route(ui, &q);
             Self::lines_table(ui, &q.lines);
             Self::line_conversion_evidence(ui, &q.lines);
@@ -1773,6 +1781,7 @@ mod tests {
             View::Conversions,
             View::Lists,
             View::Quotes,
+            View::Bookings,
             View::Approvals,
             View::Agreements,
             View::Analytics,
@@ -2144,6 +2153,10 @@ impl Workbench {
             }
         }
         ui.separator();
+        if ui.button("Book an approved quote").clicked() {
+            self.view = View::Bookings;
+        }
+        ui.small("Quote bookings preserve approved quantities, amounts and conversion evidence as recorded actuals.");
         ui.heading("Record a synthetic invoice");
         self.context(ui);
         ui.label(format!("Use the current {} calculation from Price workbench. This is a local demo ledger, not an ERP posting.",self.product));

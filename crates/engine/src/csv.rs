@@ -503,22 +503,89 @@ pub fn export_report(state: &State, id: &str) -> Result<String> {
         .get(id)
         .ok_or_else(|| error("Frozen report not found"))?;
     let c = &report.calculation;
+    let has_bookings = c.rows.iter().any(|r| r.booking.is_some());
     let mut output = String::from(
         "report_id,source_revision,start,end_exclusive,reporting_currency,invoice_id,customer_id,product_id,invoice_date,native_quantity,native_unit,native_currency,native_invoice,native_cost,converted_invoice,converted_cost,reversed_by,net_invoice,net_cost,net_margin,rounding,fx_evidence_json\r\n",
     );
+    if has_bookings {
+        output = output.replace("native_", "recorded_").trim_end().to_owned();
+        output.push_str(",booking_evidence_json\r\n");
+    }
     for row in &c.rows {
         let t = &row.native;
         let reversed = row.reversed_by.is_some();
         let invoice = if reversed { Money(0) } else { row.invoice };
         let cost = if reversed { Money(0) } else { row.cost };
+        let mut fields = vec![
+            id.into(),
+            c.source_revision.to_string(),
+            c.request.start.to_string(),
+            c.request.end.to_string(),
+            c.request.currency.to_string(),
+            t.id.clone(),
+            t.customer_id.clone(),
+            t.product_id.clone(),
+            t.date.to_string(),
+            t.quantity.to_string(),
+            t.unit.clone(),
+            t.currency.to_string(),
+            t.invoice_total.to_string(),
+            t.cost_total.to_string(),
+            row.invoice.to_string(),
+            row.cost.to_string(),
+            row.reversed_by.clone().unwrap_or_default(),
+            invoice.to_string(),
+            cost.to_string(),
+            invoice.sub(cost)?.to_string(),
+            "each_recorded_total_half_away_then_aggregate_v1".into(),
+            json_cell(&row.fx)?,
+        ];
+        if has_bookings {
+            fields.push(json_cell(&row.booking)?);
+        }
+        csv_row(&mut output, &fields);
+    }
+    Ok(output)
+}
+
+/// Immutable booked amounts and non-posted native pricing evidence; no live repricing.
+pub fn export_booking(state: &State, id: &str) -> Result<String> {
+    let b = state
+        .quote_bookings
+        .get(id)
+        .ok_or_else(|| error("Booking not found"))?;
+    let review = b
+        .approval_cycle
+        .reviews
+        .last()
+        .ok_or_else(|| error("Booking approval missing"))?;
+    let fingerprint = record_fingerprint(b)?;
+    let mut output = String::from(
+        "booking_id,source,quote_id,quote_version,quote_submitted_revision,quote_approval_revision,booking_revision,reporting_rate_knowledge_revision,owner,line_index,transaction_id,customer_id,product_id,invoice_date,booked_quantity,booked_unit,booked_currency,booked_invoice,booked_cost,native_nonposted_basis_json,booked_minus_forward_converted_native_basis_json,approved_line_json,booking_fingerprint,rounding\r\n",
+    );
+    for line in &b.lines {
+        let t = &line.booked;
+        let approved = b
+            .approval_cycle
+            .lines
+            .get(line.index)
+            .ok_or_else(|| error("Booked line index missing"))?;
         csv_row(
             &mut output,
             &[
-                id.into(),
-                c.source_revision.to_string(),
-                c.request.start.to_string(),
-                c.request.end.to_string(),
-                c.request.currency.to_string(),
+                b.request.id.clone(),
+                b.request.source.clone(),
+                b.request.quote_id.clone(),
+                b.request.quote_version.to_string(),
+                b.approval_cycle.submitted_revision.to_string(),
+                review.revision.to_string(),
+                b.created_revision.to_string(),
+                b.created_revision
+                    .checked_sub(1)
+                    .ok_or_else(|| error("Invalid booking revision"))?
+                    .to_string(),
+                b.owner.clone(),
+                line.index.to_string(),
                 t.id.clone(),
                 t.customer_id.clone(),
                 t.product_id.clone(),
@@ -528,14 +595,11 @@ pub fn export_report(state: &State, id: &str) -> Result<String> {
                 t.currency.to_string(),
                 t.invoice_total.to_string(),
                 t.cost_total.to_string(),
-                row.invoice.to_string(),
-                row.cost.to_string(),
-                row.reversed_by.clone().unwrap_or_default(),
-                invoice.to_string(),
-                cost.to_string(),
-                invoice.sub(cost)?.to_string(),
-                "each_recorded_total_half_away_then_aggregate_v1".into(),
-                json_cell(&row.fx)?,
+                json_cell(&line.native_basis)?,
+                json_cell(&line.reconciliation)?,
+                json_cell(approved)?,
+                fingerprint.clone(),
+                json_cell(&b.rounding)?,
             ],
         );
     }

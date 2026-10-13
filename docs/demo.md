@@ -97,3 +97,14 @@ Command examples: `copperline-cli --data data/m6-review export-conversion FX-UOM
 5. For measurements, build release CLI and run `python3 scripts/workload.py --binary target/release/copperline-cli --profile small --backup`. The script creates fresh synthetic workspaces and retains evidence. Use `medium` for 1,000 invoices and 20 approved quotes. See [measurement boundaries](performance.md); these are local warm-cache demo measurements.
 
 A failed restore names its preserved partial directory and blocking guard. Keep both, retain the archive, and use another new destination. Never remove a guard to force opening. Windows directory-entry power-loss durability and interactive visual behavior remain explicit limitations.
+
+## M8 converted quote booking walkthrough
+
+1. Run `python3 scripts/demo_seed.py --binary target/release/copperline-cli --data data/m8-review --bookings` against a new directory. Existing nonempty directories are preserved. The optional M8 fixture books approved Q-4001 once as BK-EUR-4001 and adds R-EUR-BOOKED; the default fixture remains compatible with the earlier M6/M7 binaries.
+2. Open `target/release/copperline-desktop --data data/m8-review --view bookings`. Inspect the approved EUR 972 / one box invoice, its non-posted USD 1,080 / twelve each basis, frozen quote/conversion evidence and export CSV to a new path.
+3. As Morgan / Pricing, select another eligible approved quote, supply new booking ID/date/source and inspect the exact preview before booking all lines. Draft/Pending/stale versions, already booked quotes and occupied/reserved invoice IDs reject atomically.
+4. In Invoice corrections select BK-EUR-4001-L001. Replacement is unavailable; create and submit a full reversal as Morgan, then independently approve as Jordan / Finance. Recorded analytics and new EUR reports show its reversal at original evidence. Existing report and booking exports remain unchanged.
+5. Returning to Quote bookings never makes Q-4001 eligible again. Replacement business requires a distinct new approved quote. A missing direct reporting rate known before booking fails explicitly; current rates and native basis cannot substitute.
+6. Run `python3 scripts/bookings_e2e.py --binary target/release/copperline-cli` for converted multi-line cases, superseded contract/rate history, signed rounding, repeat/reopen/export, corrections/rebates and backup restoration.
+
+The ledger is synthetic and local. It does not issue or deliver invoices or make external postings.

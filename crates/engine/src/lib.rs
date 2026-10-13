@@ -6,6 +6,7 @@ use copperline_storage::Store;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 mod backup;
+mod bookings;
 mod commercial;
 mod contracts;
 mod conversions;
@@ -17,8 +18,8 @@ mod settlements;
 pub use commercial::analytics;
 pub use copperline_storage::backup::{BackupSummary, RestoreSummary};
 pub use csv::{
-    export_contract, export_conversion, export_quote, export_report, export_settlement,
-    import_conversions, import_products,
+    export_booking, export_contract, export_conversion, export_quote, export_report,
+    export_settlement, import_conversions, import_products,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +30,9 @@ pub use csv::{
     deny_unknown_fields
 )]
 pub enum Command {
+    QuoteBook {
+        request: BookingRequest,
+    },
     ConversionCreate {
         terms: ConversionTerms,
     },
@@ -238,6 +242,7 @@ pub struct QuoteLineReplacement {
 impl Command {
     pub fn name(&self) -> &'static str {
         match self {
+            Self::QuoteBook { .. } => "quote_book",
             Self::ConversionCreate { .. } => "conversion_create",
             Self::ConversionImport { .. } => "conversion_import",
             Self::ConversionSubmit { .. } => "conversion_submit",
@@ -293,7 +298,8 @@ impl Command {
             Self::SeedDemo | Self::PolicySet(_) | Self::QuoteApprovalPolicySet { .. } => {
                 role == Role::Admin
             }
-            Self::ConversionCreate { .. }
+            Self::QuoteBook { .. }
+            | Self::ConversionCreate { .. }
             | Self::ConversionImport { .. }
             | Self::ConversionSubmit { .. }
             | Self::ConversionWithdraw { .. }
@@ -500,6 +506,7 @@ fn quote_mut<'a>(s: &'a mut State, key: &str) -> Result<&'a mut Quote> {
 }
 fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
     match c {
+        Command::QuoteBook { request } => bookings::apply(s, actor, request),
         Command::ConversionCreate { .. }
         | Command::ConversionImport { .. }
         | Command::ConversionSubmit { .. }

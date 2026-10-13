@@ -14,3 +14,5 @@ This is a local synthetic-data prototype, not an enterprise multi-user service.
 Production gates include authenticated immutable actor IDs, document ownership policy, organization-scoped permissions, audited migrations, threat model, load limits, storage durability/backup tests, signed builds, trusted update channel and independent security review.
 
 Conversion books are user-authored synthetic inputs; no market data provider is queried. Review does not establish rate accuracy or authenticated approval. Reporting snapshots record arithmetic and source evidence; they do not execute foreign exchange or post accounting entries.
+
+Quote booking is a local record derived from an approved synthetic quote, not proof of customer acceptance, delivery, external invoicing or payment. Booking provenance and rate knowledge cutoffs detect inconsistent local history; they do not authenticate actors or source rate accuracy. Existing role, file trust and corruption boundaries apply.

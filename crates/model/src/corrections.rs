@@ -233,7 +233,11 @@ impl State {
                 key == &p.id && c.created_revision > 0 && c.created_revision <= self.revision,
                 "Correction identity or creation revision invalid",
             )?;
-            self.validate_transaction(&c.original)?;
+            self.validate_recorded_transaction(&c.original)?;
+            ensure(
+                self.booking_for_transaction(&c.original.id).is_none() || p.replacement.is_none(),
+                "Booked invoices support full reversal only; use a distinct approved quote for replacement",
+            )?;
             ensure(
                 c.original.id == p.original_transaction_id
                     && self.transactions.get(&p.original_transaction_id) == Some(&c.original),

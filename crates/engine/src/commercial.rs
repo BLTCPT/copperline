@@ -166,6 +166,7 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
             ))
         }
         Command::TransactionAdd(t) => {
+            s.validate_transaction(t)?;
             ensure(
                 s.transaction_id_available(&t.id),
                 "External transaction ID already exists or is reserved by a correction",
@@ -223,6 +224,7 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                     s.transaction_id_available(&t.id),
                     "Duplicate or reserved external transaction ID; no rows imported",
                 )?;
+                s.validate_transaction(&t)?;
                 s.transaction_revisions.insert(t.id.clone(), s.revision + 1);
                 s.transactions.insert(t.id.clone(), t);
             }
