@@ -71,6 +71,21 @@ def write_json_new(path, value):
         destination.write("\n")
 
 
+def validate_output_paths(directory, evidence):
+    # This portable synthetic harness accepts ordinary paths, not Windows
+    # device/verbatim namespaces whose alternate spellings obscure ancestry.
+    for path in (directory, evidence):
+        require(not str(path).replace("/", "\\").startswith(("\\\\?\\", "\\\\.\\")),
+                "Workload outputs require ordinary paths, not Windows device/verbatim paths")
+    # Reject raw dangling symlinks before resolving existing ancestors and '..'.
+    require(not directory.exists() and not directory.is_symlink(), f"Refusing existing data path: {directory}")
+    require(not evidence.exists() and not evidence.is_symlink(), f"Refusing existing evidence path: {evidence}")
+    directory, evidence = directory.resolve(), evidence.resolve()
+    require(directory != evidence and directory not in evidence.parents and evidence not in directory.parents,
+            "Workspace and evidence directories must be separate, non-nested paths")
+    return directory, evidence
+
+
 def rounded(value, numerator, denominator):
     magnitude, remainder = divmod(abs(value) * numerator, denominator)
     magnitude += int(2 * remainder >= denominator)
@@ -494,10 +509,7 @@ def main():
     root = Path(tempfile.mkdtemp(prefix="copperline-workload-")) if args.output_data is None else None
     directory = (args.output_data or root / "data").absolute()
     evidence = (args.evidence_dir or directory.with_name(directory.name + "-evidence")).absolute()
-    require(not directory.exists() and not directory.is_symlink(), f"Refusing existing data path: {directory}")
-    require(not evidence.exists() and not evidence.is_symlink(), f"Refusing existing evidence path: {evidence}")
-    require(directory != evidence and directory not in evidence.parents and evidence not in directory.parents,
-            "Workspace and evidence directories must be separate, non-nested paths")
+    directory, evidence = validate_output_paths(directory, evidence)
     directory.mkdir(parents=True, exist_ok=False)
     evidence.mkdir(parents=True, exist_ok=False)
     report = dict(schema=SCHEMA, profile=args.profile, data_directory=str(directory), evidence_directory=str(evidence),

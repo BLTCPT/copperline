@@ -44,7 +44,9 @@ jobs:
         run: python scripts/backup_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
       - name: Synthetic workload and archive roundtrip
         shell: bash
-        run: python scripts/workload.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }} --profile small --backup
+        run: |
+          python scripts/workload_paths_test.py
+          python scripts/workload.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }} --profile small --backup
       - name: Windows portable package
         if: runner.os == 'Windows'
         shell: pwsh
