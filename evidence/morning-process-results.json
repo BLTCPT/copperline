@@ -1,0 +1,166 @@
+{
+  "e2e": {
+    "result": "PASS",
+    "api_requests": 65,
+    "committed_revisions": 32,
+    "golden_usd": {
+      "invoice": "900.00",
+      "rebate": "45.00",
+      "pocket": "855.00",
+      "margin": "255.00"
+    },
+    "verified": [
+      "quote approval/export/revise",
+      "list approve/publish",
+      "idempotent retry",
+      "stale version",
+      "separate approver",
+      "atomic import",
+      "malformed input survival",
+      "process restart persistence",
+      "grid candidate/active separation",
+      "tier agreement approval",
+      "atomic transaction import",
+      "frozen accrual",
+      "invoice analytics",
+      "owner-only quote editing",
+      "conditional sequential Finance review",
+      "frozen route policy",
+      "decision retry after completion",
+      "approved grid/list pricing",
+      "source replacement preserves quote export",
+      "repeated accrual snapshots do not change actuals"
+    ]
+  },
+  "reconciliation_e2e": {
+    "result": "PASS",
+    "api_requests": 72,
+    "committed_revisions": 34,
+    "settlement_adjustments_usd": [
+      "150.00",
+      "-140.00",
+      "-2.00",
+      "-8.00"
+    ],
+    "final_recognized_rebate": "0.00",
+    "verified": [
+      "independent Finance review",
+      "atomic full reversal and replacement",
+      "reserved replacement IDs",
+      "original period restatement",
+      "retrospective tier true-up",
+      "competing baseline rejection",
+      "zero entitlement refund",
+      "non-additive accrual snapshots",
+      "exact retry after restart",
+      "frozen CSV exports",
+      "numeric negative adjustments and formula-safe text",
+      "no overwrite export"
+    ]
+  },
+  "contracts_e2e": {
+    "result": "PASS",
+    "api_requests": 75,
+    "committed_revisions": 30,
+    "verified": [
+      "half-open date and quantity boundaries",
+      "independent source-contributor review",
+      "frozen grid origins",
+      "edition supersession without resurrection",
+      "explicit priority and overlap rejection",
+      "no implicit currency/UOM conversion",
+      "automatic versus exact source selection",
+      "atomic quote-line replacement",
+      "immutable approval cycles",
+      "restart and exact retry",
+      "byte-stable historical exports",
+      "UTF-8 and formula-safe contract CSV",
+      "no-overwrite CLI export"
+    ]
+  },
+  "conversions_e2e": {
+    "result": "PASS",
+    "api_requests": 62,
+    "committed_revisions": 26,
+    "verified": [
+      "independent immutable conversion approval",
+      "native quantity bands",
+      "half-open dated direct rates",
+      "missing/identity/chained conversion rejection",
+      "atomic whole-quote currency transition",
+      "frozen direction/rational/version/date/rounding export",
+      "original-date reversal cancellation",
+      "frozen historical reports",
+      "overlap rejection and adjacent schedules",
+      "restart and idempotent retry",
+      "UTF-8 byte-stable and no-overwrite CLI exports"
+    ]
+  },
+  "bookings_e2e": {
+    "result": "PASS",
+    "process_and_api_calls": 116,
+    "committed_revisions": 41,
+    "booked_rows": 2,
+    "booked_invoice_cents": 288684,
+    "reporting_gross_usd_cents": 360855,
+    "booking_csv_sha256": "2246f7af7cafb7d5bd9977e36b131bb7e27c91aaa1e8fa40fda685a1076e8860",
+    "original_quote_csv_sha256": "efec89121e5b2eb4f0e370aa71ea0a798c78891c509dbe1d7f37a94d0907ab6d",
+    "verified": [
+      "full converted quote atomic booking",
+      "CLI/API exact preview and shared command",
+      "draft/pending/stale/role/partial-input rejection preserves state and disk",
+      "reserved invoice ID and duplicate booking protection",
+      "strict raw native ingestion",
+      "superseded contract and dated FX do not reprice the frozen quote",
+      "booked ledger versus non-posted native basis",
+      "booking-time direct reporting rates; no later backfill",
+      "post-booking quote revision preserves frozen evidence",
+      "full reversals and original reporting cancellation",
+      "independent actual rebates and quote-contributor settlement exclusion",
+      "immutable report/export and no-overwrite CLI export",
+      "receipt replay, reopen and complete archive restoration"
+    ]
+  },
+  "credits_e2e": {
+    "calls": 110,
+    "ok": true,
+    "revision": 44,
+    "verified": "quantity allocation, original-rate/native evidence, rebates, close races, rollback, exports, reopen and exact archive"
+  },
+  "backup_e2e": {
+    "result": "PASS",
+    "process_and_api_calls": 39,
+    "archived_revision": 8,
+    "archive_bytes": 48219,
+    "archive_sha256": "ac20e743fa3e333f6d0f71855aa6b9306dc9bfc2e4ce1d58f2b70511cc0aeed2",
+    "verified": [
+      "source lock prevents an inconsistent competing backup",
+      "deterministic exact-byte archive preserves snapshots, pending and nested recovery evidence",
+      "existing archives, missing sources and unsupported source evidence fail without replacement or bootstrap",
+      "corrupt, truncated and trailing archive bytes reject before destination creation",
+      "restore refuses existing empty directories and files",
+      "restored approvals, conversion exports and original receipts reopen unchanged; pending still blocks next write",
+      "preserved pending quarantine then exact retry commits once and survives another complete backup/restore"
+    ]
+  },
+  "transport_e2e": {
+    "result": "PASS",
+    "connection_limit": 16,
+    "timeout_seconds": 5,
+    "verified": [
+      "concurrent open clients",
+      "optimistic conflict serialization",
+      "simultaneous exact retry",
+      "changed-content retry rejection",
+      "malformed input survival",
+      "oversized client isolation",
+      "connection limit and permit return",
+      "idle timeout",
+      "restart persistence",
+      "exclusive recovery lock",
+      "pending inspection and checksum mismatch",
+      "evidence quarantine without promotion",
+      "retry after interrupted write"
+    ]
+  }
+}

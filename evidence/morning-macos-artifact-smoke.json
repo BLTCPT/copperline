@@ -1,0 +1,9 @@
+{
+  "source_commit": "57032bf9c59a2189e2ae6bcc85ce79877d229253",
+  "artifact_id": 11811807232,
+  "platform": "macOS arm64",
+  "cli_sha256": "ea9baa3612c47016f12df6d3e8566746863ec6eab1e1571a0d2812bd1d27b3d2",
+  "reopened_revision": 65,
+  "complete_state_equal_to_review_fixture": true,
+  "archive_expiry": "2027-01-11T12:11:00Z"
+}

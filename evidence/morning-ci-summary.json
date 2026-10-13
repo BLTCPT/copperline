@@ -1,0 +1,71 @@
+{
+  "source_commit": "57032bf9c59a2189e2ae6bcc85ce79877d229253",
+  "ci_url": "https://github.com/BLTCPT/copperline/actions/runs/38395423236",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "native (windows-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/BLTCPT/copperline/actions/runs/38395423236/job/115289282283",
+      "startedAt": "2026-10-13T12:11:02Z",
+      "completedAt": "2026-10-13T12:21:15Z",
+      "required_steps_passed": [
+        "Quality gates",
+        "Verify locked dependency notices",
+        "Build native binaries",
+        "End-to-end process workflow",
+        "Corrections and reconciliation workflow",
+        "Contract pricing and atomic replacement workflow",
+        "Explicit FX and UOM workflow",
+        "Frozen quote booking and original-basis reversal workflow",
+        "Partial credits and nominal invoice-period close workflow",
+        "Concurrent local API and recovery workflow",
+        "Portable backup and safe restore workflow",
+        "Synthetic workload and archive roundtrip",
+        "Windows portable package"
+      ]
+    },
+    {
+      "name": "native (ubuntu-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/BLTCPT/copperline/actions/runs/38395423236/job/115289282521",
+      "startedAt": "2026-10-13T12:11:02Z",
+      "completedAt": "2026-10-13T12:18:54Z",
+      "required_steps_passed": [
+        "Quality gates",
+        "Verify locked dependency notices",
+        "Build native binaries",
+        "End-to-end process workflow",
+        "Corrections and reconciliation workflow",
+        "Contract pricing and atomic replacement workflow",
+        "Explicit FX and UOM workflow",
+        "Frozen quote booking and original-basis reversal workflow",
+        "Partial credits and nominal invoice-period close workflow",
+        "Concurrent local API and recovery workflow",
+        "Portable backup and safe restore workflow",
+        "Synthetic workload and archive roundtrip"
+      ]
+    },
+    {
+      "name": "native (macos-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/BLTCPT/copperline/actions/runs/38395423236/job/115289282655",
+      "startedAt": "2026-10-13T12:11:06Z",
+      "completedAt": "2026-10-13T12:18:05Z",
+      "required_steps_passed": [
+        "Quality gates",
+        "Verify locked dependency notices",
+        "Build native binaries",
+        "End-to-end process workflow",
+        "Corrections and reconciliation workflow",
+        "Contract pricing and atomic replacement workflow",
+        "Explicit FX and UOM workflow",
+        "Frozen quote booking and original-basis reversal workflow",
+        "Partial credits and nominal invoice-period close workflow",
+        "Concurrent local API and recovery workflow",
+        "Portable backup and safe restore workflow",
+        "Synthetic workload and archive roundtrip"
+      ]
+    }
+  ]
+}

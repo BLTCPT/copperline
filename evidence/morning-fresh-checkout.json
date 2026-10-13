@@ -1,0 +1,12 @@
+{
+  "source_commit": "57032bf9c59a2189e2ae6bcc85ce79877d229253",
+  "method": "Separate public Git clone, fast-forward to final source, separate target build with existing Cargo registry cache",
+  "platform": "macOS arm64",
+  "rust": "1.95.0",
+  "build_cli_and_desktop": "passed",
+  "notice_verification": "313 packages; one documented upstream gap",
+  "documented_seed_command": "passed",
+  "revision": 65,
+  "state_equal_to_review_fixture": true,
+  "new_empty_machine": false
+}

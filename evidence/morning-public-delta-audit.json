@@ -1,0 +1,10 @@
+{
+  "source_commit": "57032bf9c59a2189e2ae6bcc85ce79877d229253",
+  "base_commit": "64dd0736ae2dc06901528bcce6c9dfd0715dc277",
+  "changed_paths": 67,
+  "utf8_text_blobs": 61,
+  "pattern_count": 7,
+  "credential_or_local_document_path_matches": 0,
+  "screenshots_manually_inspected": 6,
+  "scope": "Bounded delta pattern/manual check; not a guarantee of secret absence or legal clearance"
+}

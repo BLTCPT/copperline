@@ -1,0 +1,24 @@
+{
+  "x86_64-pc-windows-msvc": {
+    "matching_documented_upstream_limits": [],
+    "scope": "Cargo normal dependency tree for the two binaries, not legal clearance or binary symbol analysis"
+  },
+  "aarch64-apple-darwin": {
+    "matching_documented_upstream_limits": [
+      "block2 v0.6.2",
+      "dispatch v0.2.0",
+      "dispatch2 v0.3.1",
+      "objc2 v0.6.5",
+      "objc2-app-kit v0.3.2",
+      "objc2-core-foundation v0.3.2",
+      "objc2-core-graphics v0.3.2",
+      "objc2-encode v4.1.0",
+      "objc2-foundation v0.3.2"
+    ],
+    "scope": "Cargo normal dependency tree for the two binaries, not legal clearance or binary symbol analysis"
+  },
+  "x86_64-unknown-linux-gnu": {
+    "matching_documented_upstream_limits": [],
+    "scope": "Cargo normal dependency tree for the two binaries, not legal clearance or binary symbol analysis"
+  }
+}

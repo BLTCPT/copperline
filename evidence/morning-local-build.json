@@ -1,0 +1,22 @@
+{
+  "source_commit": "57032bf9c59a2189e2ae6bcc85ce79877d229253",
+  "local_platform": "macOS arm64",
+  "rust_version": "1.95.0",
+  "artifacts": [
+    {
+      "path": "target/release/copperline-cli",
+      "size_bytes": 5134912,
+      "sha256": "3e9ce7f78e0e540508b86b8b614fda087d27e3c6ce17535418a5a5359bad3484"
+    },
+    {
+      "path": "target/release/copperline-desktop",
+      "size_bytes": 12878688,
+      "sha256": "91494f598265d2e3ca321546347d08607ed3d45fa8fff156f7fadee8338edd79"
+    }
+  ],
+  "financial_model_engine_storage_cli_unchanged_from_m9": true,
+  "test_count": 259,
+  "runtime_tests": 256,
+  "ui_tests": 20,
+  "compile_fail_checks": 3
+}
