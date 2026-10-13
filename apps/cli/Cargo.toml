@@ -1,0 +1,13 @@
+[package]
+name = "copperline-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+copperline-engine.workspace = true
+copperline-model.workspace = true
+serde_json.workspace = true

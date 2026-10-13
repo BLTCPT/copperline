@@ -1,0 +1,45 @@
+name: Quality and native builds
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: rustfmt, clippy
+      - name: Linux display dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxi-dev libgl1-mesa-dev libxkbcommon-dev libwayland-dev
+      - name: Quality gates
+        run: cargo xtask ci
+      - name: Build native binaries
+        run: cargo build --locked --release -p copperline-cli -p copperline-desktop
+      - name: End-to-end process workflow
+        shell: bash
+        run: python scripts/e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
+      - name: Windows portable package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/windows/package.ps1 -SkipBuild
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: copperline-windows-x64-portable
+          path: dist/*.zip
+      - uses: actions/upload-artifact@v4
+        if: runner.os != 'Windows'
+        with:
+          name: copperline-${{ runner.os }}-binaries
+          path: |
+            target/release/copperline-cli
+            target/release/copperline-desktop

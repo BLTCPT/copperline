@@ -1,0 +1,14 @@
+[package]
+name = "copperline-pricing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+copperline-money.workspace = true
+copperline-model.workspace = true
+
+serde.workspace = true

@@ -1,0 +1,16 @@
+[package]
+name = "copperline-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+copperline-money.workspace = true
+copperline-model.workspace = true
+copperline-pricing.workspace = true
+copperline-storage.workspace = true
+serde.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,142 @@
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.03s
+     Running `target/debug/xtask ci`
+Layer gate passed: exact money → model → pricing/storage → engine → UI → apps
+Asset attribution gate passed
+    Checking copperline-engine v0.1.0 (<workspace>/crates/engine)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.17s
+   Compiling copperline-engine v0.1.0 (<workspace>/crates/engine)
+    Finished `test` profile [optimized + debuginfo] target(s) in 1.24s
+     Running unittests src/main.rs (target/debug/deps/copperline_cli-1004bc1a7f66f164)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/copperline_desktop-f358d392df95c2d3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_engine-7acd0338ba2d5764)
+
+running 6 tests
+test csv::tests::csv_quoted_and_errors ... ok
+test tests::atomic_import_and_invalid_input_rollback ... ok
+test tests::role_conflict_and_idempotency ... ok
+test tests::whole_list_approval_and_publish ... ok
+test tests::approval_lifecycle_and_snapshot_immutability ... ok
+test tests::persistence_e2e ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/review_regressions.rs (target/debug/deps/review_regressions-876b30d41176e104)
+
+running 10 tests
+test frozen_list_policy_and_arithmetic_are_validated ... ok
+test owner_and_distinct_submitter_cannot_approve ... ok
+test frozen_lines_match_immutable_product_currency_unit_and_cost ... ok
+test mixed_catalog_produces_separate_publishable_lists ... ok
+test supported_max_cost_with_markup_can_be_saved_as_quote ... ok
+test decision_chronology_and_audit_identity_cannot_be_rewritten ... ok
+test historical_decision_survives_repricing_but_new_approval_is_required ... ok
+test frozen_document_validation_rejects_independent_corruptions ... ok
+test document_aggregate_overflow_is_rejected_by_command_and_snapshot_validation ... ok
+test failed_durable_commit_preserves_memory_and_request_can_retry ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_model-7e2025f61999639f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_money-35fe79a9dc2f4661)
+
+running 2 tests
+test tests::hostile_input ... ok
+test tests::exact_roundtrip_and_invariants ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_pricing-674a4134c5e6b63c)
+
+running 4 tests
+test tests::golden_waterfall ... ok
+test tests::missing_cost_and_zero_revenue ... ok
+test tests::rule_precedence_and_effectivity ... ok
+test tests::conservation_over_quantities_discounts ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_storage-3807707bf0b999ee)
+
+running 1 test
+test tests::reopen_lock_corruption ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/review_regressions.rs (target/debug/deps/review_regressions-6eb6efeda4a78dd8)
+
+running 5 tests
+test directory_with_committed_filename_is_rejected ... ok
+test pending_symlink_does_not_overwrite_target ... ok
+test invalid_approved_quote_is_rejected_on_commit_and_valid_checksum_reopen ... ok
+test symlinked_lock_and_committed_snapshot_are_rejected ... ok
+test pending_file_is_preserved_and_explicit_removal_allows_retry ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_ui-197a1664d34734be)
+
+running 3 tests
+test tests::unauthorized_ui_action_shows_error_without_mutation ... ok
+test tests::native_quote_buttons_complete_approval_flow ... ok
+test tests::every_workspace_view_renders_at_minimum_size ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/main.rs (target/debug/deps/xtask-5c5b14e55f3c0919)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_model
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_money
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_pricing
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_storage
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+All quality gates passed

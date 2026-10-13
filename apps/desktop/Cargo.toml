@@ -1,0 +1,15 @@
+[package]
+name = "copperline-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+copperline-ui.workspace = true
+copperline-engine.workspace = true
+eframe.workspace = true
+copperline-model.workspace = true
+image = { version = "0.25.10", default-features = false, features = ["png"] }

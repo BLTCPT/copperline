@@ -1,0 +1,13 @@
+[package]
+name = "copperline-model"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+copperline-money.workspace = true
+serde.workspace = true
+thiserror.workspace = true

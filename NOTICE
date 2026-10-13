@@ -1,0 +1,14 @@
+Copperline is an independent clean-room pricing workbench. The provisional name
+is not a claim of affiliation with Pricefx, ArtCraft, GridCraft or any industrial company.
+
+Architecture and operating-process inspiration: GridCraft by storytold,
+https://github.com/storytold/gridcraft (MIT OR Apache-2.0).
+Read-only reference checkout inspected at commit
+408bb2c3cf14e11fe4e73ebb140d683fe27f06c1.
+No GridCraft source code or visual assets were copied. Its engine-first layering,
+command boundary, never-crash policy, and quality-gate approach informed this project.
+Public Pricefx documentation informed capability terminology, not implementation.
+All fixture companies, products, prices and identities are synthetic.
+
+Third-party Rust dependencies retain their own licenses. See
+legal/THIRD_PARTY_NOTICES.txt and docs/dependency-license-inventory.tsv.

@@ -1,0 +1,21 @@
+{
+  "result": "PASS",
+  "api_requests": 25,
+  "committed_revisions": 10,
+  "golden_usd": {
+    "invoice": "900.00",
+    "rebate": "45.00",
+    "pocket": "855.00",
+    "margin": "255.00"
+  },
+  "verified": [
+    "quote approval/export/revise",
+    "list approve/publish",
+    "idempotent retry",
+    "stale version",
+    "separate approver",
+    "atomic import",
+    "malformed input survival",
+    "process restart persistence"
+  ]
+}
