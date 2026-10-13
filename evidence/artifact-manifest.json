@@ -1,6 +1,6 @@
 {
-  "source_commit": "66257371a8bef527ffe6722ad9e36db5912991ce",
-  "ci_url": "https://github.com/BLTCPT/copperline/actions/runs/38379370519",
+  "source_commit": "0ab4395fdbf3d295173ba5314d33334e9e698912",
+  "ci_url": "https://github.com/BLTCPT/copperline/actions/runs/38385301762",
   "ci_conclusion": "success",
   "platforms": [
     "Windows x64",
@@ -10,55 +10,55 @@
   "interactive_windows_ui_verified": false,
   "artifacts": [
     {
-      "path": "dist/m7-windows/copperline-0.1.0-windows-x64-portable.zip",
-      "size_bytes": 6816433,
-      "sha256": "113c9464f34c6d5366f88bbd6220fce317bef142eea7ba946413e64725b9399e",
-      "github_artifact_id": 11803450526,
-      "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38379370519/artifacts/11803450526",
-      "zip_entry_count": 29
+      "path": "dist/m8-windows/copperline-0.1.0-windows-x64-portable.zip",
+      "size_bytes": 7068349,
+      "sha256": "92a283f8d1c3bdca9b3ee4187b0e852fcbd906607d71141dd6e3edcac6b39f44",
+      "github_artifact_id": 11806462073,
+      "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38385301762/artifacts/11806462073",
+      "zip_entry_count": 31
     },
     {
-      "path": "dist/m7-macos/copperline-cli",
-      "size_bytes": 4311136,
-      "sha256": "f1c3f4730fa94924ea1d57cbb557682bdc1f43a48324d55de1fc0a864abc69d4",
-      "github_artifact_id": 11802468162,
-      "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38379370519/artifacts/11802468162"
+      "path": "dist/m8-macos/copperline-cli",
+      "size_bytes": 4632992,
+      "sha256": "ab2ec603087374b07d82c69e29ac739ad61c42eee25565a3461ca607e27e2641",
+      "github_artifact_id": 11806641226,
+      "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38385301762/artifacts/11806641226"
     },
     {
-      "path": "dist/m7-macos/copperline-desktop",
-      "size_bytes": 11904256,
-      "sha256": "8d22c450f3aa90bc2126aa4dced15e6da6ff4ea391a91f7d42b45220e8911e87",
-      "github_artifact_id": 11802468162,
-      "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38379370519/artifacts/11802468162"
+      "path": "dist/m8-macos/copperline-desktop",
+      "size_bytes": 12326304,
+      "sha256": "ae7eba132b011d881b10636b64669fc6ee4890e22eb6ed758b6988c3bf6a5e4f",
+      "github_artifact_id": 11806641226,
+      "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38385301762/artifacts/11806641226"
     }
   ],
   "windows_binaries": [
     {
       "name": "copperline-cli.exe",
-      "size_bytes": 4575232,
-      "sha256": "3db41c359b756dcf71d8a9c360201790d258cedb60b61d8f4a7f25d20488cc90"
+      "size_bytes": 4904448,
+      "sha256": "75bab5f2762404d4c5b629eb29017f215964b22212e4217ca55c9ad4c78b510e"
     },
     {
       "name": "copperline-desktop.exe",
-      "size_bytes": 12115456,
-      "sha256": "1ca1ecd0091ae0e71b379adcc9742575c10c6d9711ce0cb432fa46ee7eb60e6a"
+      "size_bytes": 12560384,
+      "sha256": "f565e8007f06890989b3b923a5e7f2c64615b0f8a96cf9c2cb70bb898fd9417a"
     }
   ],
   "ci_jobs": [
     {
       "name": "native (ubuntu-latest)",
       "conclusion": "success",
-      "url": "https://github.com/BLTCPT/copperline/actions/runs/38379370519/job/115235661820"
-    },
-    {
-      "name": "native (windows-latest)",
-      "conclusion": "success",
-      "url": "https://github.com/BLTCPT/copperline/actions/runs/38379370519/job/115235662185"
+      "url": "https://github.com/BLTCPT/copperline/actions/runs/38385301762/job/115255491140"
     },
     {
       "name": "native (macos-latest)",
       "conclusion": "success",
-      "url": "https://github.com/BLTCPT/copperline/actions/runs/38379370519/job/115235662464"
+      "url": "https://github.com/BLTCPT/copperline/actions/runs/38385301762/job/115255491368"
+    },
+    {
+      "name": "native (windows-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/BLTCPT/copperline/actions/runs/38385301762/job/115255491412"
     }
   ]
 }

@@ -1,0 +1,13 @@
+{
+  "committed_revision": 51,
+  "format_version": 1,
+  "head_hash": "6a897e7ae92584d905013f1f4c81c22b9de73d7e79dff5c9a187e74de3e2bea8",
+  "pending_count": 0,
+  "recovery_directory_count": 0,
+  "recovery_file_count": 0,
+  "schema_version": 1,
+  "sha256": "52b861b8206fbaebfa0d112fb85e40ee8cf205f5e0cb5f27d8ed3b856e9bffa6",
+  "snapshot_count": 52,
+  "total_bytes": 1275660,
+  "warnings": []
+}
