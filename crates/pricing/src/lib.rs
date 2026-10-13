@@ -26,7 +26,13 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
         cost.currency == product.currency && cost.unit == product.unit,
         "Cost currency/unit mismatch",
     )?;
-    let source = state.resolve_pricing_source(request)?;
+    let mut conversion = state.prepare_conversion(request)?;
+    let mut native_request = request.clone();
+    if let Some(c) = &conversion {
+        native_request.quantity = c.native_quantity;
+        native_request.conversion = None;
+    }
+    let source = state.resolve_pricing_source(&native_request)?;
     // Versions supersede the same rule ID only after their own effective start.
     let mut latest: BTreeMap<&str, &Rule> = BTreeMap::new();
     for r in state
@@ -50,7 +56,7 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
                 && r.effective_to
                     .as_ref()
                     .is_none_or(|end| &request.date < end)
-                && r.min_quantity <= request.quantity
+                && r.min_quantity <= native_request.quantity
                 && r.product_id.as_ref().is_none_or(|id| id == &product.id)
                 && r.customer_id.as_ref().is_none_or(|id| id == &customer.id)
                 && r.segment.as_ref().is_none_or(|s| s == &customer.segment)
@@ -75,6 +81,30 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
             None => list,
         }
     };
+    let (list, ruled, priced_cost, currency, unit) = if let Some(c) = &mut conversion {
+        c.native_list_unit = list;
+        c.native_rule_unit = ruled;
+        c.native_cost_unit = cost.amount;
+        let selection = request
+            .conversion
+            .as_ref()
+            .ok_or_else(|| error("Conversion request missing"))?;
+        (
+            c.convert_unit(list)?,
+            c.convert_unit(ruled)?,
+            c.convert_unit(cost.amount)?,
+            selection.currency,
+            selection.unit.clone(),
+        )
+    } else {
+        (
+            list,
+            ruled,
+            cost.amount,
+            product.currency,
+            product.unit.clone(),
+        )
+    };
     let invoice = ruled.sub(ruled.percent(request.discount)?)?;
     let rebate = invoice.percent(request.rebate)?;
     let pocket = invoice.sub(rebate)?;
@@ -82,7 +112,7 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
     // Apply rebate to extended invoice, avoiding multiplication of already rounded unit rebates.
     let rebate_total = invoice_total.percent(request.rebate)?;
     let pocket_total = invoice_total.sub(rebate_total)?;
-    let cost_total = cost.amount.extend(request.quantity)?;
+    let cost_total = priced_cost.extend(request.quantity)?;
     let margin_total = pocket_total.sub(cost_total)?;
     let margin_bps = if pocket_total.0 > 0 {
         Some(
@@ -121,15 +151,15 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
     let rule_label = rule.map(|r| format!("{} v{} · {}", r.id, r.version, r.name));
     Ok(Evaluation {
         request: request.clone(),
-        currency: product.currency,
-        unit: product.unit.clone(),
+        currency,
+        unit,
         product_name: product.name.clone(),
         list_unit: list,
         rule_unit: ruled,
         invoice_unit: invoice,
         rebate_unit: rebate,
         pocket_unit: pocket,
-        cost_unit: cost.amount,
+        cost_unit: priced_cost,
         invoice_total,
         rebate_total,
         pocket_total,
@@ -165,12 +195,13 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
             },
             Step {
                 label: "Cost / unit".into(),
-                amount: cost.amount,
+                amount: priced_cost,
             },
         ],
         warnings,
         hard_block,
         source,
+        conversion,
     })
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -199,7 +230,7 @@ pub fn totals(lines: &[Evaluation]) -> Result<Totals> {
     for l in lines {
         ensure(
             l.currency == t.currency,
-            "Mixed currencies require an FX adapter; separate the document by currency",
+            "Mixed currencies require an explicit approved conversion on every affected line",
         )?;
         t.invoice = t.invoice.add(l.invoice_total)?;
         t.rebate = t.rebate.add(l.rebate_total)?;
@@ -233,6 +264,10 @@ pub fn compare(
     )?;
     let baseline = evaluate(state, baseline)?;
     let scenario = evaluate(state, scenario)?;
+    ensure(
+        baseline.currency == scenario.currency,
+        "Scenarios must explicitly price in the same currency",
+    )?;
     Ok(Comparison {
         pocket_delta: scenario.pocket_total.sub(baseline.pocket_total)?,
         margin_delta: scenario.margin_total.sub(baseline.margin_total)?,
@@ -284,6 +319,7 @@ mod tests {
                 discount: Bps(1000),
                 rebate: Bps(500),
                 source: None,
+                conversion: None,
             },
         ))
     }

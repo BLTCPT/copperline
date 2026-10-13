@@ -14,3 +14,4 @@ All application artwork, styling, UI layouts and demo fixtures are original Copp
 | corrections.png | Copperline native application screenshot, synthetic fixture | MIT |
 | settlements.png | Copperline native application screenshot, synthetic fixture | MIT |
 | contracts.png | Copperline native application screenshot, synthetic fixture | MIT |
+| conversions.png | Copperline native application screenshot, synthetic fixture | MIT |

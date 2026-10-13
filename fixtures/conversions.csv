@@ -1,0 +1,4 @@
+id,kind,product_id,from,to,start,end,numerator,denominator
+USD-EUR-OCT,fx,,USD,EUR,2026-10-01,2026-11-01,9,10
+USD-EUR-NOV,fx,,USD,EUR,2026-11-01,2026-12-01,4,5
+VLV-BOX,uom,VLV-100,box,each,2026-10-01,2026-12-01,12,1

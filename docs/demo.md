@@ -65,7 +65,7 @@ A stale pending proposal can be rejected by eligible Finance or withdrawn by its
 
 ## M5 customer contract and quote replacement walkthrough
 
-Run `python3 scripts/demo_seed.py --data data/m5-review`, then `target/debug/copperline-desktop --data data/m5-review --view contracts`. On Windows use the CLI/desktop `.exe` binaries and pass their paths with `--binary` to the seed script. Existing nonempty workspaces are preserved. The fixture is revision 41, with CP-ATLAS edition 1 approved and edition 2 pending commercial review; Q-3001 retains the edition-1 November price.
+Run `python3 scripts/demo_seed.py --data data/m6-review`, then `target/debug/copperline-desktop --data data/m6-review --view contracts`. On Windows use the CLI/desktop `.exe` binaries and pass their paths with `--binary` to the seed script. Existing nonempty workspaces are preserved. The M6 fixture is revision 49 and retains the M5 contract workflow, with CP-ATLAS edition 1 approved and edition 2 pending commercial review; Q-3001 retains the edition-1 November price.
 
 1. Open **Customer price agreements**. Edition 1 covers October 1 through exclusive January 1: quantities below 10 use USD 95; quantity 10 and above uses a frozen USD 90 grid invoice unit. Edition 2 starts November 1 and proposes USD 85 for that bulk band.
 2. As Riley / Approval, approve edition 2. The automatic November selection changes; October still selects edition 1. Q-3001 and its existing approval cycle remain unchanged.
@@ -75,3 +75,14 @@ Run `python3 scripts/demo_seed.py --data data/m5-review`, then `target/debug/cop
 6. As Morgan / Pricing, expand the contract preparation form. Add fixed price bands or capture an explicitly selected approved grid/list origin. Create an edition, submit and review with Riley. Adjacent intervals are allowed; equal-priority overlapping date/product/quantity coverage is rejected.
 
 Run `python3 scripts/contracts_e2e.py` for boundaries, conflicts, non-resurrection, frozen sources, atomic replacement, restart, retry and export verification. Contract prices never imply FX or unit conversion.
+
+## M6 FX, packaging and reporting walkthrough
+
+1. Build CLI and desktop, then run `python3 scripts/demo_seed.py --data data/m6-review`. New workspaces include approved `FX-UOM-OCT`, approved EUR/box quote `Q-4001`, and frozen October EUR actuals `R-EUR-OCT`; existing directories are preserved.
+2. Open `target/debug/copperline-desktop --data data/m6-review --view conversions`. Inspect direct USD→EUR 9/10 in October, 4/5 in November, and VLV-100 box→each 12/1. Each direction/date/ratio is explicit. The book was independently reviewed by Riley.
+3. In Price workbench choose automatic customer contracts and enable **Convert quote currency / unit**, EUR and box. Quantity is now boxes. Inspect native quantity, native contract band, exact factors and rounding under the waterfall. One October box resolves 12 each at USD90 each and becomes EUR972 per box before new discounts/rebates.
+4. For a new schedule, select Morgan / Pricing, open FX & units, expand **Prepare a conversion book**, and paste the nine-column CSV. Import creates immutable Draft terms; submit as Morgan and approve as Riley. Missing rates, bad directions, inexact quantity normalization or overlapping dates reject without partial changes.
+5. In Quotes, choose a Draft and expand replacement controls. Stage each desired line, then apply the batch once. A currency change must cover every line. Existing quote versions and approval cycles remain auditable.
+6. In Invoice analytics inspect **Reporting currency · frozen actuals**. R-EUR-OCT includes original invoice rows and approved reversals at original dates/rates. Create another ID to capture later history. Export frozen report to a new path; nothing is posted or paid.
+
+Command examples: `copperline-cli --data data/m6-review export-conversion FX-UOM-OCT conversion.csv`, `export-report R-EUR-OCT report.csv` and `export-quote Q-4001 converted-quote.csv`. Use the full `--data` invocation for each command. `scripts/conversions_e2e.py` verifies the same flow with real restart, exact retry and byte-stable exports. See [conversion semantics](conversions.md) for unit-first rounding and deferred cases.

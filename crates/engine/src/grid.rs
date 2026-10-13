@@ -6,6 +6,10 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
             version,
             request,
         } => {
+            ensure(
+                request.conversion.is_none(),
+                "Grid authoring requires native pricing; convert only when consuming approved prices",
+            )?;
             id(key)?;
             ensure(
                 request.source.is_none(),
@@ -140,6 +144,7 @@ mod tests {
             discount: Bps(0),
             rebate: Bps(0),
             source: None,
+            conversion: None,
         };
         e.run(
             a("pricing", Role::Analyst),

@@ -7,13 +7,17 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 mod commercial;
 mod contracts;
+mod conversions;
 mod corrections;
 mod csv;
 mod governance;
 mod grid;
 mod settlements;
 pub use commercial::analytics;
-pub use csv::{export_contract, export_quote, export_settlement, import_products};
+pub use csv::{
+    export_contract, export_conversion, export_quote, export_report, export_settlement,
+    import_conversions, import_products,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(
@@ -23,6 +27,37 @@ pub use csv::{export_contract, export_quote, export_settlement, import_products}
     deny_unknown_fields
 )]
 pub enum Command {
+    ConversionCreate {
+        terms: ConversionTerms,
+    },
+    ConversionImport {
+        id: String,
+        name: String,
+        csv: String,
+    },
+    ConversionSubmit {
+        id: String,
+        version: u64,
+    },
+    ConversionDecide {
+        id: String,
+        version: u64,
+        approve: bool,
+        note: String,
+    },
+    ConversionWithdraw {
+        id: String,
+        version: u64,
+    },
+    ReportConvert {
+        id: String,
+        request: ReportingRequest,
+    },
+    QuoteReplaceLines {
+        id: String,
+        version: u64,
+        replacements: Vec<QuoteLineReplacement>,
+    },
     ContractCreate {
         terms: ContractTerms,
     },
@@ -192,9 +227,22 @@ pub enum Command {
         version: u64,
     },
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct QuoteLineReplacement {
+    pub index: usize,
+    pub request: PriceRequest,
+}
 impl Command {
     pub fn name(&self) -> &'static str {
         match self {
+            Self::ConversionCreate { .. } => "conversion_create",
+            Self::ConversionImport { .. } => "conversion_import",
+            Self::ConversionSubmit { .. } => "conversion_submit",
+            Self::ConversionDecide { .. } => "conversion_decide",
+            Self::ConversionWithdraw { .. } => "conversion_withdraw",
+            Self::ReportConvert { .. } => "report_convert",
+            Self::QuoteReplaceLines { .. } => "quote_replace_lines",
             Self::ContractCreate { .. } => "contract_create",
             Self::ContractSubmit { .. } => "contract_submit",
             Self::ContractDecide { .. } => "contract_decide",
@@ -243,7 +291,12 @@ impl Command {
             Self::SeedDemo | Self::PolicySet(_) | Self::QuoteApprovalPolicySet { .. } => {
                 role == Role::Admin
             }
-            Self::ContractCreate { .. }
+            Self::ConversionCreate { .. }
+            | Self::ConversionImport { .. }
+            | Self::ConversionSubmit { .. }
+            | Self::ConversionWithdraw { .. }
+            | Self::ReportConvert { .. }
+            | Self::ContractCreate { .. }
             | Self::ContractSubmit { .. }
             | Self::ContractWithdraw { .. }
             | Self::CorrectionCreate { .. }
@@ -267,7 +320,7 @@ impl Command {
             | Self::ListCalculate { .. }
             | Self::ListSubmit { .. }
             | Self::ListPublish { .. } => matches!(role, Role::Analyst | Role::Admin),
-            Self::ContractDecide { .. } => role == Role::Approver,
+            Self::ConversionDecide { .. } | Self::ContractDecide { .. } => role == Role::Approver,
             Self::CorrectionDecide { .. } | Self::SettlementDecide { .. } => role == Role::Finance,
             Self::AgreementDecide { .. } | Self::GridDecide { .. } | Self::ListDecide { .. } => {
                 matches!(role, Role::Approver | Role::Admin)
@@ -445,6 +498,57 @@ fn quote_mut<'a>(s: &'a mut State, key: &str) -> Result<&'a mut Quote> {
 }
 fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
     match c {
+        Command::ConversionCreate { .. }
+        | Command::ConversionImport { .. }
+        | Command::ConversionSubmit { .. }
+        | Command::ConversionDecide { .. }
+        | Command::ConversionWithdraw { .. }
+        | Command::ReportConvert { .. } => conversions::apply(s, actor, c),
+        Command::QuoteReplaceLines {
+            id,
+            version,
+            replacements,
+        } => {
+            let q = s.quotes.get(id).ok_or_else(|| error("Quote not found"))?;
+            draft(q, *version)?;
+            ensure(
+                !replacements.is_empty() && replacements.len() <= q.lines.len(),
+                "Replace 1 or more existing lines in one batch",
+            )?;
+            let mut requests: Vec<_> = q.lines.iter().map(|l| l.request.clone()).collect();
+            let mut seen = std::collections::BTreeSet::new();
+            for replacement in replacements {
+                ensure(
+                    seen.insert(replacement.index),
+                    "Duplicate replacement index",
+                )?;
+                ensure(
+                    replacement.request.customer_id == q.customer_id
+                        && replacement.request.date == q.date,
+                    "Line customer/date must match quote",
+                )?;
+                let slot = requests
+                    .get_mut(replacement.index)
+                    .ok_or_else(|| error("Line index not found"))?;
+                *slot = replacement.request.clone();
+            }
+            let lines = requests
+                .iter()
+                .map(|r| evaluate(s, r))
+                .collect::<Result<Vec<_>>>()?;
+            totals(&lines)?;
+            let revision = s.revision;
+            let policy = s.policy.clone();
+            let q = quote_mut(s, id)?;
+            q.lines = lines;
+            q.version = next_version(q.version)?;
+            q.source_revision = revision;
+            q.policy = policy;
+            Ok(format!(
+                "Replaced {} lines and recalculated {id}",
+                replacements.len()
+            ))
+        }
         Command::CorrectionCreate { .. }
         | Command::CorrectionSubmit { .. }
         | Command::CorrectionDecide { .. }
@@ -702,6 +806,7 @@ fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
                         s,
                         &PriceRequest {
                             source: None,
+                            conversion: None,
                             product_id: p.id.clone(),
                             customer_id: customer_id.clone(),
                             date: date.clone(),
@@ -900,6 +1005,7 @@ mod tests {
     fn request() -> Result<PriceRequest> {
         Ok(PriceRequest {
             source: None,
+            conversion: None,
             product_id: "VLV-100".into(),
             customer_id: "C-ATLAS".into(),
             date: Date::parse("2026-10-13")?,

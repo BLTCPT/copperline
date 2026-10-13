@@ -32,7 +32,7 @@ For each family, choose the highest approved edition whose start is at/before th
 
 Approval rejects equal-priority overlaps for the same customer/currency/product where both date and quantity intervals intersect. Adjacent half-open intervals do not conflict. Different priority is an explicit business precedence decision. Conflict checks use each edition's effective end, clipped at the next approved edition's start; superseded raw terms do not permanently block a new family. Same-start supersession leaves an empty effective window for the older edition.
 
-Once selected, the contract invoice unit is the new negotiated-discount base. Source discounts are already included; source rebates are not inherited. The current request supplies its own discount and rebate. Current effective costs determine margin. There is no FX or UOM conversion and no assumed unit equivalence.
+Once selected, the contract invoice unit is the new negotiated-discount base. Source discounts are already included; source rebates are not inherited. The current request supplies its own discount and rebate. Current effective costs determine margin. M6 can explicitly convert the resulting native quote price using independently approved direct schedules. Quantity bands always qualify in the row's native unit; no unit equivalence is assumed. See [conversion semantics](conversions.md).
 
 ## Frozen and reproducible evidence
 
@@ -74,4 +74,4 @@ JSON money is cents, quantity thousandths and discount/rebate basis points. Stat
 
 ## Boundaries
 
-At most 500 editions and 5,000 total rows, still bounded by the whole-workspace snapshot size. No contract line editing after creation, multi-customer/segment contracts, formula stacking, unit conversion, currency conversion, tax/freight treatment, signed contract document, customer delivery or enterprise authorization. Larger-scale matching/storage and effective-dated conversion schedules remain future work.
+At most 500 editions and 5,000 total rows, still bounded by the whole-workspace snapshot size. No contract line editing after creation, multi-customer/segment contracts, formula stacking, converted contract authoring, tax/freight treatment, signed contract document, customer delivery or enterprise authorization. Larger-scale matching/storage remains future work. Quote-time conversion is a separate explicit M6 operation.

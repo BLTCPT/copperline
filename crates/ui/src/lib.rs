@@ -4,6 +4,7 @@ use copperline_model::*;
 use copperline_money::{Bps, Money, Quantity};
 use eframe::egui::{self, Color32, RichText};
 mod contracts;
+mod conversions;
 mod corrections;
 mod settlements;
 const NAVY: Color32 = Color32::from_rgb(24, 62, 84);
@@ -17,6 +18,7 @@ pub enum View {
     Rules,
     LiveGrid,
     Contracts,
+    Conversions,
     Lists,
     Quotes,
     Approvals,
@@ -35,6 +37,7 @@ impl View {
             Self::Catalog => "Catalog & costs",
             Self::Rules => "Pricing rules",
             Self::LiveGrid => "Live price grid",
+            Self::Conversions => "FX & units",
             Self::Contracts => "Customer price agreements",
             Self::Lists => "Price lists",
             Self::Quotes => "Quotes",
@@ -53,6 +56,7 @@ pub struct Workbench {
     pub engine: Engine,
     pub view: View,
     contract_form: contracts::ContractForm,
+    conversion_form: conversions::ConversionForm,
     correction_form: corrections::CorrectionForm,
     settlement_form: settlements::SettlementForm,
     role: usize,
@@ -142,6 +146,7 @@ impl Workbench {
             role: 0,
             pricing_source: None,
             contract_form: contracts::ContractForm::default(),
+            conversion_form: Default::default(),
             approval_discount: thresholds.max_discount.to_string(),
             approval_margin: thresholds.min_margin.to_string(),
             approval_usd: thresholds.usd_value.to_string(),
@@ -242,6 +247,10 @@ impl Workbench {
     }
     fn request(&self) -> Result<PriceRequest> {
         Ok(PriceRequest {
+            conversion: self.conversion_form.enabled.then(|| ConversionRequest {
+                currency: self.conversion_form.currency,
+                unit: self.conversion_form.unit.clone(),
+            }),
             source: self.pricing_source.clone(),
             product_id: self.product.clone(),
             customer_id: self.customer.clone(),
@@ -308,6 +317,7 @@ impl Workbench {
                         View::Rules,
                         View::LiveGrid,
                         View::Contracts,
+                        View::Conversions,
                         View::Lists,
                         View::Quotes,
                         View::Approvals,
@@ -381,7 +391,7 @@ impl Workbench {
             });
         egui::CentralPanel::default().frame(egui::Frame::new().fill(Color32::from_rgb(241,245,248)).inner_margin(24.0)).show(ui,|ui|{egui::ScrollArea::both().auto_shrink([false,false]).show(ui,|ui|{
    if self.engine.state().products.is_empty(){ui.heading("Start a pricing workspace");ui.label("Load six synthetic industrial products, three customers, costs and a volume rule.");if ui.button("Load synthetic demo").clicked(){self.role=3;self.run(Command::SeedDemo);}return;}
-   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Contracts=>self.contracts_view(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Corrections=>self.corrections_view(ui),View::Settlements=>self.settlements_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui)}
+   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Contracts=>self.contracts_view(ui),View::Conversions=>self.conversions_view(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Corrections=>self.corrections_view(ui),View::Settlements=>self.settlements_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui)}
   });});
     }
     fn context(&mut self, ui: &mut egui::Ui) {
@@ -412,60 +422,69 @@ impl Workbench {
     fn workbench(&mut self, ui: &mut egui::Ui) {
         self.context(ui);
         self.source_picker(ui);
+        self.conversion_picker(ui);
         ui.label(RichText::new("The catalog table uses current rules. Choose an explicit pricing basis for the selected product and inspect its full waterfall.").color(SLATE));
         ui.add_space(12.0);
-        egui::Frame::new()
-            .fill(Color32::WHITE)
-            .inner_margin(16.0)
+        egui::CollapsingHeader::new("Native catalog reference / select product")
+            .id_salt(("catalog-reference", self.conversion_form.enabled))
+            .default_open(!self.conversion_form.enabled)
             .show(ui, |ui| {
-                egui::Grid::new("live-grid")
-                    .striped(true)
-                    .min_col_width(88.0)
-                    .spacing([20.0, 14.0])
+                egui::Frame::new()
+                    .fill(Color32::WHITE)
+                    .inner_margin(16.0)
                     .show(ui, |ui| {
-                        for h in [
-                            "Product",
-                            "Product description",
-                            "List / unit",
-                            "Rule / unit",
-                            "Cost / unit",
-                            "Rule",
-                        ] {
-                            ui.strong(h);
-                        }
-                        ui.end_row();
-                        let products: Vec<_> =
-                            self.engine.state().products.values().cloned().collect();
-                        for p in products {
-                            if ui.selectable_label(self.product == p.id, &p.id).clicked() {
-                                self.product = p.id.clone();
-                            }
-                            ui.label(&p.name);
-                            ui.label(format!("{} {}", p.currency, p.list_price));
-                            let r = self
-                                .request()
-                                .map(|mut r| {
-                                    r.product_id = p.id.clone();
-                                    r.source = None;
-                                    r.discount = Bps(0);
-                                    r.rebate = Bps(0);
-                                    r
-                                })
-                                .and_then(|r| evaluate(self.engine.state(), &r));
-                            match r {
-                                Ok(v) => {
-                                    ui.label(v.rule_unit.to_string());
-                                    ui.label(v.cost_unit.to_string());
-                                    ui.small(v.rule.unwrap_or_else(|| "Catalog list".into()));
+                        egui::Grid::new("live-grid")
+                            .striped(true)
+                            .min_col_width(88.0)
+                            .spacing([20.0, 14.0])
+                            .show(ui, |ui| {
+                                for h in [
+                                    "Product",
+                                    "Product description",
+                                    "List / unit",
+                                    "Rule / unit",
+                                    "Cost / unit",
+                                    "Rule",
+                                ] {
+                                    ui.strong(h);
                                 }
-                                Err(e) => {
-                                    ui.colored_label(Color32::DARK_RED, "Unavailable");
-                                    ui.label("—");
-                                    ui.small(e.to_string());
+                                ui.end_row();
+                                let products: Vec<_> =
+                                    self.engine.state().products.values().cloned().collect();
+                                for p in products {
+                                    if ui.selectable_label(self.product == p.id, &p.id).clicked() {
+                                        self.product = p.id.clone();
+                                    }
+                                    ui.label(&p.name);
+                                    ui.label(format!("{} {}", p.currency, p.list_price));
+                                    let r = self
+                                        .request()
+                                        .map(|mut r| {
+                                            r.product_id = p.id.clone();
+                                            r.source = None;
+                                            r.conversion = None;
+                                            r.discount = Bps(0);
+                                            r.rebate = Bps(0);
+                                            r
+                                        })
+                                        .and_then(|r| evaluate(self.engine.state(), &r));
+                                    match r {
+                                        Ok(v) => {
+                                            ui.label(v.rule_unit.to_string());
+                                            ui.label(v.cost_unit.to_string());
+                                            ui.small(
+                                                v.rule.unwrap_or_else(|| "Catalog list".into()),
+                                            );
+                                        }
+                                        Err(e) => {
+                                            ui.colored_label(Color32::DARK_RED, "Unavailable");
+                                            ui.label("—");
+                                            ui.small(e.to_string());
+                                        }
+                                    }
+                                    ui.end_row();
                                 }
-                            }
-                            ui.end_row();
-                        }
+                            });
                     });
             });
         ui.add_space(20.0);
@@ -543,7 +562,7 @@ impl Workbench {
             ui.colored_label(TEAL, source.source.label());
             if let Some(contract) = &source.contract {
                 ui.small(format!(
-                    "Row {} · {} <= date < {} · {} <= quantity < {} · priority {}",
+                    "Row {} · {} <= date < {} · {} <= quantity < {} {} · priority {}",
                     contract.row_id,
                     contract.start,
                     contract.end,
@@ -552,6 +571,10 @@ impl Workbench {
                         .max_quantity
                         .map(|q| q.to_string())
                         .unwrap_or_else(|| "unbounded".into()),
+                    v.conversion
+                        .as_ref()
+                        .map(|c| c.native_unit.as_str())
+                        .unwrap_or(&v.unit),
                     contract.priority
                 ));
             }
@@ -560,6 +583,7 @@ impl Workbench {
                 source.approval_revision, source.captured_revision
             ));
         }
+        Self::conversion_evidence(ui, v);
         ui.add_space(6.0);
         egui::Grid::new("waterfall-values")
             .num_columns(2)
@@ -996,6 +1020,7 @@ impl Workbench {
         ui.add_space(10.0);
         Self::quote_route(ui, &q);
         Self::lines_table(ui, &q.lines);
+        Self::line_conversion_evidence(ui, &q.lines);
         for l in &q.lines {
             for w in &l.warnings {
                 ui.colored_label(COPPER, format!("{}: {w}", l.request.product_id));
@@ -1006,6 +1031,7 @@ impl Workbench {
             ui.label("Uses the current selected product, quantity, discount, rebate and pricing basis. All retained lines recalculate together; any failure preserves the entire quote.");
             self.context(ui);
             self.source_picker(ui);
+            self.conversion_picker(ui);
             ui.horizontal_wrapped(|ui| {
                 egui::ComboBox::from_id_salt("replacement-product").selected_text(&self.product).show_ui(ui,|ui|{
                     for p in self.engine.state().products.values(){ui.selectable_value(&mut self.product,p.id.clone(),&p.id);}
@@ -1018,6 +1044,7 @@ impl Workbench {
             if ui.add_enabled(q.status==Status::Draft && !q.lines.is_empty() && q.owner==self.actor().name,egui::Button::new("Replace selected line")).clicked(){
                 match self.request(){Ok(request)=>self.run(Command::QuoteReplaceLine{id:q.id.clone(),version:q.version,index:self.contract_form.replace_index,request}),Err(e)=>self.result::<()>(Err(e),"")}
             }
+            self.batch_replace_controls(ui,&q);
         });
         ui.horizontal_wrapped(|ui| {
             if ui
@@ -1137,6 +1164,7 @@ impl Workbench {
             ));
             Self::quote_route(ui, &q);
             Self::lines_table(ui, &q.lines);
+            Self::line_conversion_evidence(ui, &q.lines);
             for l in &q.lines {
                 for w in &l.warnings {
                     ui.colored_label(COPPER, w);
@@ -1735,6 +1763,7 @@ mod tests {
             View::Rules,
             View::LiveGrid,
             View::Contracts,
+            View::Conversions,
             View::Lists,
             View::Quotes,
             View::Approvals,
@@ -2059,6 +2088,7 @@ impl Workbench {
             });
     }
     fn analytics_view(&mut self, ui: &mut egui::Ui) {
+        self.converted_reports_view(ui);
         ui.label("Net invoice actuals after approved full reversals and replacements, separate from quote projections. Margin excludes rebate settlements, tax and freight. Original invoices remain in the audit ledger.");
         match copperline_engine::analytics(self.engine.state()) {
             Ok(groups) => {
@@ -2109,7 +2139,18 @@ impl Workbench {
         ui.heading("Record a synthetic invoice");
         self.context(ui);
         ui.label(format!("Use the current {} calculation from Price workbench. This is a local demo ledger, not an ERP posting.",self.product));
-        if primary(ui, "Record synthetic invoice") {
+        if self.conversion_form.enabled {
+            ui.small(
+                "Switch off quote conversion in Price workbench before recording a native invoice.",
+            );
+        }
+        if ui
+            .add_enabled(
+                !self.conversion_form.enabled,
+                egui::Button::new("Record synthetic invoice"),
+            )
+            .clicked()
+        {
             match self.live() {
                 Ok(v) => self.run(Command::TransactionAdd(Transaction {
                     id: format!("T-{:04}", self.engine.state().revision + 1),

@@ -52,6 +52,7 @@ fn line() -> Result<PriceRequest> {
         discount: Bps(1_000),
         rebate: Bps(500),
         source: None,
+        conversion: None,
     })
 }
 fn create_quote(engine: &mut Engine) -> Result<()> {

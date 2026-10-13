@@ -36,7 +36,7 @@ fn run() -> Result<()> {
     let verb = args.get(i).map(String::as_str).unwrap_or("help");
     if verb == "help" {
         println!(
-            "Copperline pricing workbench\nUsage: copperline-cli [--data DIR] demo|state|execute JSON|api|serve PORT|export-quote ID FILE|export-settlement ID FILE|export-contract ID EDITION FILE|commands\nRecovery: storage-inspect | quarantine-pending NAME SHA256\napi: bounded JSON lines over stdin/stdout. serve: opt-in loopback JSON lines, maximum 16 clients, no remote authentication.\nRecovery verifies committed history and preserves pending evidence; it never promotes an interrupted write.\nAll figures and identities in the demo are synthetic.\n--version prints the build version."
+            "Copperline pricing workbench\nUsage: copperline-cli [--data DIR] demo|state|execute JSON|api|serve PORT|export-quote ID FILE|export-settlement ID FILE|export-contract ID EDITION FILE|export-conversion ID FILE|export-report ID FILE|commands\nRecovery: storage-inspect | quarantine-pending NAME SHA256\napi: bounded JSON lines over stdin/stdout. serve: opt-in loopback JSON lines, maximum 16 clients, no remote authentication.\nRecovery verifies committed history and preserves pending evidence; it never promotes an interrupted write.\nAll figures and identities in the demo are synthetic.\n--version prints the build version."
         );
         return Ok(());
     }
@@ -114,7 +114,7 @@ fn run() -> Result<()> {
             println!("Exported approved contract evidence");
         }
         "commands" => println!(
-            "seed_demo contract_create contract_submit contract_decide contract_withdraw correction_create correction_submit correction_decide correction_withdraw settlement_create settlement_submit settlement_decide settlement_withdraw grid_calculate grid_submit grid_decide agreement_create agreement_submit agreement_decide transaction_add transactions_import rebate_accrue product_put customer_put cost_add rule_add policy_set quote_approval_policy_set products_import quote_create quote_add_line quote_replace_line quote_remove_line quote_reprice quote_submit quote_decide quote_revise list_calculate list_submit list_decide list_publish\nRead API: state evaluate compare export_quote export_contract export_settlement reconciliation analytics catalog"
+            "seed_demo conversion_create conversion_import conversion_submit conversion_decide conversion_withdraw report_convert quote_replace_lines contract_create contract_submit contract_decide contract_withdraw correction_create correction_submit correction_decide correction_withdraw settlement_create settlement_submit settlement_decide settlement_withdraw grid_calculate grid_submit grid_decide agreement_create agreement_submit agreement_decide transaction_add transactions_import rebate_accrue product_put customer_put cost_add rule_add policy_set quote_approval_policy_set products_import quote_create quote_add_line quote_replace_line quote_remove_line quote_reprice quote_submit quote_decide quote_revise list_calculate list_submit list_decide list_publish\nRead API: state evaluate compare converted_actuals export_conversion export_report export_quote export_contract export_settlement reconciliation analytics catalog"
         ),
         "api" => {
             let stdin = io::stdin();
@@ -178,12 +178,16 @@ fn run() -> Result<()> {
                 }
             }
         }
-        "export-quote" | "export-settlement" => {
+        "export-quote" | "export-settlement" | "export-conversion" | "export-report" => {
             let id = args.get(i + 1).ok_or_else(|| error("Missing quote ID"))?;
             let path = args
                 .get(i + 2)
                 .ok_or_else(|| error("Missing export path"))?;
-            let content = if verb == "export-settlement" {
+            let content = if verb == "export-conversion" {
+                copperline_engine::export_conversion(e.state(), id)?
+            } else if verb == "export-report" {
+                copperline_engine::export_report(e.state(), id)?
+            } else if verb == "export-settlement" {
                 copperline_engine::export_settlement(e.state(), id)?
             } else {
                 let q = e
@@ -309,6 +313,24 @@ fn handle(e: &mut Engine, v: Value) -> Result<Value> {
                 .ok_or_else(|| error("Quote not found"))?;
             Ok(json!({"csv":export_quote(q)?}))
         }
+        "converted_actuals" => {
+            let request: ReportingRequest =
+                serde_json::from_value(params.clone()).map_err(|e| error(e.to_string()))?;
+            serde_json::to_value(e.state().converted_actuals(&request, e.state().revision)?)
+                .map_err(|e| error(e.to_string()))
+        }
+        "export_conversion" | "export_report" => {
+            let id = params
+                .get("id")
+                .and_then(Value::as_str)
+                .ok_or_else(|| error("Missing document ID"))?;
+            let csv = if method == "export_conversion" {
+                copperline_engine::export_conversion(e.state(), id)?
+            } else {
+                copperline_engine::export_report(e.state(), id)?
+            };
+            Ok(json!({"csv":csv}))
+        }
         "export_contract" => {
             let id = params
                 .get("id")
@@ -338,7 +360,7 @@ fn handle(e: &mut Engine, v: Value) -> Result<Value> {
         "analytics" => serde_json::to_value(copperline_engine::analytics(e.state())?)
             .map_err(|e| error(e.to_string())),
         "catalog" => Ok(
-            json!({"api_version":1,"money":"integer cents","quantity":"integer thousandths","percent":"integer basis points","methods":["state","execute","evaluate","compare","export_quote","export_contract","export_settlement","reconciliation","analytics","catalog"]}),
+            json!({"api_version":1,"money":"integer cents","quantity":"integer thousandths","percent":"integer basis points","methods":["state","execute","evaluate","compare","converted_actuals","export_conversion","export_report","export_quote","export_contract","export_settlement","reconciliation","analytics","catalog"]}),
         ),
         _ => Err(error("Unknown API method")),
     }

@@ -156,7 +156,7 @@ impl Evaluation {
     pub(crate) fn validate_pricing_source_snapshot(&self) -> Result<()> {
         match (&self.request.source, &self.source) {
             (None, None) => Ok(()),
-            (Some(_), Some(evidence)) => evidence.validate_for(self),
+            (Some(_), Some(evidence)) => evidence.validate_for(&self.native_source_context()),
             _ => Err(error(
                 "Explicit pricing source requires matching frozen evidence",
             )),
@@ -176,6 +176,10 @@ impl State {
         revision: u64,
         historical: bool,
     ) -> Result<Option<SourceEvidence>> {
+        ensure(
+            request.conversion.is_none(),
+            "Resolve commercial sources in native units before conversion",
+        )?;
         let Some(source) = &request.source else {
             return Ok(None);
         };
@@ -371,7 +375,7 @@ impl State {
                 "Pricing source evidence postdates this document's calculation",
             )?;
             let expected = self
-                .pricing_source_at(&line.request, evidence.captured_revision, true)?
+                .pricing_source_at(&line.native_request(), evidence.captured_revision, true)?
                 .ok_or_else(|| error("Frozen source selector missing"))?;
             ensure(
                 *evidence == expected,
@@ -429,6 +433,10 @@ impl State {
                 && approved.evaluation.request.customer_id == item.candidate.request.customer_id
                 && !approved.evaluation.hard_block,
             "Archived grid price identity/version/approval mismatch",
+        )?;
+        ensure(
+            approved.evaluation.conversion.is_none(),
+            "Archived sources must retain native currency and units",
         )?;
         approved.policy.validate()?;
         approved.evaluation.validate_snapshot()?;

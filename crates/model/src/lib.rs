@@ -5,6 +5,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 mod approval;
 pub use approval::*;
+mod reporting;
+pub use reporting::*;
+mod conversions;
+pub use conversions::*;
 mod contracts;
 pub use contracts::*;
 mod pricing_source;
@@ -199,6 +203,8 @@ pub struct PriceRequest {
     pub rebate: Bps,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<PriceSource>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversion: Option<ConversionRequest>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Step {
@@ -230,6 +236,8 @@ pub struct Evaluation {
     pub hard_block: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<SourceEvidence>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversion: Option<ConversionEvidence>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -322,6 +330,10 @@ pub struct State {
     pub settlements: BTreeMap<String, Settlement>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub price_contracts: BTreeMap<String, PriceContract>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub conversion_books: BTreeMap<String, ConversionBook>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub conversion_reports: BTreeMap<String, ConversionReport>,
     pub policy: Policy,
     pub audit: Vec<Audit>,
     pub receipts: Vec<Receipt>,
@@ -346,6 +358,8 @@ impl Default for State {
             corrections: BTreeMap::new(),
             settlements: BTreeMap::new(),
             price_contracts: BTreeMap::new(),
+            conversion_books: BTreeMap::new(),
+            conversion_reports: BTreeMap::new(),
             policy: Policy::default(),
             audit: vec![],
             receipts: vec![],
@@ -462,12 +476,14 @@ impl State {
                 "Unknown quote customer",
             )?;
         }
+        self.validate_conversion_books()?;
         self.validate_price_contracts()?;
         self.validate_documents()?;
         self.validate_quote_governance()?;
         self.validate_grid()?;
         self.validate_commercial()?;
         self.validate_settlements()?;
+        self.validate_conversion_reports()?;
         Ok(())
     }
 }
@@ -485,6 +501,7 @@ impl Policy {
 }
 impl Evaluation {
     pub fn validate_snapshot(&self) -> Result<()> {
+        self.validate_conversion_snapshot()?;
         self.validate_pricing_source_snapshot()?;
         id(&self.request.product_id)?;
         id(&self.request.customer_id)?;
@@ -699,6 +716,10 @@ impl State {
                 &l.lines,
             )?;
             for line in &l.lines {
+                ensure(
+                    line.conversion.is_none(),
+                    "Price list authoring must retain native currency and units",
+                )?;
                 line.check_policy(&l.policy)?;
                 self.validate_snapshot_references(line, l.source_revision)?;
                 ensure(
@@ -736,7 +757,10 @@ impl State {
 
 impl State {
     fn validate_snapshot_references(&self, l: &Evaluation, source_revision: u64) -> Result<()> {
+        self.validate_conversion_reference(l, source_revision)?;
         self.validate_pricing_source_reference(l, source_revision)?;
+        let native = l.native_source_context();
+        let l = &native;
         ensure(
             self.customers.contains_key(&l.request.customer_id),
             "Snapshot customer missing",
@@ -824,6 +848,10 @@ impl State {
                 key == &item.id && item.status != Status::Published,
                 "Invalid grid item identity/status",
             )?;
+            ensure(
+                item.candidate.conversion.is_none(),
+                "Grid authoring must retain native currency and units",
+            )?;
             item.policy.validate()?;
             document_valid(
                 item.status,
@@ -848,6 +876,10 @@ impl State {
                 "Active grid price must preserve the latest approved decision",
             )?;
             if let Some(approved) = &item.last_approved {
+                ensure(
+                    approved.evaluation.conversion.is_none(),
+                    "Approved grid sources must remain native",
+                )?;
                 approved.policy.validate()?;
                 approved.evaluation.validate_snapshot()?;
                 approved.evaluation.check_policy(&approved.policy)?;

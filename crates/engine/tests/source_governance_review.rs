@@ -19,6 +19,7 @@ fn request() -> Result<PriceRequest> {
         discount: Bps(0),
         rebate: Bps(0),
         source: None,
+        conversion: None,
     })
 }
 fn activate_grid(engine: &mut Engine, discount: Bps) -> Result<PriceSource> {

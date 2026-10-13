@@ -50,6 +50,7 @@ fn price_request() -> Result<PriceRequest> {
         discount: Bps(0),
         rebate: Bps(0),
         source: None,
+        conversion: None,
     })
 }
 fn approved_grid(e: &mut Engine) -> Result<()> {

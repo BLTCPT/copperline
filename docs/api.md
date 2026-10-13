@@ -14,7 +14,7 @@ Read methods: `state`, `catalog`, `evaluate`, `compare`, `export_quote`, `analyt
 {"method":"evaluate","params":{"product_id":"VLV-100","customer_id":"C-ATLAS","date":"2026-10-13","quantity":10000,"discount":1000,"rebate":500}}
 ```
 
-Wire units are integer cents, integer thousandths of the declared product unit and integer basis points. Dates are ISO calendar dates, supported years 2000–2200. Supported currencies: USD, EUR, GBP. `compare` takes `baseline` and `scenario` PriceRequests. `export_quote` takes `{ "id": "Q-1" }` and returns CSV text only for an approved quote.
+Wire units are integer cents, integer thousandths of the requested unit (native product unit when conversion is omitted) and integer basis points. Dates are ISO calendar dates, supported years 2000–2200. Supported currencies: USD, EUR, GBP. `compare` takes `baseline` and `scenario` PriceRequests. `export_quote` takes `{ "id": "Q-1" }` and returns CSV text only for an approved quote.
 
 ## Commands
 
@@ -99,3 +99,22 @@ Record statuses serialize as `Draft`, `Pending`, `Approved`, `Rejected`, `Withdr
 Read `export_contract {id, edition}` returns frozen approved contractual CSV. CLI `export-contract ID EDITION FILE` creates a new file only. PriceRequest source now accepts `{kind:"contract",id,edition}` or `{kind:"customer_contract"}`. The latter is opt-in automatic selection; absent source still uses live rules. Use separate business edition and workflow version. Complete terms schema, interval/conflict rules, frozen-origin semantics and exact units are in [customer price agreements](customer-price-agreements.md).
 
 All JSON-line requests/responses and CSV files use UTF-8. Clients must select UTF-8 explicitly rather than a platform locale (especially Windows subprocess clients). CSV content inside JSON retains its escaped CRLF bytes; direct-file exports match its UTF-8 encoding.
+
+## M6 explicit conversion and report snapshots
+
+| Command | Payload / role |
+|---|---|
+| conversion_create | terms: {id, name, entries}; Analyst/Admin |
+| conversion_import | id, name, csv; Analyst/Admin, one immutable Draft book |
+| conversion_submit / conversion_withdraw | id, version; owner Analyst/Admin |
+| conversion_decide | id, version, approve, note; distinct Approver only |
+| quote_replace_lines | id, version, replacements: [{index, request}]; Draft owner Sales/Admin |
+| report_convert | id, request: {start, end, currency}; Analyst/Admin, immutable report |
+
+`ConversionEntry` contains `id`, `conversion`, `start`, `end` and `ratio: {numerator, denominator}`. The tagged conversion is `{kind:"fx",from:"USD",to:"EUR"}` or `{kind:"uom",product_id:"VLV-100",from_unit:"box",to_unit:"each"}`. Dates are half-open. Ratio integers are positive and at most 1e9.
+
+A PriceRequest may add `conversion: {currency:"EUR",unit:"box"}`; its quantity then means requested boxes. Missing direct approved rates, precision-losing native quantities and redundant identity requests reject. Source qualification remains native. Conversion evidence is serialized in the returned Evaluation. Grid/list/contract authoring remains native; converted sources cannot be chained.
+
+Read `converted_actuals` takes `{start,end,currency}` and returns current recorded actuals in that explicit currency with native rows and rate evidence. `export_conversion {id}` and `export_report {id}` return approved-book or frozen-report CSV. CLI `export-conversion ID FILE` and `export-report ID FILE` refuse existing paths. Reports pin source revision and the original invoice-date rates; they are not payments or approved quote projections.
+
+See [conversion semantics](conversions.md) for exact order of rounding, native band qualification, independent approval, historical reconstruction, limits and gaps. Run `scripts/conversions_e2e.py` for a complete protocol example.

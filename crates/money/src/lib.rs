@@ -1,4 +1,7 @@
 //! Exact fixed-point amounts. No floating point enters pricing calculations.
+#[cfg(test)]
+mod m6_tests;
+
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
@@ -70,6 +73,72 @@ pub fn ratio(value: i64, numerator: i64, denominator: i64) -> Result<i64> {
         (value + half) / i128::from(denominator)
     };
     i64::try_from(rounded).map_err(|_| bad("Amount overflow"))
+}
+/// Positive declared rational. Components are bounded so two-leg unit/FX products
+/// remain predictable; all arithmetic still checks for overflow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Rational {
+    pub numerator: i64,
+    pub denominator: i64,
+}
+impl Rational {
+    pub const ONE: Self = Self {
+        numerator: 1,
+        denominator: 1,
+    };
+    pub fn validate(self) -> Result<()> {
+        if !(1..=1_000_000_000).contains(&self.numerator)
+            || !(1..=1_000_000_000).contains(&self.denominator)
+        {
+            return Err(bad(
+                "Rational components must be positive and at most 1,000,000,000",
+            ));
+        }
+        Ok(())
+    }
+    pub fn money(self, amount: Money) -> Result<Money> {
+        convert_unit(amount, self, Self::ONE)
+    }
+    /// Quantity conversion never rounds: both quantities must be exact thousandths.
+    pub fn quantity(self, amount: Quantity) -> Result<Quantity> {
+        self.validate()?;
+        amount.validate()?;
+        let n = i128::from(amount.0)
+            .checked_mul(i128::from(self.numerator))
+            .ok_or_else(|| bad("Quantity conversion overflow"))?;
+        let d = i128::from(self.denominator);
+        if n % d != 0 {
+            return Err(bad(
+                "Converted quantity is not an exact thousandth of the native unit",
+            ));
+        }
+        let result =
+            Quantity(i64::try_from(n / d).map_err(|_| bad("Quantity conversion overflow"))?);
+        result.validate()?;
+        Ok(result)
+    }
+}
+/// Multiply both declared legs exactly and round ONCE to cents, half away from zero.
+pub fn convert_unit(amount: Money, uom: Rational, fx: Rational) -> Result<Money> {
+    uom.validate()?;
+    fx.validate()?;
+    let n = i128::from(amount.0)
+        .checked_mul(i128::from(uom.numerator))
+        .and_then(|v| v.checked_mul(i128::from(fx.numerator)))
+        .ok_or_else(|| bad("Conversion numerator overflow"))?;
+    let d = i128::from(uom.denominator)
+        .checked_mul(i128::from(fx.denominator))
+        .ok_or_else(|| bad("Conversion denominator overflow"))?;
+    let magnitude = n
+        .checked_abs()
+        .and_then(|v| v.checked_add(d / 2))
+        .ok_or_else(|| bad("Conversion rounding overflow"))?
+        / d;
+    let rounded = if n < 0 { -magnitude } else { magnitude };
+    i64::try_from(rounded)
+        .map(Money)
+        .map_err(|_| bad("Converted amount overflow"))
 }
 impl Money {
     #[allow(clippy::should_implement_trait)]

@@ -131,6 +131,11 @@ pub fn export_quote(q: &Quote) -> Result<String> {
         output.truncate(output.len().saturating_sub(2));
         output.push_str(",contract_selection,contract_row,contract_start,contract_end_exclusive,contract_max_quantity_exclusive,contract_priority,contract_fingerprint\r\n");
     }
+    let conversions = q.lines.iter().any(|l| l.conversion.is_some());
+    if conversions {
+        output.truncate(output.len().saturating_sub(2));
+        output.push_str(",native_currency,native_unit,native_quantity,native_list_unit,native_rule_unit,native_cost_unit,conversion_rounding,fx_evidence_json,uom_evidence_json\r\n");
+    }
     for l in &q.lines {
         let mut fields = vec![
             q.id.clone(),
@@ -214,6 +219,27 @@ pub fn export_quote(q: &Quote) -> Result<String> {
                     .unwrap_or_default(),
                 c.map(|c| c.priority.to_string()).unwrap_or_default(),
                 c.map(|c| c.terms_fingerprint.clone()).unwrap_or_default(),
+            ]);
+        }
+        if conversions {
+            let c = l.conversion.as_ref();
+            fields.extend([
+                c.map(|c| c.native_currency.to_string())
+                    .unwrap_or_else(|| l.currency.to_string()),
+                c.map(|c| c.native_unit.clone())
+                    .unwrap_or_else(|| l.unit.clone()),
+                c.map(|c| c.native_quantity.to_string())
+                    .unwrap_or_else(|| l.request.quantity.to_string()),
+                c.map(|c| c.native_list_unit.to_string())
+                    .unwrap_or_else(|| l.list_unit.to_string()),
+                c.map(|c| c.native_rule_unit.to_string())
+                    .unwrap_or_else(|| l.rule_unit.to_string()),
+                c.map(|c| c.native_cost_unit.to_string())
+                    .unwrap_or_else(|| l.cost_unit.to_string()),
+                c.map(|_| "native_unit_combined_half_away_then_extend_v1".into())
+                    .unwrap_or_default(),
+                json_cell(&c.and_then(|c| c.fx.as_ref()))?,
+                json_cell(&c.and_then(|c| c.uom.as_ref()))?,
             ]);
         }
         output.push_str(&fields.iter().map(|s| safe(s)).collect::<Vec<_>>().join(","));
@@ -346,6 +372,172 @@ pub fn export_contract(state: &State, id: &str, edition: u64) -> Result<String> 
                 .join(","),
         );
         output.push_str("\r\n");
+    }
+    Ok(output)
+}
+
+pub fn import_conversions(input: &str) -> Result<Vec<ConversionEntry>> {
+    let rows = rows(input)?;
+    ensure(
+        rows.first().is_some_and(|r| {
+            r == &[
+                "id",
+                "kind",
+                "product_id",
+                "from",
+                "to",
+                "start",
+                "end",
+                "numerator",
+                "denominator",
+            ]
+        }),
+        "Expected header: id,kind,product_id,from,to,start,end,numerator,denominator",
+    )?;
+    let currency = |s: &str| -> Result<Currency> {
+        match s {
+            "USD" => Ok(Currency::USD),
+            "EUR" => Ok(Currency::EUR),
+            "GBP" => Ok(Currency::GBP),
+            _ => Err(error("Supported currencies: USD, EUR, GBP")),
+        }
+    };
+    let mut result = vec![];
+    for (n, row) in rows.iter().enumerate().skip(1) {
+        ensure(
+            row.len() == 9,
+            &format!("Row {} must contain 9 columns", n + 1),
+        )?;
+        let f = |i: usize| {
+            row.get(i)
+                .map(String::as_str)
+                .ok_or_else(|| error("Missing conversion field"))
+        };
+        let conversion = match f(1)? {
+            "fx" => {
+                ensure(f(2)?.is_empty(), "FX rows must omit product_id")?;
+                ConversionKind::Fx {
+                    from: currency(f(3)?)?,
+                    to: currency(f(4)?)?,
+                }
+            }
+            "uom" => ConversionKind::Uom {
+                product_id: f(2)?.into(),
+                from_unit: f(3)?.into(),
+                to_unit: f(4)?.into(),
+            },
+            _ => return Err(error("Conversion kind must be fx or uom")),
+        };
+        let entry = ConversionEntry {
+            id: f(0)?.into(),
+            conversion,
+            start: Date::parse(f(5)?)?,
+            end: Date::parse(f(6)?)?,
+            ratio: copperline_money::Rational {
+                numerator: f(7)?
+                    .parse()
+                    .map_err(|_| error("Numerator must be an integer"))?,
+                denominator: f(8)?
+                    .parse()
+                    .map_err(|_| error("Denominator must be an integer"))?,
+            },
+        };
+        entry.validate()?;
+        result.push(entry);
+    }
+    ensure(
+        !result.is_empty() && result.len() <= 100,
+        "Import 1–100 conversion rows",
+    )?;
+    Ok(result)
+}
+
+fn json_cell<T: serde::Serialize>(value: &T) -> Result<String> {
+    serde_json::to_string(value).map_err(|e| error(e.to_string()))
+}
+fn csv_row(output: &mut String, fields: &[String]) {
+    output.push_str(&fields.iter().map(|s| safe(s)).collect::<Vec<_>>().join(","));
+    output.push_str("\r\n");
+}
+pub fn export_conversion(state: &State, id: &str) -> Result<String> {
+    let book = state
+        .conversion_books
+        .get(id)
+        .ok_or_else(|| error("Conversion book not found"))?;
+    ensure(
+        book.status == RecordStatus::Approved,
+        "Only approved conversion books can export",
+    )?;
+    let review = book
+        .review
+        .as_ref()
+        .ok_or_else(|| error("Conversion approval missing"))?;
+    let mut output = String::from(
+        "book_id,book_version,owner,approval_revision,approver,fingerprint,row_id,direction,start,end_exclusive,numerator,denominator,entry_json\r\n",
+    );
+    for row in &book.terms.entries {
+        csv_row(
+            &mut output,
+            &[
+                book.terms.id.clone(),
+                book.version.to_string(),
+                book.owner.clone(),
+                review.revision.to_string(),
+                review.actor.name.clone(),
+                conversion_fingerprint(book)?,
+                row.id.clone(),
+                row.conversion.label(),
+                row.start.to_string(),
+                row.end.to_string(),
+                row.ratio.numerator.to_string(),
+                row.ratio.denominator.to_string(),
+                json_cell(row)?,
+            ],
+        );
+    }
+    Ok(output)
+}
+pub fn export_report(state: &State, id: &str) -> Result<String> {
+    let report = state
+        .conversion_reports
+        .get(id)
+        .ok_or_else(|| error("Frozen report not found"))?;
+    let c = &report.calculation;
+    let mut output = String::from(
+        "report_id,source_revision,start,end_exclusive,reporting_currency,invoice_id,customer_id,product_id,invoice_date,native_quantity,native_unit,native_currency,native_invoice,native_cost,converted_invoice,converted_cost,reversed_by,net_invoice,net_cost,net_margin,rounding,fx_evidence_json\r\n",
+    );
+    for row in &c.rows {
+        let t = &row.native;
+        let reversed = row.reversed_by.is_some();
+        let invoice = if reversed { Money(0) } else { row.invoice };
+        let cost = if reversed { Money(0) } else { row.cost };
+        csv_row(
+            &mut output,
+            &[
+                id.into(),
+                c.source_revision.to_string(),
+                c.request.start.to_string(),
+                c.request.end.to_string(),
+                c.request.currency.to_string(),
+                t.id.clone(),
+                t.customer_id.clone(),
+                t.product_id.clone(),
+                t.date.to_string(),
+                t.quantity.to_string(),
+                t.unit.clone(),
+                t.currency.to_string(),
+                t.invoice_total.to_string(),
+                t.cost_total.to_string(),
+                row.invoice.to_string(),
+                row.cost.to_string(),
+                row.reversed_by.clone().unwrap_or_default(),
+                invoice.to_string(),
+                cost.to_string(),
+                invoice.sub(cost)?.to_string(),
+                "each_recorded_total_half_away_then_aggregate_v1".into(),
+                json_cell(&row.fx)?,
+            ],
+        );
     }
     Ok(output)
 }

@@ -44,6 +44,7 @@ fn price() -> Result<PriceRequest> {
         discount: Bps(0),
         rebate: Bps(0),
         source: None,
+        conversion: None,
     })
 }
 fn demo() -> Result<Engine> {

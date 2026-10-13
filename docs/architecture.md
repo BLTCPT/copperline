@@ -22,7 +22,7 @@ Workspace lock is held for the session. Each revision is a full JSON snapshot li
 The snapshot limit is 16 MiB, command limit 2 MiB, CSV limit 1 MiB, quote limit 200 lines, catalog 10,000 products. Full history is intentionally simple; large enterprise volumes need a database/event-store adapter and migration plan.
 
 ## Financial semantics
-USD/EUR/GBP are supported at 2 monetary decimal places; quantity has 3 places in an explicit product unit. Currency and unit cannot change on an existing product. Cross-currency documents are rejected; there is no inferred FX or conversion. The UI's catalog editor uses USD; the command API supports all three currencies.
+USD/EUR/GBP are supported at 2 monetary decimal places; quantity has 3 places in an explicit product unit. Currency and unit cannot change on an existing product. Mixed-currency documents are rejected; explicit dated direct FX/UOM conversion can produce a common quote currency. No conversion is inferred. The UI's catalog editor uses USD; the command API supports all three currencies.
 
 Round half away from zero. Rule adjustments round at unit level, then negotiated discount rounds at unit level. Invoice = rounded invoice unit × quantity. Rebate rounds once against that extended invoice. Pocket = invoice − rebate; margin = pocket − extended cost. Margin percentage is undefined at zero pocket revenue. Aggregate margin is total margin / total pocket revenue, never an average of line percentages. Unit rebate/pocket displays are indicative; extended totals are authoritative.
 
@@ -60,4 +60,10 @@ The optional local TCP API accepts at most 16 connections; each has bounded read
 
 The pure `model::contracts` module stores immutable family editions, stable price rows and origin evidence. `engine::contracts` supplies create/submit/decide/withdraw commands. Business editions and workflow versions are separate. Resolution selects the latest approved started edition per family before filtering eligibility, then highest priority for explicitly automatic requests. Approval rejects equal-priority overlapping effective intervals/bands. Historical validation filters approvals by capture revision and preserves legacy point-date source bytes.
 
-`quote_replace_line` builds a complete candidate line set and evaluates it once against current state/policy before persistence. Errors preserve all old lines, source evidence, contributor history and durable state. Native contract and replacement forms, CLI/API commands and conditional CSV evidence use the same engine. No conversion, clock or network was added to the deterministic layers. See customer-price-agreements.md.
+`quote_replace_line` builds a complete candidate line set and evaluates it once against current state/policy before persistence. Errors preserve all old lines, source evidence, contributor history and durable state. Native contract and replacement forms, CLI/API commands and conditional CSV evidence use the same engine. M5 retained native source authoring; no clock or network was added to the deterministic layers. See customer-price-agreements.md.
+
+## M6 exact direct conversion
+
+`money::Rational` uses checked i128 intermediates, exact thousandths normalization and one combined FX/UOM unit rounding. `model::conversions` owns immutable direct schedules, approval/audit binding and frozen native evidence; `model::reporting` reconstructs recorded actuals at a source revision and freezes explicit reporting-currency views. These pure modules have no clocks, network or storage dependencies. Pricing normalizes quantity before native source qualification, then converts original unit amounts. Engine lifecycle/CSV/batch commands and replaceable native controls share the same invariants.
+
+Atomic multi-line replacement reevaluates the complete candidate before one persistence operation. Historical rate evidence is validated at capture revision and report history at its original source revision. Empty maps/absent fields retain earlier serialization. See [conversions](conversions.md) for rounding, direction, bounds and intentionally deferred conversion cases.

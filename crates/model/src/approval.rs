@@ -145,6 +145,7 @@ fn author_command(command: &str) -> bool {
         "quote_create"
             | "quote_add_line"
             | "quote_replace_line"
+            | "quote_replace_lines"
             | "quote_remove_line"
             | "quote_reprice"
             | "quote_revise"

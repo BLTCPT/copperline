@@ -20,6 +20,7 @@ fn date(value: &str) -> Result<Date> {
 }
 fn price(source: Option<PriceSource>) -> Result<PriceRequest> {
     Ok(PriceRequest {
+        conversion: None,
         product_id: "VLV-100".into(),
         customer_id: "C-ATLAS".into(),
         date: date("2026-10-13")?,

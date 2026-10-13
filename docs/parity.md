@@ -17,8 +17,9 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 | Configurable multistep approvals, delegation, thresholds by role | Partial | Quotes freeze commercial → conditional Finance routes with exact thresholds, owner/contributor exclusions and distinct reviewers; no delegation/general hierarchy |
 | Approved price consumption in quotes | Implemented explicit subset | Select current grid/list snapshot or approved customer contract edition; explicit date/quantity qualification, priority/conflict rules and frozen source evidence |
 | Interrupted-write recovery and concurrent local API | Implemented local subset | Locked inspect/hash-verified quarantine, 16 bounded clients and per-command optimistic conflicts |
+| Explicit FX and UOM conversion | Implemented bounded subset | Dated approved direct rational schedules; native band qualification, combined unit rounding and frozen quote/report evidence; no inverse/multihop/feed/amendments |
 | Scenario comparison | Implemented deterministic subset | Same product/customer comparison; no demand estimation |
-| Analytics actuals, segmentation, dashboards, alerts | Partial | Gross/reversed/net invoice ledger and customer/currency weighted margin; no warehouse, alerting or advanced segmentation |
+| Analytics actuals, segmentation, dashboards, alerts | Partial | Gross/reversed/net invoice ledger, customer/currency weighted margin and explicit immutable reporting-currency snapshots; no warehouse, alerting or advanced segmentation |
 | Customer agreements / contract terms / renewals | Partial | Approved customer price-contract editions with periods, quantity bands and frozen origins; separate retrospective rebate terms; broader amendments/renewals remain |
 | Rebates, tier programs, accrual/settlement/reconciliation | Partial | Retrospective net accruals, signed local settlement recognition, exact baseline/source checks and independent Finance review; no payment or external accounting reconciliation |
 | Correctable invoice actuals and credit provenance | Implemented full-reversal subset | Immutable original, reviewed full reversal/atomic replacement, reserved IDs, historical basis and zero-net recalculation; partial credit allocation remains missing |
@@ -42,3 +43,5 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 No vendor screenshots, examples, assets or implementation were imported. Advanced capabilities remain gaps until implemented and verified against explicit acceptance criteria.
 
 M5 adds a working local customer-contract subset: immutable editions, date/quantity qualification, explicit automatic priority, overlap rejection, origin snapshots and atomic quote-line replacement. It does not add FX/UOM conversion, enterprise contract delivery or full CPQ. See [contract semantics](customer-price-agreements.md).
+
+M6 adds explicit dated direct FX and product-UOM conversion, exact native quantity qualification, immutable reporting-currency actuals and atomic multi-line quote edits. All roundtrip, missing-rate, historical evidence and source-authoring boundaries are documented in [conversion semantics](conversions.md).

@@ -88,11 +88,15 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     if args.iter().any(|a| a == "--customer-contract") {
         app.select_pricing_source(copperline_model::PriceSource::CustomerContract)?;
     }
+    if let Some(currency) = value("--currency") {
+        app.select_conversion(&currency, &value("--unit").unwrap_or_else(|| "each".into()))?;
+    }
     app.view = match value("--view").as_deref() {
         Some("catalog") => View::Catalog,
         Some("rules") => View::Rules,
         Some("grid") => View::LiveGrid,
         Some("contracts") => View::Contracts,
+        Some("conversions") => View::Conversions,
         Some("lists") => View::Lists,
         Some("quotes") => View::Quotes,
         Some("approvals") => View::Approvals,

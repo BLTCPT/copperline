@@ -88,6 +88,7 @@ fn request(
     source: Option<PriceSource>,
 ) -> Result<PriceRequest> {
     Ok(PriceRequest {
+        conversion: None,
         product_id: product.into(),
         customer_id: "C-ATLAS".into(),
         date: date(day)?,

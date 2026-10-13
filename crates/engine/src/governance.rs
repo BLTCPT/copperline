@@ -4,6 +4,7 @@ fn quote_id(c: &Command) -> Option<&str> {
     match c {
         Command::QuoteCreate { id, .. }
         | Command::QuoteAddLine { id, .. }
+        | Command::QuoteReplaceLines { id, .. }
         | Command::QuoteReplaceLine { id, .. }
         | Command::QuoteRemoveLine { id, .. }
         | Command::QuoteReprice { id, .. }
@@ -18,6 +19,12 @@ pub(super) fn target(c: &Command) -> Option<String> {
         return Some(quote_target(id));
     }
     match c {
+        Command::ConversionCreate { terms } => Some(conversion_target(&terms.id)),
+        Command::ConversionImport { id, .. }
+        | Command::ConversionSubmit { id, .. }
+        | Command::ConversionDecide { id, .. }
+        | Command::ConversionWithdraw { id, .. } => Some(conversion_target(id)),
+        Command::ReportConvert { id, .. } => Some(report_target(id)),
         Command::ContractCreate { terms } => Some(contract_target(&terms.id, terms.edition)),
         Command::ContractSubmit { id, edition, .. }
         | Command::ContractDecide { id, edition, .. }
@@ -86,6 +93,7 @@ pub(super) fn prepare(s: &mut State, actor: &Actor, c: &Command) -> Result<()> {
         c,
         Command::QuoteAddLine { .. }
             | Command::QuoteReplaceLine { .. }
+            | Command::QuoteReplaceLines { .. }
             | Command::QuoteRemoveLine { .. }
             | Command::QuoteReprice { .. }
             | Command::QuoteRevise { .. }

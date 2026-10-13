@@ -33,6 +33,9 @@ jobs:
       - name: Contract pricing and atomic replacement workflow
         shell: bash
         run: python scripts/contracts_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
+      - name: Explicit FX and UOM workflow
+        shell: bash
+        run: python scripts/conversions_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
       - name: Concurrent local API and recovery workflow
         shell: bash
         run: python scripts/transport_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
