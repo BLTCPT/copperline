@@ -1,0 +1,20 @@
+{
+  "result": "PASS",
+  "api_requests": 75,
+  "committed_revisions": 30,
+  "verified": [
+    "half-open date and quantity boundaries",
+    "independent source-contributor review",
+    "frozen grid origins",
+    "edition supersession without resurrection",
+    "explicit priority and overlap rejection",
+    "no implicit currency/UOM conversion",
+    "automatic versus exact source selection",
+    "atomic quote-line replacement",
+    "immutable approval cycles",
+    "restart and exact retry",
+    "byte-stable historical exports",
+    "UTF-8 and formula-safe contract CSV",
+    "no-overwrite CLI export"
+  ]
+}

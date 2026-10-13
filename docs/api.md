@@ -118,3 +118,7 @@ A PriceRequest may add `conversion: {currency:"EUR",unit:"box"}`; its quantity t
 Read `converted_actuals` takes `{start,end,currency}` and returns current recorded actuals in that explicit currency with native rows and rate evidence. `export_conversion {id}` and `export_report {id}` return approved-book or frozen-report CSV. CLI `export-conversion ID FILE` and `export-report ID FILE` refuse existing paths. Reports pin source revision and the original invoice-date rates; they are not payments or approved quote projections.
 
 See [conversion semantics](conversions.md) for exact order of rounding, native band qualification, independent approval, historical reconstruction, limits and gaps. Run `scripts/conversions_e2e.py` for a complete protocol example.
+
+## Local backup operations
+
+Native UI and CLI share `Engine::backup`, `backup_workspace`, `inspect_backup` and `restore_backup`. CLI forms are `--data EXISTING_DIR backup NEW_ARCHIVE`, `backup-inspect ARCHIVE` and `restore ARCHIVE NEW_WORKSPACE_DIR`; each emits a JSON summary. These filesystem operations do not add a business revision or receipt and are not exposed as local JSON transport methods. The archive preserves existing receipts, so original command retries still work after restore. Exact format, paths, caps, no-overwrite and failure semantics are in [backup.md](backup.md). `scripts/backup_e2e.py` exercises real process round trips and error paths.

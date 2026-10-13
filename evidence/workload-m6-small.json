@@ -1,0 +1,254 @@
+{
+  "corpus_sha256": "3359b3bd829958842dbcf6fc94199bb1f35f5c22fda0b2581dbfeee5ea568ec5",
+  "correctness": {
+    "checks": [
+      "exact fixed-point quote and evaluation arithmetic",
+      "approved native contract and frozen conversion evidence",
+      "batched invoice totals and converted reporting",
+      "audit/receipt/revision identity",
+      "original receipt retries before/after reopen",
+      "changed-content receipt rejection preserves state",
+      "full state equality after each reopen",
+      "frozen export byte equality after reopen"
+    ],
+    "export_sha256": {
+      "Q-000": "020840f9779f69a4fd54534c85dd4d89df4c57f4ac4005d16527ee9008618005",
+      "Q-001": "523e5c31e192d8275b28a17852f568440d5686fcc13385169f729bd166bea589",
+      "Q-002": "02dc5f7c32745ec441c70f663c2ed3d148bd643a7427de7d9ab0d8f7d1565358",
+      "Q-003": "f597768d30056b61da63e30034fb0a21d34e67fd3de3439e57dea92b75c7e004",
+      "Q-004": "6ac319f4782655982e7313238a1661f981a9c21110dcaa39ffdd1a6f0acce007"
+    },
+    "receipts": 78,
+    "state_sha256": "245985bbe0550ddbf721200690f24dfad8eb7ab1447d43813063ce5e28f96484"
+  },
+  "environment": {
+    "binary_bytes": 4267008,
+    "binary_sha256": "08e96793d05d3438eb5a71ec65e0e0449554818ed00a1cc8f748ea5beba5bde1",
+    "binary_version": "Copperline CLI 0.1.0",
+    "machine": "arm64",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "python": "3.14.6 (main, Jun 10 2026, 10:03:53) [Clang 21.0.0 (clang-2100.0.123.102)]",
+    "script_sha256": "200b9e7ae4cfc4561b491eb491205d99e1e83fef68a699e15f3b94b7a5ff6e35",
+    "system": "Darwin"
+  },
+  "latencies": {
+    "command/contract_create": {
+      "count": 1,
+      "max_ms": 9.786875,
+      "min_ms": 9.786875,
+      "p50_ms": 9.786875,
+      "p95_ms": 9.786875
+    },
+    "command/contract_decide": {
+      "count": 1,
+      "max_ms": 8.024125,
+      "min_ms": 8.024125,
+      "p50_ms": 8.024125,
+      "p95_ms": 8.024125
+    },
+    "command/contract_submit": {
+      "count": 1,
+      "max_ms": 8.761708,
+      "min_ms": 8.761708,
+      "p50_ms": 8.761708,
+      "p95_ms": 8.761708
+    },
+    "command/conversion_create": {
+      "count": 1,
+      "max_ms": 9.552041,
+      "min_ms": 9.552041,
+      "p50_ms": 9.552041,
+      "p95_ms": 9.552041
+    },
+    "command/conversion_decide": {
+      "count": 1,
+      "max_ms": 7.979541,
+      "min_ms": 7.979541,
+      "p50_ms": 7.979541,
+      "p95_ms": 7.979541
+    },
+    "command/conversion_submit": {
+      "count": 1,
+      "max_ms": 9.190917,
+      "min_ms": 9.190917,
+      "p50_ms": 9.190917,
+      "p95_ms": 9.190917
+    },
+    "command/cost_add": {
+      "count": 10,
+      "max_ms": 8.568792,
+      "min_ms": 6.894375,
+      "p50_ms": 8.1956045,
+      "p95_ms": 8.568792
+    },
+    "command/customer_put": {
+      "count": 23,
+      "max_ms": 12.459625,
+      "min_ms": 8.040458,
+      "p50_ms": 11.340292,
+      "p95_ms": 12.087583
+    },
+    "command/product_put": {
+      "count": 10,
+      "max_ms": 9.776834,
+      "min_ms": 6.740875,
+      "p50_ms": 8.318875,
+      "p95_ms": 9.776834
+    },
+    "command/quote_add_line": {
+      "count": 10,
+      "max_ms": 11.18025,
+      "min_ms": 9.221417,
+      "p50_ms": 10.058042,
+      "p95_ms": 11.18025
+    },
+    "command/quote_create": {
+      "count": 5,
+      "max_ms": 11.3365,
+      "min_ms": 9.538708,
+      "p50_ms": 10.945875,
+      "p95_ms": 11.3365
+    },
+    "command/quote_decide": {
+      "count": 5,
+      "max_ms": 12.013833,
+      "min_ms": 9.7405,
+      "p50_ms": 10.837667,
+      "p95_ms": 12.013833
+    },
+    "command/quote_submit": {
+      "count": 5,
+      "max_ms": 11.821958,
+      "min_ms": 8.676917,
+      "p50_ms": 11.129417,
+      "p95_ms": 11.821958
+    },
+    "command/transactions_import": {
+      "count": 4,
+      "max_ms": 9.654584,
+      "min_ms": 8.639667,
+      "p50_ms": 9.422271,
+      "p95_ms": 9.654584
+    },
+    "durable_command": {
+      "count": 78,
+      "max_ms": 12.459625,
+      "min_ms": 6.740875,
+      "p50_ms": 9.7818545,
+      "p95_ms": 11.881625
+    },
+    "durable_command/catalog": {
+      "count": 23,
+      "max_ms": 9.776834,
+      "min_ms": 6.740875,
+      "p50_ms": 8.204292,
+      "p95_ms": 8.568792
+    },
+    "durable_command/contract": {
+      "count": 3,
+      "max_ms": 9.786875,
+      "min_ms": 8.024125,
+      "p50_ms": 8.761708,
+      "p95_ms": 9.786875
+    },
+    "durable_command/conversion": {
+      "count": 3,
+      "max_ms": 9.552041,
+      "min_ms": 7.979541,
+      "p50_ms": 9.190917,
+      "p95_ms": 9.552041
+    },
+    "durable_command/history_updates": {
+      "count": 20,
+      "max_ms": 12.459625,
+      "min_ms": 10.510792,
+      "p50_ms": 11.3594165,
+      "p95_ms": 12.087583
+    },
+    "durable_command/invoice_import": {
+      "count": 4,
+      "max_ms": 9.654584,
+      "min_ms": 8.639667,
+      "p50_ms": 9.422271,
+      "p95_ms": 9.654584
+    },
+    "durable_command/quote": {
+      "count": 25,
+      "max_ms": 12.013833,
+      "min_ms": 8.676917,
+      "p50_ms": 10.814125,
+      "p95_ms": 11.821958
+    },
+    "evaluate": {
+      "count": 50,
+      "max_ms": 0.283292,
+      "min_ms": 0.047375,
+      "p50_ms": 0.0936875,
+      "p95_ms": 0.156667
+    },
+    "evaluate/converted": {
+      "count": 25,
+      "max_ms": 0.283292,
+      "min_ms": 0.09025,
+      "p50_ms": 0.10525,
+      "p95_ms": 0.158417
+    },
+    "evaluate/native": {
+      "count": 25,
+      "max_ms": 0.149292,
+      "min_ms": 0.047375,
+      "p50_ms": 0.062083,
+      "p95_ms": 0.117417
+    },
+    "exact_retry": {
+      "count": 20,
+      "max_ms": 0.043583,
+      "min_ms": 0.021292,
+      "p50_ms": 0.0268335,
+      "p95_ms": 0.037083
+    },
+    "warm_full_history_reopen": {
+      "count": 3,
+      "max_ms": 33.206041,
+      "min_ms": 32.395667,
+      "p50_ms": 32.433083,
+      "p95_ms": 33.206041
+    }
+  },
+  "measurement_notes": [
+    "Synthetic deterministic corpus; no company data, clocks or randomness in business commands",
+    "API times include JSON-lines IPC and durable fsync where applicable; exclude Python encoding/decoding",
+    "p95 is nearest rank; p50 is the sample median; no performance thresholds",
+    "Reopen uses warm OS caches, process startup, full-history verification and first state JSON; no cache flushing",
+    "Single local CLI writer; concurrent-user throughput and cold storage are not measured"
+  ],
+  "milestone": "M6",
+  "profile": "small",
+  "public_summary": true,
+  "result": "PASS",
+  "schema": "copperline-workload-v1",
+  "source_commit": "b2538ac2b07a6bc5412ef953089f662ffe67dabc",
+  "specification": {
+    "batch": 25,
+    "customers": 3,
+    "evaluate_samples": 50,
+    "history_updates": 20,
+    "invoices": 100,
+    "products": 10,
+    "quotes": 5,
+    "reopen_samples": 3,
+    "retry_samples": 20
+  },
+  "storage": {
+    "committed_files": 79,
+    "committed_revision": 78,
+    "durable_commands": 78,
+    "history_limit_bytes": 536870912,
+    "history_manifest_sha256": "07027cfd263c6f9c3dce76cc01eb568f4e3a019b87d4c13b44b82268d9312338",
+    "latest_snapshot_bytes": 90832,
+    "state_json_bytes": 90665,
+    "state_json_encoding": "canonical compact sorted-key UTF-8",
+    "total_history_bytes": 3661985
+  }
+}

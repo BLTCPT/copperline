@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "process_and_api_calls": 39,
+  "archived_revision": 8,
+  "archive_bytes": 48219,
+  "archive_sha256": "ac20e743fa3e333f6d0f71855aa6b9306dc9bfc2e4ce1d58f2b70511cc0aeed2",
+  "verified": [
+    "source lock prevents an inconsistent competing backup",
+    "deterministic exact-byte archive preserves snapshots, pending and nested recovery evidence",
+    "existing archives, missing sources and unsupported source evidence fail without replacement or bootstrap",
+    "corrupt, truncated and trailing archive bytes reject before destination creation",
+    "restore refuses existing empty directories and files",
+    "restored approvals, conversion exports and original receipts reopen unchanged; pending still blocks next write",
+    "preserved pending quarantine then exact retry commits once and survives another complete backup/restore"
+  ]
+}

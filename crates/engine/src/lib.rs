@@ -5,6 +5,7 @@ pub use copperline_pricing::{Comparison, Totals, compare, evaluate, totals};
 use copperline_storage::Store;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+mod backup;
 mod commercial;
 mod contracts;
 mod conversions;
@@ -14,6 +15,7 @@ mod governance;
 mod grid;
 mod settlements;
 pub use commercial::analytics;
+pub use copperline_storage::backup::{BackupSummary, RestoreSummary};
 pub use csv::{
     export_contract, export_conversion, export_quote, export_report, export_settlement,
     import_conversions, import_products,
@@ -438,9 +440,9 @@ impl Engine {
             revision: next.revision,
             fingerprint,
         });
-        next.validate()?;
+        let validated = next.validated()?;
         if let Some(store) = &mut self.store {
-            store.commit(&next)?;
+            store.commit_validated(validated)?;
         }
         self.state = next;
         Ok(Outcome {

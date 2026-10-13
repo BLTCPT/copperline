@@ -17,7 +17,7 @@ Afterward, reopen the workspace and retry the original command with its original
 
 Recovery refuses unknown filenames, future or earlier pending revisions, symlinks, directories, files larger than 16 MiB, stale checksums, symlinked recovery directories and workspaces whose committed history is corrupt. Inspection reports unsupported pending evidence without following symlinks. Such evidence stays untouched. Preserve the entire workspace for manual investigation; do not delete committed revisions or change checksums to force opening.
 
-The tool does not inspect other directories, change access controls, provide backups or defend against a malicious process modifying files inside the same directory. Workspace protection still relies on the host account and an ordinary local filesystem. Keep recovery evidence with the workspace until it has been independently reviewed and backed up.
+This pending-write tool does not inspect other directories, change access controls or defend against a malicious process modifying files inside the same directory. Workspace protection still relies on the host account and an ordinary local filesystem. Keep recovery evidence with the workspace until it has been independently reviewed and backed up. The separate [portable backup/restore workflow](backup.md) preserves that evidence exactly and never promotes it.
 
 ## Local connection behavior
 

@@ -1,0 +1,269 @@
+{
+  "corpus_sha256": "5e9007cc9c2ae9958329b5283a81cab594ad808c4d75f773c0b4d9cb35d5bca1",
+  "correctness": {
+    "checks": [
+      "exact fixed-point quote and evaluation arithmetic",
+      "approved native contract and frozen conversion evidence",
+      "batched invoice totals and converted reporting",
+      "audit/receipt/revision identity",
+      "original receipt retries before/after reopen",
+      "changed-content receipt rejection preserves state",
+      "full state equality after each reopen",
+      "frozen export byte equality after reopen"
+    ],
+    "export_sha256": {
+      "Q-000": "5ec6a46b968b588222e9ac3ab253cf83dacdef84d07887fa7b61cedd642f4d6c",
+      "Q-001": "008abd2e97907e8442bf8ee0058df72f290186c28c51b34ffda3ee0e4220687b",
+      "Q-002": "5c3d3344da943802350d09ef4399e336f720c4d53f5061ba30086947c268df1c",
+      "Q-003": "4f50521fe1a2fcbc974720e7f194c5b54bf0f1c6a5b38915c60da61954a35709",
+      "Q-004": "6d2c72caf6fcd9f4e94a5ae2b57692de35532277b70d763e7dc37bfa55bd3496",
+      "Q-005": "f2e230f7d803d5ccede101e9a62d3d60c4c5d59acc38d590c5f4fb1f1c24fa13",
+      "Q-006": "c5e1729761fa6dd48ee2366c520d44ea78b5a6e529e0ec45a780665cf48bcd28",
+      "Q-007": "e691d8e48788f1e4dad37ec5ccae7aefca3951927ad45e24d4d383635cefed6a",
+      "Q-008": "f65d41d5f9455fd924e68754ea68b517ec04d74e9b17946aa2a70ba9df6ef192",
+      "Q-009": "7eeaadab9eeaafdc9c28714765023e80ed0a3356d05681ecab4f24a24d616212",
+      "Q-010": "dca672f40c92fd8cdec45790203af56cbb9dbc10d07417109a0c770a2b837e7f",
+      "Q-011": "fd89e1aae1a330e7f863ab1e526323c200e88305e57650f33ff0d884fdeb2680",
+      "Q-012": "6fd44cbd20ff1b2bf7da4d1c0bd42c4407b7231447d41913b6618c3e4c7076c9",
+      "Q-013": "111c4d9d8fc11e7a71baf7458660fd4ce7ee477c98d7584dfff42614cf6f8675",
+      "Q-014": "0c1a960fbc40e452c66e57e83cd83107a159ef51a6b2e46eff23f65ccda9538f",
+      "Q-015": "d52fb1a7617bc2c475dbef6f502c3b51091f6f764d34557e65c543a1cbb0fd83",
+      "Q-016": "85ff7b2e2f47e73328e336299fabf1de9e3bb1bf1cdea8a6518e60c0db5758b5",
+      "Q-017": "8de6cceed9083a10fe625b171e08ef62250e8436ceecf230779c34bdc56b5854",
+      "Q-018": "462437842dcb0a7a6dd803c067ff22a1eabf27641466deda19c638421dd6464d",
+      "Q-019": "2667fa553ca9951402f78c03c885ac12f369ce2f9d1d0c3c7df10c0ac72f2a99"
+    },
+    "receipts": 326,
+    "state_sha256": "fac729538d46de694aa5ca9d6c8d97da565f17eb0006e02129cf51d7d603388e"
+  },
+  "environment": {
+    "binary_bytes": 4267008,
+    "binary_sha256": "08e96793d05d3438eb5a71ec65e0e0449554818ed00a1cc8f748ea5beba5bde1",
+    "binary_version": "Copperline CLI 0.1.0",
+    "machine": "arm64",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "python": "3.14.6 (main, Jun 10 2026, 10:03:53) [Clang 21.0.0 (clang-2100.0.123.102)]",
+    "script_sha256": "200b9e7ae4cfc4561b491eb491205d99e1e83fef68a699e15f3b94b7a5ff6e35",
+    "system": "Darwin"
+  },
+  "latencies": {
+    "command/contract_create": {
+      "count": 1,
+      "max_ms": 9.355084,
+      "min_ms": 9.355084,
+      "p50_ms": 9.355084,
+      "p95_ms": 9.355084
+    },
+    "command/contract_decide": {
+      "count": 1,
+      "max_ms": 9.235083,
+      "min_ms": 9.235083,
+      "p50_ms": 9.235083,
+      "p95_ms": 9.235083
+    },
+    "command/contract_submit": {
+      "count": 1,
+      "max_ms": 9.874,
+      "min_ms": 9.874,
+      "p50_ms": 9.874,
+      "p95_ms": 9.874
+    },
+    "command/conversion_create": {
+      "count": 1,
+      "max_ms": 8.984708,
+      "min_ms": 8.984708,
+      "p50_ms": 8.984708,
+      "p95_ms": 8.984708
+    },
+    "command/conversion_decide": {
+      "count": 1,
+      "max_ms": 8.758041,
+      "min_ms": 8.758041,
+      "p50_ms": 8.758041,
+      "p95_ms": 8.758041
+    },
+    "command/conversion_submit": {
+      "count": 1,
+      "max_ms": 8.5585,
+      "min_ms": 8.5585,
+      "p50_ms": 8.5585,
+      "p95_ms": 8.5585
+    },
+    "command/cost_add": {
+      "count": 50,
+      "max_ms": 9.316041,
+      "min_ms": 6.202291,
+      "p50_ms": 7.857083,
+      "p95_ms": 8.813625
+    },
+    "command/customer_put": {
+      "count": 110,
+      "max_ms": 21.431584,
+      "min_ms": 6.582792,
+      "p50_ms": 19.340104500000002,
+      "p95_ms": 19.779541
+    },
+    "command/product_put": {
+      "count": 50,
+      "max_ms": 9.705458,
+      "min_ms": 6.282167,
+      "p50_ms": 7.895396,
+      "p95_ms": 9.35825
+    },
+    "command/quote_add_line": {
+      "count": 40,
+      "max_ms": 22.982208,
+      "min_ms": 10.17525,
+      "p50_ms": 15.649750000000001,
+      "p95_ms": 18.785542
+    },
+    "command/quote_create": {
+      "count": 20,
+      "max_ms": 18.81225,
+      "min_ms": 9.331333,
+      "p50_ms": 15.380271,
+      "p95_ms": 17.96325
+    },
+    "command/quote_decide": {
+      "count": 20,
+      "max_ms": 19.798417,
+      "min_ms": 11.186292,
+      "p50_ms": 16.0133335,
+      "p95_ms": 18.739167
+    },
+    "command/quote_submit": {
+      "count": 20,
+      "max_ms": 19.624875,
+      "min_ms": 10.346209,
+      "p50_ms": 16.626103999999998,
+      "p95_ms": 18.841208
+    },
+    "command/transactions_import": {
+      "count": 10,
+      "max_ms": 11.440875,
+      "min_ms": 9.727292,
+      "p50_ms": 10.212666500000001,
+      "p95_ms": 11.440875
+    },
+    "durable_command": {
+      "count": 326,
+      "max_ms": 22.982208,
+      "min_ms": 6.202291,
+      "p50_ms": 14.912375,
+      "p95_ms": 19.68925
+    },
+    "durable_command/catalog": {
+      "count": 110,
+      "max_ms": 11.356917,
+      "min_ms": 6.202291,
+      "p50_ms": 7.874271,
+      "p95_ms": 9.35825
+    },
+    "durable_command/contract": {
+      "count": 3,
+      "max_ms": 9.874,
+      "min_ms": 9.235083,
+      "p50_ms": 9.355084,
+      "p95_ms": 9.874
+    },
+    "durable_command/conversion": {
+      "count": 3,
+      "max_ms": 8.984708,
+      "min_ms": 8.5585,
+      "p50_ms": 8.758041,
+      "p95_ms": 8.984708
+    },
+    "durable_command/history_updates": {
+      "count": 100,
+      "max_ms": 21.431584,
+      "min_ms": 17.315458,
+      "p50_ms": 19.3724375,
+      "p95_ms": 19.779541
+    },
+    "durable_command/invoice_import": {
+      "count": 10,
+      "max_ms": 11.440875,
+      "min_ms": 9.727292,
+      "p50_ms": 10.212666500000001,
+      "p95_ms": 11.440875
+    },
+    "durable_command/quote": {
+      "count": 100,
+      "max_ms": 22.982208,
+      "min_ms": 9.331333,
+      "p50_ms": 15.949562499999999,
+      "p95_ms": 18.81225
+    },
+    "evaluate": {
+      "count": 100,
+      "max_ms": 0.131125,
+      "min_ms": 0.046,
+      "p50_ms": 0.082875,
+      "p95_ms": 0.118
+    },
+    "evaluate/converted": {
+      "count": 50,
+      "max_ms": 0.131125,
+      "min_ms": 0.102209,
+      "p50_ms": 0.109396,
+      "p95_ms": 0.12125
+    },
+    "evaluate/native": {
+      "count": 50,
+      "max_ms": 0.063541,
+      "min_ms": 0.046,
+      "p50_ms": 0.0531045,
+      "p95_ms": 0.063041
+    },
+    "exact_retry": {
+      "count": 50,
+      "max_ms": 0.041666,
+      "min_ms": 0.010959,
+      "p50_ms": 0.016625,
+      "p95_ms": 0.024708
+    },
+    "warm_full_history_reopen": {
+      "count": 5,
+      "max_ms": 1134.387625,
+      "min_ms": 1110.231875,
+      "p50_ms": 1120.252416,
+      "p95_ms": 1134.387625
+    }
+  },
+  "measurement_notes": [
+    "Synthetic deterministic corpus; no company data, clocks or randomness in business commands",
+    "API times include JSON-lines IPC and durable fsync where applicable; exclude Python encoding/decoding",
+    "p95 is nearest rank; p50 is the sample median; no performance thresholds",
+    "Reopen uses warm OS caches, process startup, full-history verification and first state JSON; no cache flushing",
+    "Single local CLI writer; concurrent-user throughput and cold storage are not measured"
+  ],
+  "milestone": "M6",
+  "profile": "medium",
+  "public_summary": true,
+  "result": "PASS",
+  "schema": "copperline-workload-v1",
+  "source_commit": "b2538ac2b07a6bc5412ef953089f662ffe67dabc",
+  "specification": {
+    "batch": 100,
+    "customers": 10,
+    "evaluate_samples": 100,
+    "history_updates": 100,
+    "invoices": 1000,
+    "products": 50,
+    "quotes": 20,
+    "reopen_samples": 5,
+    "retry_samples": 50
+  },
+  "storage": {
+    "committed_files": 327,
+    "committed_revision": 326,
+    "durable_commands": 326,
+    "history_limit_bytes": 536870912,
+    "history_manifest_sha256": "1f1b8547d68b9ae74a2cbf6d335d085d2163b26efc9a6eb9f29a425ce588ff7d",
+    "latest_snapshot_bytes": 513493,
+    "state_json_bytes": 513326,
+    "state_json_encoding": "canonical compact sorted-key UTF-8",
+    "total_history_bytes": 93674567
+  }
+}

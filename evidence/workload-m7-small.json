@@ -1,0 +1,367 @@
+{
+  "backup_roundtrip": {
+    "archive_bytes": 3673672,
+    "archive_sha256": "09cf8b0dbfa78b1fd09e9db3c2d4d73d95234683902c22f1e1a9d5d09c742264",
+    "backup": {
+      "timing": {
+        "count": 1,
+        "max_ms": 127.7705,
+        "min_ms": 127.7705,
+        "p50_ms": 127.7705,
+        "p95_ms": 127.7705
+      },
+      "validated_archive": {
+        "committed_revision": 78,
+        "format_version": 1,
+        "head_hash": "e92568a4e0deacdcd187f13006a55abacbab798e4e974a2786ad950c23ac04ad",
+        "pending_count": 0,
+        "recovery_directory_count": 0,
+        "recovery_file_count": 0,
+        "schema_version": 1,
+        "sha256": "09cf8b0dbfa78b1fd09e9db3c2d4d73d95234683902c22f1e1a9d5d09c742264",
+        "snapshot_count": 79,
+        "total_bytes": 3673672
+      },
+      "warnings_count": 0
+    },
+    "backup_inspect": {
+      "timing": {
+        "count": 1,
+        "max_ms": 42.950166,
+        "min_ms": 42.950166,
+        "p50_ms": 42.950166,
+        "p95_ms": 42.950166
+      },
+      "validated_archive": {
+        "committed_revision": 78,
+        "format_version": 1,
+        "head_hash": "e92568a4e0deacdcd187f13006a55abacbab798e4e974a2786ad950c23ac04ad",
+        "pending_count": 0,
+        "recovery_directory_count": 0,
+        "recovery_file_count": 0,
+        "schema_version": 1,
+        "sha256": "09cf8b0dbfa78b1fd09e9db3c2d4d73d95234683902c22f1e1a9d5d09c742264",
+        "snapshot_count": 79,
+        "total_bytes": 3673672
+      },
+      "warnings_count": 0
+    },
+    "restore": {
+      "timing": {
+        "count": 1,
+        "max_ms": 502.962625,
+        "min_ms": 502.962625,
+        "p50_ms": 502.962625,
+        "p95_ms": 502.962625
+      },
+      "validated_archive": {
+        "committed_revision": 78,
+        "format_version": 1,
+        "head_hash": "e92568a4e0deacdcd187f13006a55abacbab798e4e974a2786ad950c23ac04ad",
+        "pending_count": 0,
+        "recovery_directory_count": 0,
+        "recovery_file_count": 0,
+        "schema_version": 1,
+        "sha256": "09cf8b0dbfa78b1fd09e9db3c2d4d73d95234683902c22f1e1a9d5d09c742264",
+        "snapshot_count": 79,
+        "total_bytes": 3673672
+      },
+      "warnings_count": 0
+    },
+    "restored_history_bytes": 3661985,
+    "verified": [
+      "exact committed file names/lengths/hashes",
+      "full validated state",
+      "approved export bytes",
+      "original receipt replay"
+    ]
+  },
+  "baseline_comparison": {
+    "baseline_binary_sha256": "08e96793d05d3438eb5a71ec65e0e0449554818ed00a1cc8f748ea5beba5bde1",
+    "baseline_public_summary": "workload-m6-small.json",
+    "baseline_result_sha256": "74e944469f6e68c288e86df6b911aa7f0d3c7f417dfc79f7d5b6e8f7c004e38a",
+    "caution": "One local workload sample per binary; ratios are descriptive, not causal evidence or pass thresholds",
+    "identical_corpus_state_exports_receipts": true,
+    "identical_history_files": true,
+    "latency_ratios": {
+      "durable_command": {
+        "p50_ms_ratio_to_baseline": 0.9142800580401191,
+        "p95_ms_ratio_to_baseline": 0.9548497785446015
+      },
+      "durable_command/history_updates": {
+        "p50_ms_ratio_to_baseline": 0.8771906990116966,
+        "p95_ms_ratio_to_baseline": 0.923864762707317
+      },
+      "evaluate": {
+        "p50_ms_ratio_to_baseline": 0.9666444296197463,
+        "p95_ms_ratio_to_baseline": 1.0388275769626023
+      },
+      "exact_retry": {
+        "p50_ms_ratio_to_baseline": 0.9751430115340898,
+        "p95_ms_ratio_to_baseline": 0.9359544804897124
+      },
+      "warm_full_history_reopen": {
+        "p50_ms_ratio_to_baseline": 0.9662266149659592,
+        "p95_ms_ratio_to_baseline": 0.9821656547373413
+      }
+    }
+  },
+  "corpus_sha256": "3359b3bd829958842dbcf6fc94199bb1f35f5c22fda0b2581dbfeee5ea568ec5",
+  "correctness": {
+    "checks": [
+      "exact fixed-point quote and evaluation arithmetic",
+      "approved native contract and frozen conversion evidence",
+      "batched invoice totals and converted reporting",
+      "audit/receipt/revision identity",
+      "original receipt retries before/after reopen",
+      "changed-content receipt rejection preserves state",
+      "full state equality after each reopen",
+      "frozen export byte equality after reopen"
+    ],
+    "export_sha256": {
+      "Q-000": "020840f9779f69a4fd54534c85dd4d89df4c57f4ac4005d16527ee9008618005",
+      "Q-001": "523e5c31e192d8275b28a17852f568440d5686fcc13385169f729bd166bea589",
+      "Q-002": "02dc5f7c32745ec441c70f663c2ed3d148bd643a7427de7d9ab0d8f7d1565358",
+      "Q-003": "f597768d30056b61da63e30034fb0a21d34e67fd3de3439e57dea92b75c7e004",
+      "Q-004": "6ac319f4782655982e7313238a1661f981a9c21110dcaa39ffdd1a6f0acce007"
+    },
+    "receipts": 78,
+    "state_sha256": "245985bbe0550ddbf721200690f24dfad8eb7ab1447d43813063ce5e28f96484"
+  },
+  "environment": {
+    "binary_bytes": 4311136,
+    "binary_sha256": "074720a755feabd71353d64f884362c2b18e535dfaaecbbdd330ae16f46eed60",
+    "binary_version": "Copperline CLI 0.1.0",
+    "machine": "arm64",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "python": "3.14.6 (main, Jun 10 2026, 10:03:53) [Clang 21.0.0 (clang-2100.0.123.102)]",
+    "script_sha256": "200b9e7ae4cfc4561b491eb491205d99e1e83fef68a699e15f3b94b7a5ff6e35",
+    "system": "Darwin"
+  },
+  "latencies": {
+    "command/contract_create": {
+      "count": 1,
+      "max_ms": 8.194334,
+      "min_ms": 8.194334,
+      "p50_ms": 8.194334,
+      "p95_ms": 8.194334
+    },
+    "command/contract_decide": {
+      "count": 1,
+      "max_ms": 8.906167,
+      "min_ms": 8.906167,
+      "p50_ms": 8.906167,
+      "p95_ms": 8.906167
+    },
+    "command/contract_submit": {
+      "count": 1,
+      "max_ms": 11.438666,
+      "min_ms": 11.438666,
+      "p50_ms": 11.438666,
+      "p95_ms": 11.438666
+    },
+    "command/conversion_create": {
+      "count": 1,
+      "max_ms": 8.755416,
+      "min_ms": 8.755416,
+      "p50_ms": 8.755416,
+      "p95_ms": 8.755416
+    },
+    "command/conversion_decide": {
+      "count": 1,
+      "max_ms": 8.906625,
+      "min_ms": 8.906625,
+      "p50_ms": 8.906625,
+      "p95_ms": 8.906625
+    },
+    "command/conversion_submit": {
+      "count": 1,
+      "max_ms": 8.0605,
+      "min_ms": 8.0605,
+      "p50_ms": 8.0605,
+      "p95_ms": 8.0605
+    },
+    "command/cost_add": {
+      "count": 10,
+      "max_ms": 9.016083,
+      "min_ms": 6.689625,
+      "p50_ms": 8.0358755,
+      "p95_ms": 9.016083
+    },
+    "command/customer_put": {
+      "count": 23,
+      "max_ms": 12.408791,
+      "min_ms": 7.8685,
+      "p50_ms": 9.50775,
+      "p95_ms": 11.167292
+    },
+    "command/product_put": {
+      "count": 10,
+      "max_ms": 11.62775,
+      "min_ms": 6.83525,
+      "p50_ms": 7.885375,
+      "p95_ms": 11.62775
+    },
+    "command/quote_add_line": {
+      "count": 10,
+      "max_ms": 11.345167,
+      "min_ms": 7.92375,
+      "p50_ms": 9.458791999999999,
+      "p95_ms": 11.345167
+    },
+    "command/quote_create": {
+      "count": 5,
+      "max_ms": 9.628917,
+      "min_ms": 8.198292,
+      "p50_ms": 8.980084,
+      "p95_ms": 9.628917
+    },
+    "command/quote_decide": {
+      "count": 5,
+      "max_ms": 10.465666,
+      "min_ms": 9.24425,
+      "p50_ms": 9.991125,
+      "p95_ms": 10.465666
+    },
+    "command/quote_submit": {
+      "count": 5,
+      "max_ms": 10.844333,
+      "min_ms": 8.785459,
+      "p50_ms": 9.326875,
+      "p95_ms": 10.844333
+    },
+    "command/transactions_import": {
+      "count": 4,
+      "max_ms": 9.491916,
+      "min_ms": 7.682125,
+      "p50_ms": 8.3515835,
+      "p95_ms": 9.491916
+    },
+    "durable_command": {
+      "count": 78,
+      "max_ms": 12.408791,
+      "min_ms": 6.689625,
+      "p50_ms": 8.9433545,
+      "p95_ms": 11.345167
+    },
+    "durable_command/catalog": {
+      "count": 23,
+      "max_ms": 11.62775,
+      "min_ms": 6.689625,
+      "p50_ms": 7.968084,
+      "p95_ms": 9.016083
+    },
+    "durable_command/contract": {
+      "count": 3,
+      "max_ms": 11.438666,
+      "min_ms": 8.194334,
+      "p50_ms": 8.906167,
+      "p95_ms": 11.438666
+    },
+    "durable_command/conversion": {
+      "count": 3,
+      "max_ms": 8.906625,
+      "min_ms": 8.0605,
+      "p50_ms": 8.755416,
+      "p95_ms": 8.906625
+    },
+    "durable_command/history_updates": {
+      "count": 20,
+      "max_ms": 12.408791,
+      "min_ms": 8.320083,
+      "p50_ms": 9.9643745,
+      "p95_ms": 11.167292
+    },
+    "durable_command/invoice_import": {
+      "count": 4,
+      "max_ms": 9.491916,
+      "min_ms": 7.682125,
+      "p50_ms": 8.3515835,
+      "p95_ms": 9.491916
+    },
+    "durable_command/quote": {
+      "count": 25,
+      "max_ms": 11.345167,
+      "min_ms": 7.92375,
+      "p50_ms": 9.407667,
+      "p95_ms": 10.893125
+    },
+    "evaluate": {
+      "count": 50,
+      "max_ms": 0.210208,
+      "min_ms": 0.0525,
+      "p50_ms": 0.09056249999999999,
+      "p95_ms": 0.16275
+    },
+    "evaluate/converted": {
+      "count": 25,
+      "max_ms": 0.210208,
+      "min_ms": 0.089208,
+      "p50_ms": 0.104875,
+      "p95_ms": 0.16275
+    },
+    "evaluate/native": {
+      "count": 25,
+      "max_ms": 0.1875,
+      "min_ms": 0.0525,
+      "p50_ms": 0.06125,
+      "p95_ms": 0.094
+    },
+    "exact_retry": {
+      "count": 20,
+      "max_ms": 0.046875,
+      "min_ms": 0.024125,
+      "p50_ms": 0.0261665,
+      "p95_ms": 0.034708
+    },
+    "warm_full_history_reopen": {
+      "count": 3,
+      "max_ms": 32.613833,
+      "min_ms": 31.204708,
+      "p50_ms": 31.337708,
+      "p95_ms": 32.613833
+    }
+  },
+  "measurement_notes": [
+    "Synthetic deterministic corpus; no company data, clocks or randomness in business commands",
+    "API times include JSON-lines IPC and durable fsync where applicable; exclude Python encoding/decoding",
+    "p95 is nearest rank; p50 is the sample median; no performance thresholds",
+    "Reopen uses warm OS caches, process startup, full-history verification and first state JSON; no cache flushing",
+    "Single local CLI writer; concurrent-user throughput and cold storage are not measured"
+  ],
+  "milestone": "M7",
+  "profile": "small",
+  "public_summary": true,
+  "result": "PASS",
+  "schema": "copperline-workload-v1",
+  "source_context": {
+    "base_commit": "0efb5b627bdbafdb1f5e7a97f0a0b36377eec66c",
+    "binary_sha256": "074720a755feabd71353d64f884362c2b18e535dfaaecbbdd330ae16f46eed60",
+    "frozen_binary_sha256_confirmed": true,
+    "script_sha256": "200b9e7ae4cfc4561b491eb491205d99e1e83fef68a699e15f3b94b7a5ff6e35",
+    "status": "Final frozen M7 release binary measured before source commit; no final commit ID is claimed"
+  },
+  "specification": {
+    "batch": 25,
+    "customers": 3,
+    "evaluate_samples": 50,
+    "history_updates": 20,
+    "invoices": 100,
+    "products": 10,
+    "quotes": 5,
+    "reopen_samples": 3,
+    "retry_samples": 20
+  },
+  "storage": {
+    "committed_files": 79,
+    "committed_revision": 78,
+    "durable_commands": 78,
+    "history_limit_bytes": 536870912,
+    "history_manifest_sha256": "07027cfd263c6f9c3dce76cc01eb568f4e3a019b87d4c13b44b82268d9312338",
+    "latest_snapshot_bytes": 90832,
+    "state_json_bytes": 90665,
+    "state_json_encoding": "canonical compact sorted-key UTF-8",
+    "total_history_bytes": 3661985
+  }
+}

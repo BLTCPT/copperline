@@ -1,0 +1,26 @@
+{
+  "result": "PASS",
+  "api_requests": 72,
+  "committed_revisions": 34,
+  "settlement_adjustments_usd": [
+    "150.00",
+    "-140.00",
+    "-2.00",
+    "-8.00"
+  ],
+  "final_recognized_rebate": "0.00",
+  "verified": [
+    "independent Finance review",
+    "atomic full reversal and replacement",
+    "reserved replacement IDs",
+    "original period restatement",
+    "retrospective tier true-up",
+    "competing baseline rejection",
+    "zero entitlement refund",
+    "non-additive accrual snapshots",
+    "exact retry after restart",
+    "frozen CSV exports",
+    "numeric negative adjustments and formula-safe text",
+    "no overwrite export"
+  ]
+}

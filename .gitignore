@@ -5,3 +5,5 @@
 .DS_Store
 /CHECKPOINT.md
 /handoff-local
+__pycache__/
+*.py[cod]

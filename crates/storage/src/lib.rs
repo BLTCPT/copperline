@@ -1,5 +1,6 @@
 //! Single-writer, append-only committed snapshots. A pending write is never a committed revision.
-use copperline_model::{Result, State, ensure, error};
+pub mod backup;
+use copperline_model::{Result, State, ValidatedState, ensure, error};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -13,6 +14,12 @@ struct Envelope {
     previous_hash: String,
     hash: String,
     state: State,
+}
+#[derive(Serialize)]
+struct EnvelopeRef<'a> {
+    previous_hash: &'a str,
+    hash: &'a str,
+    state: &'a State,
 }
 pub fn fingerprint(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
@@ -57,6 +64,7 @@ pub struct QuarantineOutcome {
 impl Store {
     pub fn open(path: impl AsRef<Path>) -> Result<(Self, State)> {
         let root = path.as_ref().to_path_buf();
+        backup::check_restore_guards(&root)?;
         fs::create_dir_all(&root).map_err(io)?;
         let lock_path = root.join("workspace.lock");
         if let Ok(meta) = fs::symlink_metadata(&lock_path) {
@@ -74,6 +82,8 @@ impl Store {
             .map_err(io)?;
         lock.try_lock()
             .map_err(|_| error("Workspace is already open in another process; close it first"))?;
+        // A restore may have reserved this path after the pre-creation check.
+        backup::check_restore_guards(&root)?;
         let mut paths = vec![];
         for entry in fs::read_dir(&root).map_err(io)? {
             let entry = entry.map_err(io)?;
@@ -136,14 +146,18 @@ impl Store {
         Ok((store, state))
     }
     pub fn commit(&mut self, state: &State) -> Result<()> {
-        state.validate()?;
+        self.commit_validated(state.validated()?)
+    }
+    /// Commit an already validated immutable state, retaining all storage checks.
+    pub fn commit_validated(&mut self, validated: ValidatedState<'_>) -> Result<()> {
+        let state = validated.state();
         let expected = self.next_revision()?;
         ensure(state.revision == expected, "Storage revision conflict")?;
         let new_hash = hash(&self.hash, state)?;
-        let bytes = serde_json::to_vec(&Envelope {
-            previous_hash: self.hash.clone(),
-            hash: new_hash.clone(),
-            state: state.clone(),
+        let bytes = serde_json::to_vec(&EnvelopeRef {
+            previous_hash: &self.hash,
+            hash: &new_hash,
+            state,
         })
         .map_err(|e| error(e.to_string()))?;
         ensure(

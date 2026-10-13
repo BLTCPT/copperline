@@ -42,6 +42,12 @@ An approved full reversal subtracts the exact original converted invoice/cost pa
 
 ## CSV and limits
 
+### Quote-to-actual boundary
+
+Converted quotes and reporting views do not create actual invoices. `transaction_add` and transaction CSV ingestion currently require the catalog product's native currency and unit. An approved EUR/box quote for a USD/each product therefore cannot be booked as an EUR/box actual through those commands. This is an integration gap, not an implicit inverse conversion. A future dedicated booking path must retain approved quote/line provenance, booked and native amounts, exact quantity normalization, frozen schedules and explicit reconciliation of unit-first quote rounding with booked totals. Existing validation must remain strict until those records and invariants exist.
+
+### Import and export
+
 Import columns are `id,kind,product_id,from,to,start,end,numerator,denominator`. FX rows leave product_id empty; UOM rows require it. See `fixtures/conversions.csv`. CSV import creates one immutable Draft book atomically and is limited to 1 MiB and 100 rows. Whole-workspace limits are 100 books/5,000 rate rows, 100 reports/5,000 total frozen invoice rows, 5,000 invoices per report, and the existing 16 MiB state limit.
 
 Approved-book CSV includes terms, direction, dates, ratio, reviewer, version and fingerprint. Converted-quote CSV conditionally appends native context, rounding policy and full FX/UOM evidence JSON. Old quotes without conversion retain their original CSV bytes. Frozen-report CSV includes native and converted amounts, original date/UOM, reversal ID, net contribution, rounding and full FX evidence. CSV cells are formula-safe; CLI/UI exports create new files only. Empty conversion maps and absent optional fields preserve old snapshot/receipt serialization.

@@ -59,6 +59,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         println!("Copperline {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
+    // A bad archive argument must fail before opening or bootstrapping any workspace.
+    let inspected_backup = value("--backup-archive")
+        .map(|path| Engine::inspect_backup(&path).map(|summary| (path, summary)))
+        .transpose()?;
     let path = value("--data").unwrap_or_else(|| "data/demo".into());
     let mut engine = Engine::open(path)?;
     if args.iter().any(|a| a == "--demo") && engine.state().products.is_empty() {
@@ -71,6 +75,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
     let mut app = Workbench::new(engine);
+    if let Some((path, summary)) = inspected_backup {
+        app.show_backup_inspection(&path, summary);
+    }
     if let Some(id) = value("--source-grid") {
         let revision = app
             .engine
@@ -107,6 +114,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         Some("scenarios") => View::Scenarios,
         Some("policy") => View::Governance,
         Some("audit") => View::Audit,
+        Some("backup") => View::Backup,
         _ => View::Workbench,
     };
     let screenshot = value("--screenshot").map(std::path::PathBuf::from);

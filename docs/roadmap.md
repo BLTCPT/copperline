@@ -18,7 +18,15 @@ Multi-customer/segment terms, bulk contract imports and larger-scale matching re
 
 Approved immutable direct FX/product-UOM books, exact native quantity qualification, frozen converted quotes, atomic multi-line replacement and historical reporting-currency snapshots are implemented. See [conversions](conversions.md). Overlapping approved amendments, live rates, indirect conversion and common-UOM analytics remain open.
 
-## M7 — richer quoting and document delivery
+## M7 — reliable backup and measured recoverability
+
+Portable exact-history archives, safe restore into a new workspace, fault/corruption regressions and matched synthetic workload measurements take priority. See [acceptance plan](m7-plan.md) and [backup contract](backup.md). Final results are recorded in milestone status and evidence; no migration, retention deletion or enterprise scale is implied.
+
+## Next — converted quote-to-actual provenance
+
+A converted EUR/box quote cannot yet become an EUR/box actual invoice for a USD/each catalog product. Preserve booked and native quantities/totals, approved quote/line versions, frozen conversion factors and an explicit rounding reconciliation in a dedicated booking command. Connect exact full reversal/replacement, historical reporting and original receipt replay to that provenance. Do not loosen native invoice validation as a substitute. Partial credits and period-close follow this coherent ledger model.
+
+## Later — richer quoting and document delivery
 
 Build typed quote sections, explicit optional lines, reusable versioned quote templates and deterministic package quantities. Keep individual pricing and cost evidence visible; do not introduce an opaque bundle total. Freeze template/configuration versions in quote submissions and exports.
 

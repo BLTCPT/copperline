@@ -1,0 +1,36 @@
+{
+  "result": "PASS",
+  "old_binary_sha256": "08e96793d05d3438eb5a71ec65e0e0449554818ed00a1cc8f748ea5beba5bde1",
+  "new_binary_sha256": "074720a755feabd71353d64f884362c2b18e535dfaaecbbdd330ae16f46eed60",
+  "revision": 49,
+  "preserved_snapshots": 50,
+  "preserved_snapshot_bytes": 1161518,
+  "unchanged_exports": 5,
+  "quote_export_ids": [
+    "Q-1001",
+    "Q-3001",
+    "Q-4001"
+  ],
+  "backup": {
+    "committed_revision": 49,
+    "format_version": 1,
+    "head_hash": "eacfd77a56a98796a1e04dfea0e0c57034617d5043fdcc4bb3fc7dc12f44b789",
+    "pending_count": 0,
+    "recovery_directory_count": 0,
+    "recovery_file_count": 0,
+    "schema_version": 1,
+    "sha256": "026aafe822897938244e4433bf1ff376f8dcb8fac8f327a40c53926733d9ac8b",
+    "snapshot_count": 50,
+    "total_bytes": 1169014,
+    "warnings": []
+  },
+  "checks": [
+    "genuine M6 artifact opens original history",
+    "old/new full-state equality",
+    "every committed file byte hash identical",
+    "approved native/converted quote, book and report CSV unchanged",
+    "original M6 seed request replays at revision1",
+    "source workspace unchanged",
+    "separate restored workspace"
+  ]
+}

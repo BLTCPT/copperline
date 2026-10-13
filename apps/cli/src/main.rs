@@ -38,6 +38,30 @@ fn run() -> Result<()> {
         println!(
             "Copperline pricing workbench\nUsage: copperline-cli [--data DIR] demo|state|execute JSON|api|serve PORT|export-quote ID FILE|export-settlement ID FILE|export-contract ID EDITION FILE|export-conversion ID FILE|export-report ID FILE|commands\nRecovery: storage-inspect | quarantine-pending NAME SHA256\napi: bounded JSON lines over stdin/stdout. serve: opt-in loopback JSON lines, maximum 16 clients, no remote authentication.\nRecovery verifies committed history and preserves pending evidence; it never promotes an interrupted write.\nAll figures and identities in the demo are synthetic.\n--version prints the build version."
         );
+        println!(
+            "Backup: --data EXISTING_DIR backup NEW_ARCHIVE.clbak | backup-inspect ARCHIVE.clbak | restore ARCHIVE.clbak NEW_WORKSPACE_DIR\nRestore never replaces an existing directory. Backup and restore include pending/recovery evidence without promoting it."
+        );
+        return Ok(());
+    }
+    if matches!(verb, "backup" | "backup-inspect" | "restore") {
+        let archive = args
+            .get(i + 1)
+            .ok_or_else(|| error("Backup commands require an archive path"))?;
+        let result = match verb {
+            "backup" => serde_json::to_value(Engine::backup_workspace(&path, archive)?),
+            "backup-inspect" => serde_json::to_value(Engine::inspect_backup(archive)?),
+            _ => {
+                let destination = args
+                    .get(i + 2)
+                    .ok_or_else(|| error("restore requires ARCHIVE NEW_WORKSPACE_DIR"))?;
+                serde_json::to_value(Engine::restore_backup(archive, destination)?)
+            }
+        }
+        .map_err(|e| error(e.to_string()))?;
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&result).map_err(|e| error(e.to_string()))?
+        );
         return Ok(());
     }
     if matches!(verb, "storage-inspect" | "quarantine-pending") {

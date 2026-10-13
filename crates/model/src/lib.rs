@@ -338,6 +338,44 @@ pub struct State {
     pub audit: Vec<Audit>,
     pub receipts: Vec<Receipt>,
 }
+
+/// Evidence that this exact, immutably borrowed state passed full model validation.
+///
+/// Obtain this token through [`State::validated`]. It cannot outlive its state or
+/// permit mutation while a consumer still uses the validation evidence.
+///
+/// ```compile_fail
+/// use copperline_model::{State, ValidatedState};
+/// let state = State::default();
+/// let forged = ValidatedState { state: &state };
+/// ```
+///
+/// ```compile_fail
+/// use copperline_model::{Result, State};
+/// fn change_after_validation(state: &mut State) -> Result<()> {
+///     let validated = state.validated()?;
+///     state.revision += 1;
+///     let _ = validated.state();
+///     Ok(())
+/// }
+/// ```
+///
+/// Persisted data cannot supply validation evidence through deserialization.
+///
+/// ```compile_fail
+/// use copperline_model::ValidatedState;
+/// let forged = serde_json::from_str::<ValidatedState<'static>>("{}");
+/// ```
+#[derive(Debug)]
+pub struct ValidatedState<'a> {
+    state: &'a State,
+}
+impl<'a> ValidatedState<'a> {
+    pub fn state(&self) -> &'a State {
+        self.state
+    }
+}
+
 impl Default for State {
     fn default() -> Self {
         Self {
@@ -384,6 +422,12 @@ impl Customer {
     }
 }
 impl State {
+    /// Validate every model invariant and borrow the state as immutable evidence.
+    pub fn validated(&self) -> Result<ValidatedState<'_>> {
+        self.validate()?;
+        Ok(ValidatedState { state: self })
+    }
+
     pub fn validate(&self) -> Result<()> {
         ensure(self.schema_version == 1, "Unsupported store schema")?;
         ensure(

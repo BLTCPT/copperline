@@ -86,3 +86,14 @@ Run `python3 scripts/contracts_e2e.py` for boundaries, conflicts, non-resurrecti
 6. In Invoice analytics inspect **Reporting currency · frozen actuals**. R-EUR-OCT includes original invoice rows and approved reversals at original dates/rates. Create another ID to capture later history. Export frozen report to a new path; nothing is posted or paid.
 
 Command examples: `copperline-cli --data data/m6-review export-conversion FX-UOM-OCT conversion.csv`, `export-report R-EUR-OCT report.csv` and `export-quote Q-4001 converted-quote.csv`. Use the full `--data` invocation for each command. `scripts/conversions_e2e.py` verifies the same flow with real restart, exact retry and byte-stable exports. See [conversion semantics](conversions.md) for unit-first rounding and deferred cases.
+
+
+## M7 backup and recovery drill
+
+1. Keep CSV exports outside the data directory. Open **Backup & restore** in the native app, enter a new `.clbak` path outside the workspace, and choose **Create complete backup**. The verified report includes captured revision, evidence counts, length and checksum.
+2. Choose **Verify archive** to re-read all bytes and the complete historical chain. Change the destination to a new folder beneath an existing parent and choose **Restore into new folder**. Existing folders, including empty ones, are refused.
+3. Open the restored workspace using the success button. Quotes, frozen conversion evidence, approvals and prior receipts are preserved. The original workspace and archive remain unchanged.
+4. For CLI rehearsal, close the native app, then run the three commands in [backup.md](backup.md). `python3 scripts/backup_e2e.py --binary target/debug/copperline-cli` adds corruption, no-overwrite, opaque pending/recovery preservation and an exact retry after quarantine.
+5. For measurements, build release CLI and run `python3 scripts/workload.py --binary target/release/copperline-cli --profile small --backup`. The script creates fresh synthetic workspaces and retains evidence. Use `medium` for 1,000 invoices and 20 approved quotes. See [measurement boundaries](performance.md); these are local warm-cache demo measurements.
+
+A failed restore names its preserved partial directory and blocking guard. Keep both, retain the archive, and use another new destination. Never remove a guard to force opening. Windows directory-entry power-loss durability and interactive visual behavior remain explicit limitations.
