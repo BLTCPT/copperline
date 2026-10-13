@@ -1,32 +1,26 @@
-    Finished `dev` profile [optimized + debuginfo] target(s) in 0.06s
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.03s
      Running `target/debug/xtask ci`
 Layer gate passed: exact money → model → pricing/storage → engine → UI → apps
 Asset attribution gate passed
-    Checking copperline-storage v0.1.0 (<workspace>/crates/storage)
-    Checking copperline-engine v0.1.0 (<workspace>/crates/engine)
     Checking copperline-ui v0.1.0 (<workspace>/crates/ui)
-    Checking copperline-cli v0.1.0 (<workspace>/apps/cli)
     Checking copperline-desktop v0.1.0 (<workspace>/apps/desktop)
-    Finished `dev` profile [optimized + debuginfo] target(s) in 0.82s
-   Compiling copperline-storage v0.1.0 (<workspace>/crates/storage)
-   Compiling copperline-engine v0.1.0 (<workspace>/crates/engine)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.49s
    Compiling copperline-ui v0.1.0 (<workspace>/crates/ui)
-   Compiling copperline-cli v0.1.0 (<workspace>/apps/cli)
    Compiling copperline-desktop v0.1.0 (<workspace>/apps/desktop)
-    Finished `test` profile [optimized + debuginfo] target(s) in 1.30s
-     Running unittests src/main.rs (target/debug/deps/copperline_cli-29e68450e9931e25)
+    Finished `test` profile [optimized + debuginfo] target(s) in 1.41s
+     Running unittests src/main.rs (target/debug/deps/copperline_cli-c00fbd7da31b9be3)
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running unittests src/main.rs (target/debug/deps/copperline_desktop-f358d392df95c2d3)
+     Running unittests src/main.rs (target/debug/deps/copperline_desktop-abe5403d873eb1ab)
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running unittests src/lib.rs (target/debug/deps/copperline_engine-7acd0338ba2d5764)
+     Running unittests src/lib.rs (target/debug/deps/copperline_engine-5a5ff093b022be52)
 
 running 8 tests
 test csv::tests::csv_quoted_and_errors ... ok
@@ -38,86 +32,133 @@ test tests::approval_lifecycle_and_snapshot_immutability ... ok
 test commercial::tests::retrospective_tier_accrual_is_frozen_and_approved ... ok
 test tests::persistence_e2e ... ok
 
-test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
 
-     Running tests/approval_m3_review.rs (target/debug/deps/approval_m3_review-c03ab4d8d1113bc6)
+     Running tests/approval_m3_review.rs (target/debug/deps/approval_m3_review-0b6176ea77a3854f)
 
 running 13 tests
-test externally_claimed_local_request_id_does_not_block_run ... ok
-test margin_route_weights_line_revenue_instead_of_averaging_percentages ... ok
-test rejected_review_cannot_be_reinterpreted_as_an_unfinished_approval ... ok
-test approval_policy_updates_require_admin_and_valid_bounded_thresholds ... ok
-test rejection_finishes_a_cycle_and_revision_keeps_its_history ... ok
-test ownership_has_no_admin_edit_submit_or_revise_bypass ... ok
-test approval_provenance_cannot_be_erased_or_redirected ... ok
 test cross_quote_review_cannot_supply_another_quotes_approval ... ok
-test sequential_route_is_frozen_role_separated_and_not_exportable_midway ... ok
+test ownership_has_no_admin_edit_submit_or_revise_bypass ... ok
+test rejection_finishes_a_cycle_and_revision_keeps_its_history ... ok
+test externally_claimed_local_request_id_does_not_block_run ... ok
+test approval_policy_updates_require_admin_and_valid_bounded_thresholds ... ok
+test approval_provenance_cannot_be_erased_or_redirected ... ok
+test rejected_review_cannot_be_reinterpreted_as_an_unfinished_approval ... ok
+test margin_route_weights_line_revenue_instead_of_averaging_percentages ... ok
 test routing_compares_exact_effective_discount_and_weighted_margin ... ok
+test sequential_route_is_frozen_role_separated_and_not_exportable_midway ... ok
 test routing_value_threshold_uses_pocket_and_correct_currency ... ok
 test genuine_m2_snapshot_reopens_replays_and_retains_legacy_contributors ... ok
 test stale_versions_and_exact_review_retries_survive_reopen ... ok
 
-test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
 
-     Running tests/commercial_review.rs (target/debug/deps/commercial_review-80573b6b5da7fcf9)
+     Running tests/commercial_review.rs (target/debug/deps/commercial_review-82c87582c6a02465)
 
 running 12 tests
-test invoice_snapshot_validation_rejects_aggregate_overflow ... ok
 test invoice_aggregate_overflow_is_atomic_and_add_is_idempotent ... ok
-test agreement_overlap_is_atomic_but_adjacent_period_is_approvable ... ok
-test grid_reauthoring_retains_history_and_requires_fresh_independent_approval ... ok
+test invoice_snapshot_validation_rejects_aggregate_overflow ... ok
 test grid_snapshot_cannot_lose_active_price_or_reference_missing_customer ... ok
 test grid_hard_block_and_stale_version_preserve_last_approved ... ok
+test accrual_snapshot_contains_all_and_only_invoices_known_at_source_revision ... ok
 test accrual_is_frozen_and_cannot_predate_agreement_approval ... ok
 test agreement_requires_independent_approval_and_valid_tiers ... ok
-test accrual_eligibility_and_analytics_exclude_projections_and_other_currencies ... ok
-test accrual_snapshot_contains_all_and_only_invoices_known_at_source_revision ... ok
+test agreement_overlap_is_atomic_but_adjacent_period_is_approvable ... ok
+test grid_reauthoring_retains_history_and_requires_fresh_independent_approval ... ok
 test transaction_csv_late_failures_leave_no_partial_import_or_audit ... ok
+test accrual_eligibility_and_analytics_exclude_projections_and_other_currencies ... ok
 test m1_workspace_hash_survives_first_m2_mutation_and_reopen ... ok
 
-test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
 
-     Running tests/persistence_m3_review.rs (target/debug/deps/persistence_m3_review-f2aa62d4a38db599)
+     Running tests/corrections_m4.rs (target/debug/deps/corrections_m4-b8ee52d7e821df0e)
+
+running 10 tests
+test invalid_proposal_context_dates_and_existing_ids_fail_atomically ... ok
+test approval_overflow_leaves_original_and_proposal_untouched ... ok
+test reserved_replacement_ids_block_add_and_atomic_csv_then_release_on_withdrawal ... ok
+test correction_roles_ownership_versions_and_terminal_states_are_enforced ... ok
+test full_reversal_is_effective_only_on_finance_approval_and_old_accrual_is_frozen ... ok
+test immutable_correction_payload_and_review_note_are_bound_to_audit_evidence ... ok
+test rejected_and_draft_withdrawn_proposals_release_the_original_without_erasing_history ... ok
+test snapshots_bind_original_review_outcome_and_replacement_ingestion ... ok
+test replacement_chains_are_chronological_and_cannot_reverse_an_original_twice ... ok
+test reversal_and_replacement_approval_is_atomic_persistent_and_replayable ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/m4_independent_review.rs (target/debug/deps/m4_independent_review-8ca141772089210e)
+
+running 7 tests
+test accrual_identity_and_creation_event_cannot_be_replaced_with_an_unrelated_audit ... ok
+test competing_proposals_cannot_recognize_same_rebate_twice ... ok
+test equal_amount_replacement_stales_provenance_but_pending_record_can_be_rejected ... ok
+test stale_draft_can_withdraw_and_unrelated_catalog_write_does_not_stale_current_source ... ok
+test correction_and_settlement_snapshot_authority_and_chronology_are_not_editable ... ok
+test correction_record_date_does_not_move_reversal_period_or_convert_replacement_context ... ok
+test tier_drop_refunds_whole_period_difference_and_offsetting_prior_ids_cannot_disappear ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/persistence_m3_review.rs (target/debug/deps/persistence_m3_review-1779c5c273c093a0)
 
 running 1 test
 test local_commands_skip_reserved_keys_and_external_retries_survive_reopen ... ok
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
 
-     Running tests/pricing_sources.rs (target/debug/deps/pricing_sources-2d162ed86038d838)
+     Running tests/pricing_sources.rs (target/debug/deps/pricing_sources-9cda5e8eec95ffcc)
 
 running 11 tests
+test source_date_customer_product_quantity_and_units_are_enforced ... ok
 test legacy_requests_omit_source_and_legacy_grid_approval_remains_selectable ... ok
 test grid_is_explicit_and_current_candidate_never_overrides_active_price ... ok
 test derived_grid_cannot_chain_source_discounts ... ok
-test published_list_pins_exact_unique_item_and_publication_revision ... ok
-test published_list_flows_through_quote_approval_and_commercial_export ... ok
-test source_date_customer_product_quantity_and_units_are_enforced ... ok
 test frozen_source_cannot_predate_approval_or_omit_price_evidence ... ok
-test grid_reapproval_archives_price_without_mutating_approved_quote_or_export ... ok
+test published_list_pins_exact_unique_item_and_publication_revision ... ok
 test stale_source_reprice_fails_atomically_and_history_cannot_be_forged ... ok
+test grid_reapproval_archives_price_without_mutating_approved_quote_or_export ... ok
+test published_list_flows_through_quote_approval_and_commercial_export ... ok
 test unpublished_list_and_unapproved_grid_never_fall_back_to_live_rules ... ok
 test approved_source_history_survives_persistence_and_reopen ... ok
 
 test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
 
-     Running tests/review_regressions.rs (target/debug/deps/review_regressions-876b30d41176e104)
+     Running tests/review_regressions.rs (target/debug/deps/review_regressions-34922749df4fc8fc)
 
 running 10 tests
 test supported_max_cost_with_markup_can_be_saved_as_quote ... ok
-test frozen_lines_match_immutable_product_currency_unit_and_cost ... ok
-test historical_decision_survives_repricing_but_new_approval_is_required ... ok
 test frozen_list_policy_and_arithmetic_are_validated ... ok
 test owner_and_distinct_submitter_cannot_approve ... ok
-test decision_chronology_and_audit_identity_cannot_be_rewritten ... ok
-test mixed_catalog_produces_separate_publishable_lists ... ok
-test frozen_document_validation_rejects_independent_corruptions ... ok
+test historical_decision_survives_repricing_but_new_approval_is_required ... ok
+test frozen_lines_match_immutable_product_currency_unit_and_cost ... ok
 test document_aggregate_overflow_is_rejected_by_command_and_snapshot_validation ... ok
+test decision_chronology_and_audit_identity_cannot_be_rewritten ... ok
+test frozen_document_validation_rejects_independent_corruptions ... ok
+test mixed_catalog_produces_separate_publishable_lists ... ok
 test failed_durable_commit_preserves_memory_and_request_can_retry ... ok
 
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 
-     Running tests/source_governance_review.rs (target/debug/deps/source_governance_review-384562ef0298d798)
+     Running tests/settlement_m4_review.rs (target/debug/deps/settlement_m4_review-f3378273f60f67c8)
+
+running 12 tests
+test settlement_accrual_author_cannot_be_rebound_to_an_unrelated_audit_event ... ok
+test longest_valid_settlement_id_and_reason_fit_audit_evidence_limits ... ok
+test same_total_new_invoice_makes_pending_and_draft_sources_stale_but_releasable ... ok
+test owner_and_all_source_authors_cannot_substitute_for_independent_finance ... ok
+test persisted_settlement_arithmetic_status_history_and_actor_tampering_are_rejected ... ok
+test replacement_author_is_excluded_but_correction_reviewer_can_review_settlement ... ok
+test same_total_new_correction_invalidates_approval_and_approved_baseline_cannot_double_count ... ok
+test recognition_is_signed_delta_and_corrections_do_not_rewrite_prior_approvals ... ok
+test settlement_target_audit_cannot_outlive_a_deleted_record_even_if_command_is_corrupt ... ok
+test settlement_cannot_switch_to_a_different_authors_equivalent_accrual ... ok
+test m3_shaped_accrual_chain_opens_and_supports_first_settlement_without_rewriting_history ... ok
+test settlement_adjustments_and_historical_accruals_survive_reopen ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/source_governance_review.rs (target/debug/deps/source_governance_review-67e2b226230f9a43)
 
 running 2 tests
 test corrupted_submission_version_returns_error_instead_of_panicking ... ok
@@ -125,7 +166,7 @@ test embedded_source_discount_requires_finance_and_survives_source_replacement .
 
 test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running unittests src/lib.rs (target/debug/deps/copperline_model-7e2025f61999639f)
+     Running unittests src/lib.rs (target/debug/deps/copperline_model-4da56c4d6b66996f)
 
 running 0 tests
 
@@ -139,24 +180,24 @@ test tests::exact_roundtrip_and_invariants ... ok
 
 test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running unittests src/lib.rs (target/debug/deps/copperline_pricing-674a4134c5e6b63c)
+     Running unittests src/lib.rs (target/debug/deps/copperline_pricing-47714b8ab6396332)
 
 running 4 tests
-test tests::golden_waterfall ... ok
 test tests::missing_cost_and_zero_revenue ... ok
+test tests::golden_waterfall ... ok
 test tests::rule_precedence_and_effectivity ... ok
 test tests::conservation_over_quantities_discounts ... ok
 
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running unittests src/lib.rs (target/debug/deps/copperline_storage-3807707bf0b999ee)
+     Running unittests src/lib.rs (target/debug/deps/copperline_storage-39305f770248f540)
 
 running 1 test
 test tests::reopen_lock_corruption ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
 
-     Running tests/recovery_m3.rs (target/debug/deps/recovery_m3-f6c719a6bd995323)
+     Running tests/recovery_m3.rs (target/debug/deps/recovery_m3-ee7f41f5af9ff0ea)
 
 running 5 tests
 test corrupt_committed_history_prevents_recovery_and_preserves_all_files ... ok
@@ -167,7 +208,7 @@ test complete_candidate_is_preserved_without_promotion_and_recovery_never_overwr
 
 test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
 
-     Running tests/review_regressions.rs (target/debug/deps/review_regressions-6eb6efeda4a78dd8)
+     Running tests/review_regressions.rs (target/debug/deps/review_regressions-d87e69f02ed72e17)
 
 running 5 tests
 test directory_with_committed_filename_is_rejected ... ok
@@ -176,18 +217,19 @@ test invalid_approved_quote_is_rejected_on_commit_and_valid_checksum_reopen ... 
 test pending_file_is_preserved_and_explicit_removal_allows_retry ... ok
 test symlinked_lock_and_committed_snapshot_are_rejected ... ok
 
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
 
-     Running unittests src/lib.rs (target/debug/deps/copperline_ui-197a1664d34734be)
+     Running unittests src/lib.rs (target/debug/deps/copperline_ui-c9935363558ab059)
 
-running 5 tests
+running 6 tests
 test grid_ui_tests::grid_buttons_activate_independent_candidate ... ok
 test tests::unauthorized_ui_action_shows_error_without_mutation ... ok
-test tests::every_workspace_view_renders_at_minimum_size ... ok
 test tests::native_quote_buttons_complete_approval_flow ... ok
 test tests::native_two_stage_quote_waits_for_finance ... ok
+test tests::every_workspace_view_renders_at_minimum_size ... ok
+test tests::native_correction_and_negative_settlement_complete_review ... ok
 
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
 
      Running unittests src/main.rs (target/debug/deps/xtask-5c5b14e55f3c0919)
 

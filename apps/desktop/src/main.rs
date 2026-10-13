@@ -94,6 +94,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         Some("approvals") => View::Approvals,
         Some("agreements") => View::Agreements,
         Some("analytics") => View::Analytics,
+        Some("corrections") => View::Corrections,
+        Some("settlements") => View::Settlements,
         Some("scenarios") => View::Scenarios,
         Some("policy") => View::Governance,
         Some("audit") => View::Audit,

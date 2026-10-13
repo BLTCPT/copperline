@@ -6,11 +6,13 @@ use copperline_storage::Store;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 mod commercial;
+mod corrections;
 mod csv;
 mod governance;
 mod grid;
+mod settlements;
 pub use commercial::analytics;
-pub use csv::{export_quote, import_products};
+pub use csv::{export_quote, export_settlement, import_products};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(
@@ -21,6 +23,42 @@ pub use csv::{export_quote, import_products};
 )]
 pub enum Command {
     SeedDemo,
+    CorrectionCreate {
+        proposal: CorrectionProposal,
+    },
+    CorrectionSubmit {
+        id: String,
+        version: u64,
+    },
+    CorrectionDecide {
+        id: String,
+        version: u64,
+        approve: bool,
+        note: String,
+    },
+    CorrectionWithdraw {
+        id: String,
+        version: u64,
+    },
+    SettlementCreate {
+        id: String,
+        accrual_id: String,
+        reason: String,
+    },
+    SettlementSubmit {
+        id: String,
+        version: u64,
+    },
+    SettlementDecide {
+        id: String,
+        version: u64,
+        approve: bool,
+        note: String,
+    },
+    SettlementWithdraw {
+        id: String,
+        version: u64,
+    },
     QuoteApprovalPolicySet {
         expected_version: u64,
         thresholds: ApprovalThresholds,
@@ -131,6 +169,14 @@ impl Command {
     pub fn name(&self) -> &'static str {
         match self {
             Self::SeedDemo => "seed_demo",
+            Self::CorrectionCreate { .. } => "correction_create",
+            Self::CorrectionSubmit { .. } => "correction_submit",
+            Self::CorrectionDecide { .. } => "correction_decide",
+            Self::CorrectionWithdraw { .. } => "correction_withdraw",
+            Self::SettlementCreate { .. } => "settlement_create",
+            Self::SettlementSubmit { .. } => "settlement_submit",
+            Self::SettlementDecide { .. } => "settlement_decide",
+            Self::SettlementWithdraw { .. } => "settlement_withdraw",
             Self::QuoteApprovalPolicySet { .. } => "quote_approval_policy_set",
             Self::AgreementCreate { .. } => "agreement_create",
             Self::AgreementSubmit { .. } => "agreement_submit",
@@ -165,7 +211,13 @@ impl Command {
             Self::SeedDemo | Self::PolicySet(_) | Self::QuoteApprovalPolicySet { .. } => {
                 role == Role::Admin
             }
-            Self::AgreementCreate { .. }
+            Self::CorrectionCreate { .. }
+            | Self::CorrectionSubmit { .. }
+            | Self::CorrectionWithdraw { .. }
+            | Self::SettlementCreate { .. }
+            | Self::SettlementSubmit { .. }
+            | Self::SettlementWithdraw { .. }
+            | Self::AgreementCreate { .. }
             | Self::AgreementSubmit { .. }
             | Self::TransactionAdd(_)
             | Self::TransactionsImport { .. }
@@ -180,6 +232,7 @@ impl Command {
             | Self::ListCalculate { .. }
             | Self::ListSubmit { .. }
             | Self::ListPublish { .. } => matches!(role, Role::Analyst | Role::Admin),
+            Self::CorrectionDecide { .. } | Self::SettlementDecide { .. } => role == Role::Finance,
             Self::AgreementDecide { .. } | Self::GridDecide { .. } | Self::ListDecide { .. } => {
                 matches!(role, Role::Approver | Role::Admin)
             }
@@ -356,6 +409,14 @@ fn quote_mut<'a>(s: &'a mut State, key: &str) -> Result<&'a mut Quote> {
 }
 fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
     match c {
+        Command::CorrectionCreate { .. }
+        | Command::CorrectionSubmit { .. }
+        | Command::CorrectionDecide { .. }
+        | Command::CorrectionWithdraw { .. } => corrections::apply(s, actor, c),
+        Command::SettlementCreate { .. }
+        | Command::SettlementSubmit { .. }
+        | Command::SettlementDecide { .. }
+        | Command::SettlementWithdraw { .. } => settlements::apply(s, actor, c),
         Command::QuoteApprovalPolicySet { .. } => governance::apply(s, actor, c),
         Command::AgreementCreate { .. }
         | Command::AgreementSubmit { .. }

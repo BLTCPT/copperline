@@ -5,6 +5,12 @@ pub struct RevenueGroup {
     pub customer_id: String,
     pub currency: Currency,
     pub transaction_count: usize,
+    pub gross_transaction_count: usize,
+    pub reversal_count: usize,
+    pub gross_invoice: Money,
+    pub gross_cost: Money,
+    pub reversed_invoice: Money,
+    pub reversed_cost: Money,
     pub invoice: Money,
     pub cost: Money,
     pub invoice_margin: Money,
@@ -20,16 +26,59 @@ pub fn analytics(state: &State) -> Result<Vec<RevenueGroup>> {
                 customer_id: t.customer_id.clone(),
                 currency: t.currency,
                 transaction_count: 0,
+                gross_transaction_count: 0,
+                reversal_count: 0,
+                gross_invoice: Money(0),
+                gross_cost: Money(0),
+                reversed_invoice: Money(0),
+                reversed_cost: Money(0),
                 invoice: Money(0),
                 cost: Money(0),
                 invoice_margin: Money(0),
                 margin_bps: None,
             });
-        g.transaction_count = g.transaction_count.saturating_add(1);
-        g.invoice = g.invoice.add(t.invoice_total)?;
-        g.cost = g.cost.add(t.cost_total)?;
+        g.gross_transaction_count = g
+            .gross_transaction_count
+            .checked_add(1)
+            .ok_or_else(|| error("Invoice count overflow"))?;
+        g.gross_invoice = g.gross_invoice.add(t.invoice_total)?;
+        g.gross_cost = g.gross_cost.add(t.cost_total)?;
+    }
+    let mut reversed = std::collections::BTreeSet::new();
+    for c in state
+        .corrections
+        .values()
+        .filter(|c| c.status == RecordStatus::Approved)
+    {
+        ensure(
+            reversed.insert(&c.proposal.original_transaction_id),
+            "Invoice cannot be reversed twice",
+        )?;
+        let t = state
+            .transactions
+            .get(&c.proposal.original_transaction_id)
+            .ok_or_else(|| error("Reversed invoice missing"))?;
+        let g = groups
+            .get_mut(&(t.customer_id.clone(), t.currency.to_string()))
+            .ok_or_else(|| error("Reversal analytics group missing"))?;
+        g.reversal_count = g
+            .reversal_count
+            .checked_add(1)
+            .ok_or_else(|| error("Reversal count overflow"))?;
+        g.reversed_invoice = g.reversed_invoice.add(t.invoice_total)?;
+        g.reversed_cost = g.reversed_cost.add(t.cost_total)?;
     }
     for g in groups.values_mut() {
+        g.transaction_count = g
+            .gross_transaction_count
+            .checked_sub(g.reversal_count)
+            .ok_or_else(|| error("Reversal count exceeds invoice count"))?;
+        g.invoice = g.gross_invoice.sub(g.reversed_invoice)?;
+        g.cost = g.gross_cost.sub(g.reversed_cost)?;
+        ensure(
+            g.invoice.0 >= 0 && g.cost.0 >= 0,
+            "Reversal exceeds gross invoices",
+        )?;
         g.invoice_margin = g.invoice.sub(g.cost)?;
         if g.invoice.0 > 0 {
             g.margin_bps = Some(
@@ -118,8 +167,8 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
         }
         Command::TransactionAdd(t) => {
             ensure(
-                !s.transactions.contains_key(&t.id),
-                "External transaction ID already exists",
+                s.transaction_id_available(&t.id),
+                "External transaction ID already exists or is reserved by a correction",
             )?;
             s.transaction_revisions.insert(t.id.clone(), s.revision + 1);
             s.transactions.insert(t.id.clone(), t.clone());
@@ -171,8 +220,8 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                     cost_total: f(9)?.parse()?,
                 };
                 ensure(
-                    !s.transactions.contains_key(&t.id),
-                    "Duplicate external transaction ID; no rows imported",
+                    s.transaction_id_available(&t.id),
+                    "Duplicate or reserved external transaction ID; no rows imported",
                 )?;
                 s.transaction_revisions.insert(t.id.clone(), s.revision + 1);
                 s.transactions.insert(t.id.clone(), t);
@@ -195,19 +244,10 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                 a.version == *version && a.status == Status::Approved,
                 "Accrual requires current approved agreement version",
             )?;
-            let mut invoice = Money(0);
-            let mut ids = vec![];
-            for t in s.transactions.values().filter(|t| {
-                t.customer_id == a.terms.customer_id
-                    && t.currency == a.terms.currency
-                    && t.date >= a.terms.start
-                    && t.date < a.terms.end
-            }) {
-                invoice = invoice.add(t.invoice_total)?;
-                ids.push(t.id.clone());
-            }
+            let basis = s.accrual_basis(agreement_id, s.revision)?;
+            let invoice = basis.eligible_invoice;
             ensure(
-                !ids.is_empty(),
+                !basis.transaction_ids.is_empty(),
                 "No eligible recorded invoices in agreement period",
             )?;
             let rate = a
@@ -227,7 +267,8 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                     agreement_version: *version,
                     source_revision: s.revision,
                     currency: a.terms.currency,
-                    transaction_ids: ids,
+                    transaction_ids: basis.transaction_ids,
+                    correction_ids: basis.correction_ids,
                     eligible_invoice: invoice,
                     rate,
                     rebate,

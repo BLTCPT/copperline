@@ -18,9 +18,10 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 | Approved price consumption in quotes | Implemented explicit subset | Select current grid approval or published list version; exact-date/minimum-quantity qualification and frozen source evidence |
 | Interrupted-write recovery and concurrent local API | Implemented local subset | Locked inspect/hash-verified quarantine, 16 bounded clients and per-command optimistic conflicts |
 | Scenario comparison | Implemented deterministic subset | Same product/customer comparison; no demand estimation |
-| Analytics actuals, segmentation, dashboards, alerts | Partial | Recorded invoice ledger and customer/currency weighted margin; no warehouse, alerting or advanced segmentation |
+| Analytics actuals, segmentation, dashboards, alerts | Partial | Gross/reversed/net invoice ledger and customer/currency weighted margin; no warehouse, alerting or advanced segmentation |
 | Customer agreements / contract terms / renewals | Partial | Independently approved immutable rebate terms, dates, retrospective tiers; no renewal/amendment |
-| Rebates, tier programs, accrual/settlement/reconciliation | Partial | Exact line rebate and approved retrospective tier accrual snapshots; no settlement/reconciliation |
+| Rebates, tier programs, accrual/settlement/reconciliation | Partial | Retrospective net accruals, signed local settlement recognition, exact baseline/source checks and independent Finance review; no payment or external accounting reconciliation |
+| Correctable invoice actuals and credit provenance | Implemented full-reversal subset | Immutable original, reviewed full reversal/atomic replacement, reserved IDs, historical basis and zero-net recalculation; partial credit allocation remains missing |
 | Promotions and promotional effectiveness | Missing | No calendar, uplift/demand or budget model |
 | Channel management / distributor claims | Missing | No channel program or claims workflow |
 | CPQ configuration, bundles, templates, quote document delivery | Partial | Flat quote items and CSV export; no configurable BOM or document templates |

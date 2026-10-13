@@ -2,17 +2,17 @@
 
 This sequences the remaining gaps in [the capability map](parity.md). Milestones are proposed implementation units, not completed features or a promised parity percentage. Every milestone must leave a runnable native/CLI/API workflow and preserve existing financial, audit and recovery invariants.
 
-## M4 — richer quoting and document delivery
+## M4 — correctable actuals and reconciliation (implemented local subset)
+
+M4 delivers independently reviewed full invoice reversals/atomic replacements, original-period net accrual recalculation and signed local settlement adjustments with exact source/prior-record checks. See [workflow semantics](corrections-reconciliation.md) and [verification](../evidence/verification.md).
+
+Remaining agreement lifecycle work includes prospective amendments, partial credit allocations, credit-note delivery and accounting-period closure. No bank/payment/ERP posting is part of the local milestone. All older invoices, accruals and recognition records remain immutable.
+
+## M5 — richer quoting and document delivery
 
 Build typed quote sections, explicit optional lines, reusable versioned quote templates and deterministic package quantities. Keep individual pricing and cost evidence visible; do not introduce an opaque bundle total. Freeze template/configuration versions in quote submissions and exports.
 
 Acceptance: choose a template, resolve required/optional products and allowed quantity relationships, reject an invalid configuration atomically, price the resolved lines, route review, export a readable quote document and reopen it unchanged. Test rounding, aggregate margins, missing products, stale template versions, mixed currencies and revision conflicts. Generated documents must identify synthetic demo identities and cannot imply an electronic signature or customer delivery.
-
-## M5 — agreement lifecycle, credits and reconciliation
-
-Add versioned prospective agreement amendments and credit documents that explicitly reference original invoice records. Define whether credits reverse eligible revenue, rebate basis and historical accrual calculations. Reconcile approved accrual snapshots into distinct, versioned settlement proposals with source links and a difference explanation.
-
-Acceptance: invoice → eligible accrual → linked credit → revised calculation → reviewed reconciliation proposal. Earlier snapshots remain immutable; repeated snapshots are never summed into liabilities. Currency, period boundaries, tier crossings, duplicate external IDs, negative/zero net activity and amendment overlap need independent arithmetic review. No bank/payment/ERP posting is part of this local milestone.
 
 ## M6 — promotion and channel workflows
 

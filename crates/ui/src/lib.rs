@@ -3,6 +3,8 @@ use copperline_engine::{Command, Engine, compare, evaluate, export_quote, totals
 use copperline_model::*;
 use copperline_money::{Bps, Money, Quantity};
 use eframe::egui::{self, Color32, RichText};
+mod corrections;
+mod settlements;
 const NAVY: Color32 = Color32::from_rgb(24, 62, 84);
 const COPPER: Color32 = Color32::from_rgb(172, 73, 35);
 const TEAL: Color32 = Color32::from_rgb(24, 109, 99);
@@ -18,6 +20,8 @@ pub enum View {
     Approvals,
     Agreements,
     Analytics,
+    Corrections,
+    Settlements,
     Scenarios,
     Governance,
     Audit,
@@ -34,6 +38,8 @@ impl View {
             Self::Approvals => "Approvals",
             Self::Agreements => "Agreements & rebates",
             Self::Analytics => "Invoice analytics",
+            Self::Corrections => "Invoice corrections",
+            Self::Settlements => "Rebate reconciliation",
             Self::Scenarios => "Scenarios",
             Self::Governance => "Approval policy",
             Self::Audit => "Audit history",
@@ -43,6 +49,8 @@ impl View {
 pub struct Workbench {
     pub engine: Engine,
     pub view: View,
+    correction_form: corrections::CorrectionForm,
+    settlement_form: settlements::SettlementForm,
     role: usize,
     pricing_source: Option<PriceSource>,
     approval_discount: String,
@@ -125,6 +133,8 @@ impl Workbench {
         Self {
             engine,
             view: View::Workbench,
+            correction_form: Default::default(),
+            settlement_form: Default::default(),
             role: 0,
             pricing_source: None,
             approval_discount: thresholds.max_discount.to_string(),
@@ -297,6 +307,8 @@ impl Workbench {
                         View::Approvals,
                         View::Agreements,
                         View::Analytics,
+                        View::Corrections,
+                        View::Settlements,
                         View::Scenarios,
                         View::Governance,
                         View::Audit,
@@ -363,7 +375,7 @@ impl Workbench {
             });
         egui::CentralPanel::default().frame(egui::Frame::new().fill(Color32::from_rgb(241,245,248)).inner_margin(24.0)).show(ui,|ui|{egui::ScrollArea::both().auto_shrink([false,false]).show(ui,|ui|{
    if self.engine.state().products.is_empty(){ui.heading("Start a pricing workspace");ui.label("Load six synthetic industrial products, three customers, costs and a volume rule.");if ui.button("Load synthetic demo").clicked(){self.role=3;self.run(Command::SeedDemo);}return;}
-   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui)}
+   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Corrections=>self.corrections_view(ui),View::Settlements=>self.settlements_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui)}
   });});
     }
     fn context(&mut self, ui: &mut egui::Ui) {
@@ -1480,6 +1492,114 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn native_correction_and_negative_settlement_complete_review()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut h = harness()?;
+        h.state_mut().role = 1;
+        let analyst = h.state().actor();
+        h.state_mut().engine.run(
+            analyst.clone(),
+            Command::AgreementCreate {
+                terms: AgreementTerms {
+                    id: "A-UI".into(),
+                    name: "Synthetic UI rebate".into(),
+                    customer_id: "C-ATLAS".into(),
+                    currency: Currency::USD,
+                    start: Date::parse("2026-01-01")?,
+                    end: Date::parse("2027-01-01")?,
+                    tiers: vec![RebateTier {
+                        threshold: Money(0),
+                        rate: Bps(500),
+                    }],
+                },
+            },
+        )?;
+        h.state_mut().engine.run(
+            analyst.clone(),
+            Command::AgreementSubmit {
+                id: "A-UI".into(),
+                version: 1,
+            },
+        )?;
+        h.state_mut().engine.run(
+            Actor {
+                name: "Riley / Approval".into(),
+                role: Role::Approver,
+            },
+            Command::AgreementDecide {
+                id: "A-UI".into(),
+                version: 2,
+                approve: true,
+                note: "Synthetic independent review".into(),
+            },
+        )?;
+        h.state_mut().engine.run(
+            analyst,
+            Command::TransactionAdd(Transaction {
+                id: "T-UI".into(),
+                source: "synthetic-ui".into(),
+                product_id: "VLV-100".into(),
+                customer_id: "C-ATLAS".into(),
+                date: Date::parse("2026-10-13")?,
+                quantity: Quantity(10000),
+                unit: "each".into(),
+                currency: Currency::USD,
+                invoice_total: Money(100000),
+                cost_total: Money(60000),
+            }),
+        )?;
+        fn click(
+            h: &mut Harness<'static, Workbench>,
+            label: &str,
+        ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+            h.get_by_label(label).click();
+            h.try_run().map_err(|e| e.to_string())?;
+            assert!(!h.state().failed, "{}", h.state().status);
+            Ok(())
+        }
+        h.state_mut().view = View::Settlements;
+        h.try_run().map_err(|e| e.to_string())?;
+        click(&mut h, "Calculate corrected accrual")?;
+        click(&mut h, "Create settlement proposal")?;
+        click(&mut h, "Submit settlement")?;
+        h.state_mut().role = 4;
+        h.try_run().map_err(|e| e.to_string())?;
+        click(&mut h, "Approve settlement")?;
+        h.state_mut().role = 1;
+        h.state_mut().view = View::Corrections;
+        h.try_run().map_err(|e| e.to_string())?;
+        click(&mut h, "Create correction proposal")?;
+        click(&mut h, "Submit correction")?;
+        h.state_mut().role = 4;
+        h.try_run().map_err(|e| e.to_string())?;
+        click(&mut h, "Approve correction")?;
+        h.state_mut().role = 1;
+        h.state_mut().view = View::Settlements;
+        h.try_run().map_err(|e| e.to_string())?;
+        click(&mut h, "Calculate corrected accrual")?;
+        click(&mut h, "Create settlement proposal")?;
+        click(&mut h, "Submit settlement")?;
+        h.state_mut().role = 4;
+        h.try_run().map_err(|e| e.to_string())?;
+        click(&mut h, "Approve settlement")?;
+        let state = h.state().engine.state();
+        assert_eq!(state.settlements.len(), 2);
+        assert!(
+            state
+                .settlements
+                .values()
+                .any(|s| s.adjustment == Money(-5000) && s.status == RecordStatus::Approved)
+        );
+        assert_eq!(
+            state
+                .rebate_position("A-UI", state.revision)?
+                .recognized_rebate,
+            Money(0)
+        );
+        assert_eq!(state.transactions.len(), 1);
+        Ok(())
+    }
+    #[test]
     fn unauthorized_ui_action_shows_error_without_mutation()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut h = harness()?;
@@ -1508,6 +1628,8 @@ mod tests {
             View::Approvals,
             View::Agreements,
             View::Analytics,
+            View::Corrections,
+            View::Settlements,
             View::Scenarios,
             View::Governance,
             View::Audit,
@@ -1655,7 +1777,7 @@ impl Workbench {
 impl Workbench {
     fn agreements(&mut self, ui: &mut egui::Ui) {
         self.context(ui);
-        ui.label("Retrospective invoice rebates: the achieved tier applies to all eligible invoice revenue in the agreement period. No settlement or payment is performed.");
+        ui.label("Retrospective invoice rebates: the achieved tier applies to all eligible invoice revenue in the agreement period. No payment or external posting is performed.");
         ui.collapsing("Create a rebate agreement", |ui| {
             field(ui, "Agreement name", &mut self.title);
             field(ui, "Exclusive end date", &mut self.agreement_end);
@@ -1804,7 +1926,8 @@ impl Workbench {
                     "Snapshot",
                     "Agreement",
                     "Source revision",
-                    "Invoices",
+                    "Invoice records",
+                    "Reversals",
                     "Eligible revenue",
                     "Rebate",
                 ] {
@@ -1816,6 +1939,7 @@ impl Workbench {
                     ui.label(&a.agreement_id);
                     ui.label(a.source_revision.to_string());
                     ui.label(a.transaction_ids.len().to_string());
+                    ui.label(a.correction_ids.len().to_string());
                     ui.label(format!("{} {}", a.currency, a.eligible_invoice));
                     ui.label(a.rebate.to_string());
                     ui.end_row();
@@ -1823,7 +1947,7 @@ impl Workbench {
             });
     }
     fn analytics_view(&mut self, ui: &mut egui::Ui) {
-        ui.label("Recorded invoice data, separate from quote projections. Invoice margin excludes rebate accruals, tax and freight. Demo-generated invoices remain explicitly synthetic.");
+        ui.label("Net invoice actuals after approved full reversals and replacements, separate from quote projections. Margin excludes rebate settlements, tax and freight. Original invoices remain in the audit ledger.");
         match copperline_engine::analytics(self.engine.state()) {
             Ok(groups) => {
                 if groups.is_empty() {
@@ -1836,8 +1960,10 @@ impl Workbench {
                         for h in [
                             "Customer",
                             "Currency",
-                            "Invoices",
-                            "Revenue",
+                            "Active invoices",
+                            "Gross revenue",
+                            "Reversed",
+                            "Net revenue",
                             "Cost",
                             "Invoice margin",
                             "Margin %",
@@ -1849,6 +1975,8 @@ impl Workbench {
                             ui.label(g.customer_id);
                             ui.label(g.currency.to_string());
                             ui.label(g.transaction_count.to_string());
+                            ui.label(g.gross_invoice.to_string());
+                            ui.label(g.reversed_invoice.to_string());
                             ui.label(g.invoice.to_string());
                             ui.label(g.cost.to_string());
                             ui.label(g.invoice_margin.to_string());
@@ -1891,7 +2019,14 @@ impl Workbench {
             .striped(true)
             .spacing([20.0, 12.0])
             .show(ui, |ui| {
-                for h in ["External ID", "Source", "Date", "Product", "Invoice"] {
+                for h in [
+                    "External ID",
+                    "Source",
+                    "Date",
+                    "Product",
+                    "Invoice",
+                    "Ledger state",
+                ] {
                     ui.strong(h);
                 }
                 ui.end_row();
@@ -1901,6 +2036,15 @@ impl Workbench {
                     ui.label(t.date.to_string());
                     ui.label(&t.product_id);
                     ui.label(format!("{} {}", t.currency, t.invoice_total));
+                    let reversal = self.engine.state().corrections.values().find(|c| {
+                        c.status == RecordStatus::Approved
+                            && c.proposal.original_transaction_id == t.id
+                    });
+                    ui.label(
+                        reversal
+                            .map(|c| format!("Reversed by {}", c.proposal.id))
+                            .unwrap_or_else(|| "Active".into()),
+                    );
                     ui.end_row();
                 }
             });

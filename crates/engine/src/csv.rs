@@ -191,6 +191,60 @@ pub fn export_quote(q: &Quote) -> Result<String> {
     }
     Ok(output)
 }
+/// Frozen approved local settlement evidence. Never a payment instruction.
+pub fn export_settlement(state: &State, id: &str) -> Result<String> {
+    let record = state
+        .settlements
+        .get(id)
+        .ok_or_else(|| error("Settlement not found"))?;
+    ensure(
+        record.status == RecordStatus::Approved,
+        "Only approved settlements can export",
+    )?;
+    let review = record
+        .review
+        .as_ref()
+        .ok_or_else(|| error("Settlement review missing"))?;
+    let accrual = state
+        .accruals
+        .get(&record.accrual_id)
+        .ok_or_else(|| error("Settlement accrual missing"))?;
+    let fields = [
+        record.id.clone(),
+        record.version.to_string(),
+        record.agreement_id.clone(),
+        record.agreement_version.to_string(),
+        record.accrual_id.clone(),
+        accrual.source_revision.to_string(),
+        record.currency.to_string(),
+        record.target_rebate.to_string(),
+        record.previously_recognized.to_string(),
+        record.adjustment.to_string(),
+        record.prior_settlement_ids.join("|"),
+        accrual.transaction_ids.join("|"),
+        accrual.correction_ids.join("|"),
+        record.owner.clone(),
+        review.actor.name.clone(),
+        review.revision.to_string(),
+        record.reason.clone(),
+        "Local recognition only; no payment or posting".into(),
+    ];
+    let header = "settlement_id,version,agreement_id,agreement_version,accrual_id,accrual_source_revision,currency,target_rebate,previously_recognized,adjustment,prior_settlement_ids,invoice_ids,correction_ids,owner,finance_reviewer,approval_revision,reason,boundary\n";
+    Ok(format!(
+        "{header}{}\n",
+        fields
+            .iter()
+            .enumerate()
+            .map(|(i, s)| if matches!(i, 1 | 3 | 5 | 7 | 8 | 9 | 15) {
+                format!("\"{s}\"")
+            } else {
+                safe(s)
+            })
+            .collect::<Vec<_>>()
+            .join(",")
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

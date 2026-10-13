@@ -27,6 +27,9 @@ jobs:
       - name: End-to-end process workflow
         shell: bash
         run: python scripts/e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
+      - name: Corrections and reconciliation workflow
+        shell: bash
+        run: python scripts/reconciliation_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
       - name: Concurrent local API and recovery workflow
         shell: bash
         run: python scripts/transport_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}

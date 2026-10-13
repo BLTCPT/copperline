@@ -7,6 +7,12 @@ mod approval;
 pub use approval::*;
 mod pricing_source;
 pub use pricing_source::*;
+mod corrections;
+pub use corrections::*;
+mod record_evidence;
+pub use record_evidence::*;
+mod settlements;
+pub use settlements::*;
 pub fn error(s: impl Into<String>) -> Error {
     Error(s.into())
 }
@@ -308,6 +314,10 @@ pub struct State {
     pub transaction_revisions: BTreeMap<String, u64>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub accruals: BTreeMap<String, Accrual>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub corrections: BTreeMap<String, Correction>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub settlements: BTreeMap<String, Settlement>,
     pub policy: Policy,
     pub audit: Vec<Audit>,
     pub receipts: Vec<Receipt>,
@@ -329,6 +339,8 @@ impl Default for State {
             transactions: BTreeMap::new(),
             transaction_revisions: BTreeMap::new(),
             accruals: BTreeMap::new(),
+            corrections: BTreeMap::new(),
+            settlements: BTreeMap::new(),
             policy: Policy::default(),
             audit: vec![],
             receipts: vec![],
@@ -449,6 +461,7 @@ impl State {
         self.validate_quote_governance()?;
         self.validate_grid()?;
         self.validate_commercial()?;
+        self.validate_settlements()?;
         Ok(())
     }
 }
@@ -952,6 +965,8 @@ pub struct Accrual {
     pub source_revision: u64,
     pub currency: Currency,
     pub transaction_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub correction_ids: Vec<String>,
     pub eligible_invoice: Money,
     pub rate: Bps,
     pub rebate: Money,
@@ -968,6 +983,11 @@ impl State {
             self.transactions.len() == self.transaction_revisions.len(),
             "Transaction source revision map mismatch",
         )?;
+        self.validate_corrections()?;
+        let mut ingestion_counts: BTreeMap<u64, usize> = BTreeMap::new();
+        for revision in self.transaction_revisions.values() {
+            *ingestion_counts.entry(*revision).or_default() += 1;
+        }
         let mut groups: BTreeMap<(String, String), (Money, Money)> = BTreeMap::new();
         for (key, t) in &self.transactions {
             let source = *self
@@ -979,36 +999,64 @@ impl State {
                 .iter()
                 .find(|a| a.revision == source)
                 .ok_or_else(|| error("Transaction ingestion audit missing"))?;
+            let ordinary_ingestion = matches!(
+                a.command.as_str(),
+                "transaction_add" | "transactions_import"
+            ) && matches!(a.actor.role, Role::Analyst | Role::Admin);
+            let corrected_ingestion = a.command == "correction_decide"
+                && a.actor.role == Role::Finance
+                && a.target
+                    .as_deref()
+                    .and_then(|target| target.strip_prefix("correction:"))
+                    .and_then(|key| self.corrections.get(key))
+                    .is_some_and(|c| {
+                        c.approved_revision() == Some(source)
+                            && c.proposal.replacement.as_ref() == Some(t)
+                    });
             ensure(
-                matches!(
-                    a.command.as_str(),
-                    "transaction_add" | "transactions_import"
-                ) && matches!(a.actor.role, Role::Analyst | Role::Admin),
+                ordinary_ingestion || corrected_ingestion,
                 "Transaction ingestion audit invalid",
             )?;
+            if a.command == "transaction_add" {
+                ensure(
+                    a.detail == format!("Recorded invoice {}", t.id)
+                        && a.target
+                            .as_deref()
+                            .is_none_or(|target| target == format!("invoice:{}", t.id)),
+                    "Invoice ingestion target or detail mismatch",
+                )?;
+            } else if a.command == "transactions_import" {
+                let count = ingestion_counts.get(&source).copied().unwrap_or(0);
+                ensure(
+                    a.target.is_none()
+                        && a.detail == format!("Imported {count} invoices atomically"),
+                    "Invoice import count or audit mismatch",
+                )?;
+            }
             let g = groups
                 .entry((t.customer_id.clone(), t.currency.to_string()))
                 .or_insert((Money(0), Money(0)));
             g.0 = g.0.add(t.invoice_total)?;
             g.1 = g.1.add(t.cost_total)?;
-            id(&t.id)?;
             ensure(key == &t.id, "Transaction key mismatch")?;
-            text(&t.source)?;
-            t.date.validate()?;
-            t.quantity.validate()?;
+            self.validate_transaction(t)?;
+        }
+        for c in self
+            .corrections
+            .values()
+            .filter(|c| c.status == RecordStatus::Approved)
+        {
+            let g = groups
+                .get_mut(&(
+                    c.original.customer_id.clone(),
+                    c.original.currency.to_string(),
+                ))
+                .ok_or_else(|| error("Reversal analytics group missing"))?;
+            g.0 = g.0.sub(c.original.invoice_total)?;
+            g.1 = g.1.sub(c.original.cost_total)?;
             ensure(
-                t.invoice_total.0 >= 0 && t.cost_total.0 >= 0,
-                "Transaction values must be nonnegative; credit memos are not supported",
-            )?;
-            let p = self
-                .products
-                .get(&t.product_id)
-                .ok_or_else(|| error("Transaction product missing"))?;
-            ensure(
-                t.unit == p.unit
-                    && t.currency == p.currency
-                    && self.customers.contains_key(&t.customer_id),
-                "Transaction context mismatch",
+                g.0.0 >= 0 && g.1.0 >= 0,
+                "Reversal exceeds recorded invoice totals",
             )?;
         }
         for (invoice, cost) in groups.values() {
@@ -1081,6 +1129,29 @@ impl State {
         }
         for (key, a) in &self.accruals {
             id(&a.id)?;
+            let revision = a
+                .source_revision
+                .checked_add(1)
+                .ok_or_else(|| error("Accrual creation revision overflow"))?;
+            let event = self
+                .audit
+                .iter()
+                .find(|event| event.revision == revision)
+                .ok_or_else(|| error("Accrual creation audit missing"))?;
+            ensure(
+                event.command == "rebate_accrue"
+                    && matches!(event.actor.role, Role::Analyst | Role::Admin)
+                    && event.detail
+                        == format!(
+                            "Calculated accrual {}: {}; no payment or posting",
+                            a.id, a.rebate
+                        )
+                    && event
+                        .target
+                        .as_deref()
+                        .is_none_or(|target| target == format!("accrual:{}", a.id)),
+                "Accrual author, target or arithmetic audit mismatch",
+            )?;
             ensure(
                 key == &a.id && a.source_revision < self.revision,
                 "Accrual identity/source invalid",
@@ -1106,48 +1177,13 @@ impl State {
                 !a.transaction_ids.is_empty() && a.transaction_ids.len() <= 50_000,
                 "Accrual must contain transactions",
             )?;
-            let expected_ids: Vec<_> = self
-                .transactions
-                .values()
-                .filter(|t| {
-                    t.customer_id == agreement.terms.customer_id
-                        && t.currency == a.currency
-                        && t.date >= agreement.terms.start
-                        && t.date < agreement.terms.end
-                        && self
-                            .transaction_revisions
-                            .get(&t.id)
-                            .is_some_and(|r| *r <= a.source_revision)
-                })
-                .map(|t| t.id.clone())
-                .collect();
+            let basis = self.accrual_basis(&a.agreement_id, a.source_revision)?;
             ensure(
-                a.transaction_ids == expected_ids,
-                "Accrual must include every eligible invoice known at its source revision",
+                a.transaction_ids == basis.transaction_ids
+                    && a.correction_ids == basis.correction_ids,
+                "Accrual must include every eligible invoice and approved original reversal known at its source revision",
             )?;
-            let mut ids = std::collections::BTreeSet::new();
-            let mut invoice = Money(0);
-            for id in &a.transaction_ids {
-                ensure(ids.insert(id), "Duplicate accrued transaction")?;
-                ensure(
-                    self.transaction_revisions
-                        .get(id)
-                        .is_some_and(|r| *r <= a.source_revision),
-                    "Accrual predates transaction ingestion",
-                )?;
-                let t = self
-                    .transactions
-                    .get(id)
-                    .ok_or_else(|| error("Accrued transaction missing"))?;
-                ensure(
-                    t.customer_id == agreement.terms.customer_id
-                        && t.currency == a.currency
-                        && t.date >= agreement.terms.start
-                        && t.date < agreement.terms.end,
-                    "Accrued transaction outside agreement",
-                )?;
-                invoice = invoice.add(t.invoice_total)?;
-            }
+            let invoice = basis.eligible_invoice;
             let rate = agreement
                 .terms
                 .tiers
@@ -1162,6 +1198,33 @@ impl State {
                     && a.rebate == invoice.percent(rate)?,
                 "Accrual arithmetic mismatch",
             )?;
+        }
+        for event in &self.audit {
+            if let Some(key) = event
+                .target
+                .as_deref()
+                .and_then(|target| target.strip_prefix("invoice:"))
+            {
+                ensure(
+                    event.command == "transaction_add"
+                        && self.transactions.contains_key(key)
+                        && self.transaction_revisions.get(key) == Some(&event.revision),
+                    "Invoice audit record was erased or detached",
+                )?;
+            }
+            if let Some(key) = event
+                .target
+                .as_deref()
+                .and_then(|target| target.strip_prefix("accrual:"))
+            {
+                ensure(
+                    event.command == "rebate_accrue"
+                        && self.accruals.get(key).is_some_and(|a| {
+                            a.source_revision.checked_add(1) == Some(event.revision)
+                        }),
+                    "Accrual audit record was erased or detached",
+                )?;
+            }
         }
         Ok(())
     }

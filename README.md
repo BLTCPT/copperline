@@ -26,14 +26,16 @@ The desktop uses a native Rust egui window with no browser or Node runtime. Wind
 - Frozen price lists with whole-list approval and separate local publication.
 - Explicit approved grid/list prices feed quotes with pinned source evidence; replacement preserves prior quotes.
 - Persistent live-grid candidates and last-approved prices that survive recalculation and rejection.
-- Approved retrospective rebate agreements, atomic invoice CSV ingestion, frozen accrual snapshots and recorded-invoice analytics.
+- Approved retrospective rebate agreements, atomic invoice CSV ingestion, frozen accrual snapshots and net invoice analytics.
+- Independently reviewed full invoice reversals and atomic replacements preserve original data and restate eligible rebates.
+- Reconciliation creates signed local settlement adjustments with source/contributor evidence, stale-basis checks and frozen CSV exports; no payments.
 - Owner-controlled quotes, retained contributor exclusions, frozen commercial/Finance routes, exact thresholds, revision and approved CSV export.
 - Deterministic scenario comparison and weighted aggregate margins.
 - Durable full-state revisions with exclusive locks, checksum validation, audit records and idempotent commands.
 - One command engine behind native UI, CLI, stdio and a bounded concurrent loopback JSON API.
 - Interrupted-write inspection and checksum-verified quarantine preserve evidence before retry.
 
-[Demo runbook](docs/demo.md) · [API contract](docs/api.md) · [Architecture](docs/architecture.md) · [Security boundaries](docs/security.md) · [Capability/parity matrix](docs/parity.md) · [Quote governance](docs/quote-governance.md) · [Approved pricing sources](docs/pricing-sources.md) · [Recovery](docs/recovery.md) · [Remaining gaps](docs/gaps.md) · [Next milestones](docs/roadmap.md) · [License](LICENSE)
+[Demo runbook](docs/demo.md) · [API contract](docs/api.md) · [Architecture](docs/architecture.md) · [Security boundaries](docs/security.md) · [Capability/parity matrix](docs/parity.md) · [Quote governance](docs/quote-governance.md) · [Approved pricing sources](docs/pricing-sources.md) · [Recovery](docs/recovery.md) · [Corrections and reconciliation](docs/corrections-reconciliation.md) · [Remaining gaps](docs/gaps.md) · [Next milestones](docs/roadmap.md) · [License](LICENSE)
 
 ## Development playbook
 

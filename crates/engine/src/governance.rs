@@ -17,6 +17,16 @@ pub(super) fn target(c: &Command) -> Option<String> {
         return Some(quote_target(id));
     }
     match c {
+        Command::RebateAccrue { id, .. } => Some(format!("accrual:{id}")),
+        Command::TransactionAdd(t) => Some(format!("invoice:{}", t.id)),
+        Command::CorrectionCreate { proposal } => Some(format!("correction:{}", proposal.id)),
+        Command::CorrectionSubmit { id, .. }
+        | Command::CorrectionDecide { id, .. }
+        | Command::CorrectionWithdraw { id, .. } => Some(format!("correction:{id}")),
+        Command::SettlementCreate { id, .. }
+        | Command::SettlementSubmit { id, .. }
+        | Command::SettlementDecide { id, .. }
+        | Command::SettlementWithdraw { id, .. } => Some(format!("settlement:{id}")),
         Command::ListCalculate { id, .. }
         | Command::ListSubmit { id, .. }
         | Command::ListDecide { id, .. }

@@ -71,3 +71,18 @@ Transaction CSV columns: `id,source,product_id,customer_id,date,quantity,unit,cu
 PriceRequest adds optional `source`: `{"kind":"grid","id":"G1","approval_revision":4}` or `{"kind":"price_list","id":"L1","version":4}`. Omit it for live rules. Source IDs/revisions are examples; use confirmed workspace identities. Selection never silently falls back. See [approved pricing sources](pricing-sources.md) for eligibility, exact financial semantics and frozen evidence.
 
 The trusted-local TCP transport supports up to 16 clients and serializes each request separately. Concurrent mutation losers receive revision errors, while simultaneous exact retries commit once. CLI `storage-inspect` and `quarantine-pending NAME SHA256` preserve interrupted-write evidence; see [recovery](recovery.md). Neither command promotes pending data or bypasses committed-state validation.
+
+## M4 invoice correction and reconciliation
+
+| Command | Payload / role |
+|---|---|
+| correction_create | proposal: {id, original_transaction_id, effective_date, reason, replacement: Transaction or null}; Analyst/Admin |
+| correction_submit / correction_withdraw | id, version; owner only, Analyst/Admin |
+| correction_decide | id, version, approve, note; distinct Finance only |
+| settlement_create | id, accrual_id, reason; Analyst/Admin |
+| settlement_submit / settlement_withdraw | id, version; owner only, Analyst/Admin |
+| settlement_decide | id, version, approve, note; independent non-contributor Finance only |
+
+`reconciliation` takes `{agreement_id}` and returns current gross/reversal/net basis, tier, target rebate, approved settlement IDs, recognized rebate and signed remaining adjustment. `export_settlement` takes `{id}` and returns approved frozen CSV. CLI `export-settlement ID FILE` writes the same CSV to a new path only. `analytics` now exposes gross/reversal values and net invoice actuals; `transaction_count` is the count of active invoices, while `gross_transaction_count` includes reversed originals.
+
+Record statuses serialize as `Draft`, `Pending`, `Approved`, `Rejected`, `Withdrawn`; versions start at 1 and increment per transition. Approval of a replacement inserts it atomically at that revision. Correction `effective_date` is a record date, not scheduled activation. Reversals restate original-period rebates; replacements qualify independently. All JSON financial units remain cents/thousandths/basis points. See [corrections and reconciliation](corrections-reconciliation.md) for exact qualification, stale checks, contributor exclusions and settlement delta semantics.
