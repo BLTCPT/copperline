@@ -1,6 +1,6 @@
 # Dependency notices and provenance
 
-`THIRD_PARTY_NOTICES.txt` includes all 313 external packages in `Cargo.lock`, a superset of any one platform's linked dependencies. It is generated from checksum-verified `.crate` archives and exact official upstream supplements. `notice-coverage.json` records every included file hash. The workspace's nine original packages are MIT licensed under the root `LICENSE`.
+`THIRD_PARTY_NOTICES.txt` has an inventory section for each of the 313 external packages in `Cargo.lock`, with recovered notices or an explicitly documented upstream gap. This workspace-wide inventory is a superset of any one platform's normal binary dependencies; 313/313 inventory coverage is not complete notice or rights clearance. The file is generated from checksum-verified `.crate` archives and exact official upstream supplements. `notice-coverage.json` records every included file hash. The workspace's nine original packages are MIT licensed under the root `LICENSE`.
 
 Regenerate with Python 3.11+ and the Cargo registry archives already cached:
 
@@ -19,3 +19,15 @@ For a new development environment, `cargo fetch --locked` populates Cargo's norm
 - **Ten newer objc2-family packages:** the exact upstream `LICENSE.md` files declare MIT or `Zlib OR Apache-2.0 OR MIT` and discuss uncertainty concerning Apple SDK-derived bindings. The full declarations and caveats are preserved verbatim, with unchanged standard MIT text supplied separately. This review does not resolve that upstream legal question. Exact package/version mappings appear in `notice-coverage.json` under `upstream_legal_caveat`.
 
 `python scripts/dependency_notices.py --check --require-complete` deliberately fails while the dispatch attribution gap remains. A successful ordinary `--check` confirms deterministic evidence and documented gaps, **not** complete licensing clearance. Source notices, optional dependencies and binary distribution obligations are different scopes. These files are evidence for review, not a legal conclusion or a claim that prototype status removes redistribution obligations.
+
+
+## Target and distribution scope
+
+The [recorded target dependency check](../evidence/morning-notice-target-scope.json) covers the normal Cargo dependency trees of the CLI and desktop at tested source `57032bf9c59a2189e2ae6bcc85ce79877d229253`. It is not a binary-symbol audit or a legal conclusion.
+
+- **Windows x64 and Linux x64:** neither tree contains `dispatch 0.2.0` or any of the ten packages carrying the objc2 caveat. The final Windows ZIP nevertheless includes their workspace-wide notice records; including a notice does not mean the corresponding crate is a Windows runtime dependency.
+- **macOS arm64:** its tree contains `dispatch 0.2.0` plus **eight of the ten** caveated packages: `block2 0.6.2`, `dispatch2 0.3.1`, `objc2 0.6.5`, `objc2-app-kit 0.3.2`, `objc2-core-foundation 0.3.2`, `objc2-core-graphics 0.3.2`, `objc2-encode 4.1.0` and `objc2-foundation 0.3.2`. The caveated `objc2-io-surface 0.3.2` and `objc2-ui-kit 0.3.2` remain in the workspace lockfile but are absent from this normal macOS binary tree.
+
+Recoverable notice-selection gaps have been repaired: the font `Hack-Regular.txt`, `OFL.txt` and `UFL.txt` texts, r-efi `AUTHORS` attribution/license text, and 31 exact pinned upstream documents are included. The remaining dispatch issue needs authoritative attribution clarification; adding an invented copyright line would not repair it. The objc2 SDK-derived-distribution question concerns upstream rights, not a missing text file, and cannot be resolved by copying more standard MIT text. Ordinary `--check` confirms inventory/provenance/output consistency; strict `--require-complete` still fails on dispatch.
+
+For the Windows demo, retain the complete package's `LICENSE`, `NOTICE` and `legal/` contents. No additional missing notice was identified from these two caveat categories for the Windows binary tree. This is bounded evidence, not clearance of every redistribution obligation. The macOS and Linux Actions artifacts upload only the two executables; they are build/test artifacts, not complete notice-containing distribution packages. Before presenting either as a public distribution, ship the applicable application/dependency/font notices alongside it. Before promoting the macOS desktop distribution, keep the dispatch attribution gap and relevant objc2 subset's upstream rights uncertainty open for release/legal review.

@@ -4,7 +4,7 @@ This is a controlled synthetic demo, not production software or complete Pricefx
 
 ## Prepare once
 
-**Windows portable package:** extract the entire ZIP to a short, writable local folder. Double-click **Start Morning Demo.cmd**. On first run it validates/restores the packaged `morning-demo.clbak` into `data\morning-demo`; later runs reopen that same history. No Rust, Python, installation or administrator rights are required. Keep the binaries, archive, notices and docs together. The build is unsigned; no signing or trusted distribution channel is claimed. `Start Copperline.cmd` still opens the smaller catalog-only demo.
+**Windows artifact download:** GitHub downloads an outer artifact ZIP containing `copperline-0.1.0-windows-x64-portable.zip`. First extract that outer ZIP. Verify the inner portable ZIP against the inner size/SHA-256 in [build evidence](../evidence/verification.md), then extract the inner ZIP to a short, writable local folder. Double-click **Start Morning Demo.cmd** inside the resulting folder. On first run it validates/restores the packaged `morning-demo.clbak` into `data\morning-demo`; later runs reopen that same history. No Rust, Python, installation or administrator rights are required. Keep the binaries, archive, notices and docs together. The build is unsigned; no signing or trusted distribution channel is claimed. `Start Copperline.cmd` still opens the smaller catalog-only demo.
 
 **Source checkout:** install the prerequisites in [README](../README.md), build the CLI and desktop, then from the repository root run:
 

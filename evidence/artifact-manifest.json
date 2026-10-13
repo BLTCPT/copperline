@@ -17,7 +17,8 @@
       "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38395423236/artifacts/11812532169",
       "expires_at": "2027-01-11T12:11:00Z",
       "github_sign_in_required": true,
-      "zip_entry_count": 169
+      "zip_entry_count": 169,
+      "archive_layer": "inner_portable_zip"
     },
     {
       "path": "dist/morning-macos/copperline-cli",
@@ -73,5 +74,17 @@
       "conclusion": "success",
       "url": "https://github.com/BLTCPT/copperline/actions/runs/38395423236/job/115289282655"
     }
-  ]
+  ],
+  "github_artifact_wrapper": {
+    "path": "dist/morning-windows/github-artifact-11812532169.zip",
+    "github_artifact_id": 11812532169,
+    "archive_layer": "outer_github_artifact_zip",
+    "size_bytes": 17624768,
+    "sha256": "284673ef66e7083b13989efafd8edeeca382e7921cd66da42544fe60bbd7e803",
+    "zip_entry_count": 1,
+    "contains": "copperline-0.1.0-windows-x64-portable.zip",
+    "contained_zip_byte_identical_to_verified_portable_zip": true,
+    "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38395423236/artifacts/11812532169",
+    "expires_at": "2027-01-11T12:11:00Z"
+  }
 }
