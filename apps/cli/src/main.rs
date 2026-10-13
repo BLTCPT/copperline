@@ -3,9 +3,15 @@ use copperline_model::*;
 use serde_json::{Value, json};
 use std::{
     io::{self, BufRead, BufReader, Read, Write},
-    net::{TcpListener, TcpStream},
+    net::{Shutdown, TcpListener, TcpStream},
     path::PathBuf,
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
+    },
 };
+const MAX_CONNECTIONS: usize = 16;
+const MAX_REQUEST_BYTES: u64 = 2 * 1024 * 1024;
 fn main() {
     if let Err(e) = run() {
         eprintln!("Copperline: {e}");
@@ -30,7 +36,27 @@ fn run() -> Result<()> {
     let verb = args.get(i).map(String::as_str).unwrap_or("help");
     if verb == "help" {
         println!(
-            "Copperline pricing workbench\nUsage: copperline-cli [--data DIR] demo|state|execute JSON|api|serve PORT|export-quote ID FILE|commands\napi: bounded JSON lines over stdin/stdout. serve: opt-in loopback JSON lines, no remote authentication.\nAll figures and identities in the demo are synthetic.\n--version prints the build version."
+            "Copperline pricing workbench\nUsage: copperline-cli [--data DIR] demo|state|execute JSON|api|serve PORT|export-quote ID FILE|commands\nRecovery: storage-inspect | quarantine-pending NAME SHA256\napi: bounded JSON lines over stdin/stdout. serve: opt-in loopback JSON lines, maximum 16 clients, no remote authentication.\nRecovery verifies committed history and preserves pending evidence; it never promotes an interrupted write.\nAll figures and identities in the demo are synthetic.\n--version prints the build version."
+        );
+        return Ok(());
+    }
+    if matches!(verb, "storage-inspect" | "quarantine-pending") {
+        let (store, _state) = copperline_storage::Store::open(&path)?;
+        let result = if verb == "storage-inspect" {
+            serde_json::to_value(store.inspect_pending()?)
+        } else {
+            let name = args.get(i + 1).ok_or_else(|| {
+                error("quarantine-pending requires the exactly-next pending NAME")
+            })?;
+            let sha256 = args.get(i + 2).ok_or_else(|| {
+                error("quarantine-pending requires the SHA256 returned by storage-inspect")
+            })?;
+            serde_json::to_value(store.quarantine_pending(name, sha256)?)
+        }
+        .map_err(|e| error(e.to_string()))?;
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&result).map_err(|e| error(e.to_string()))?
         );
         return Ok(());
     }
@@ -66,7 +92,7 @@ fn run() -> Result<()> {
             );
         }
         "commands" => println!(
-            "seed_demo grid_calculate grid_submit grid_decide agreement_create agreement_submit agreement_decide transaction_add transactions_import rebate_accrue product_put customer_put cost_add rule_add policy_set products_import quote_create quote_add_line quote_remove_line quote_reprice quote_submit quote_decide quote_revise list_calculate list_submit list_decide list_publish\nRead API: state evaluate compare export_quote analytics catalog"
+            "seed_demo grid_calculate grid_submit grid_decide agreement_create agreement_submit agreement_decide transaction_add transactions_import rebate_accrue product_put customer_put cost_add rule_add policy_set quote_approval_policy_set products_import quote_create quote_add_line quote_remove_line quote_reprice quote_submit quote_decide quote_revise list_calculate list_submit list_decide list_publish\nRead API: state evaluate compare export_quote analytics catalog"
         ),
         "api" => {
             let stdin = io::stdin();
@@ -85,11 +111,45 @@ fn run() -> Result<()> {
             eprintln!(
                 "Copperline local JSON API listening on 127.0.0.1:{port}; local trusted processes only"
             );
+            let engine = Arc::new(Mutex::new(e));
+            let active = Arc::new(AtomicUsize::new(0));
             for client in listener.incoming() {
                 match client {
-                    Ok(stream) => {
-                        if let Err(err) = serve(&mut e, stream) {
-                            eprintln!("Connection: {err}");
+                    Ok(mut stream) => {
+                        if active
+                            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
+                                (n < MAX_CONNECTIONS).then_some(n + 1)
+                            })
+                            .is_err()
+                        {
+                            // Bound both threads and memory. A busy response never takes the engine lock.
+                            let _ =
+                                stream.set_write_timeout(Some(std::time::Duration::from_secs(5)));
+                            let _ = write_response(
+                                &mut stream,
+                                &json!({"ok":false,"error":"Local API connection limit reached; retry after a client closes"}),
+                            );
+                            let _ = stream.shutdown(Shutdown::Write);
+                            // Consume one ordinary request already in flight before close to avoid
+                            // resetting the socket and discarding the busy response. One bounded
+                            // read only: rejected clients cannot occupy a worker or retain the loop.
+                            let _ = stream
+                                .set_read_timeout(Some(std::time::Duration::from_millis(100)));
+                            let _ = stream.read(&mut [0; 4096]);
+                            continue;
+                        }
+                        let permit = ConnectionPermit(Arc::clone(&active));
+                        let engine = Arc::clone(&engine);
+                        if let Err(err) = std::thread::Builder::new()
+                            .name("copperline-local-client".into())
+                            .spawn(move || {
+                                let _permit = permit;
+                                if let Err(err) = serve(engine, stream) {
+                                    eprintln!("Connection: {err}");
+                                }
+                            })
+                        {
+                            eprintln!("Unable to start connection: {err}");
                         }
                     }
                     Err(err) => eprintln!("Accept: {err}"),
@@ -120,7 +180,13 @@ fn run() -> Result<()> {
     }
     Ok(())
 }
-fn serve(e: &mut Engine, stream: TcpStream) -> Result<()> {
+struct ConnectionPermit(Arc<AtomicUsize>);
+impl Drop for ConnectionPermit {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+fn serve(engine: Arc<Mutex<Engine>>, stream: TcpStream) -> Result<()> {
     stream
         .set_read_timeout(Some(std::time::Duration::from_secs(5)))
         .map_err(|e| error(e.to_string()))?;
@@ -128,33 +194,56 @@ fn serve(e: &mut Engine, stream: TcpStream) -> Result<()> {
         .set_write_timeout(Some(std::time::Duration::from_secs(5)))
         .map_err(|e| error(e.to_string()))?;
     let mut writer = stream.try_clone().map_err(|e| error(e.to_string()))?;
-    lines(e, &mut BufReader::new(stream), &mut writer)
+    let mut reader = BufReader::new(stream);
+    while let Some(bytes) = read_line(&mut reader)? {
+        let response = {
+            let mut e = engine.lock().map_err(|_| {
+                error(
+                    "Engine unavailable after an unexpected failure; restart and inspect workspace",
+                )
+            })?;
+            response(&mut e, &bytes)
+        };
+        // Socket reads/writes never hold the engine mutex. Stalled clients cannot block another command.
+        write_response(&mut writer, &response)?;
+    }
+    Ok(())
 }
 fn lines(e: &mut Engine, reader: &mut impl BufRead, writer: &mut impl Write) -> Result<()> {
-    loop {
-        let mut bytes = Vec::new();
-        let count = reader
-            .take(2 * 1024 * 1024 + 1)
-            .read_until(b'\n', &mut bytes)
-            .map_err(|e| error(e.to_string()))?;
-        if count == 0 {
-            return Ok(());
-        }
-        ensure(
-            count <= 2 * 1024 * 1024,
-            "Request line exceeds 2 MiB; connection closed",
-        )?;
-        let result = serde_json::from_slice::<Value>(&bytes)
-            .map_err(|e| error(e.to_string()))
-            .and_then(|v| handle(e, v));
-        let response = match result {
-            Ok(value) => json!({"ok":true,"result":value}),
-            Err(err) => json!({"ok":false,"error":err.to_string(),"revision":e.state().revision}),
-        };
-        serde_json::to_writer(&mut *writer, &response).map_err(|e| error(e.to_string()))?;
-        writer.write_all(b"\n").map_err(|e| error(e.to_string()))?;
-        writer.flush().map_err(|e| error(e.to_string()))?;
+    while let Some(bytes) = read_line(reader)? {
+        write_response(writer, &response(e, &bytes))?;
     }
+    Ok(())
+}
+fn read_line(reader: &mut impl BufRead) -> Result<Option<Vec<u8>>> {
+    let mut bytes = Vec::new();
+    let count = reader
+        .take(MAX_REQUEST_BYTES + 1)
+        .read_until(b'\n', &mut bytes)
+        .map_err(|e| error(e.to_string()))?;
+    if count == 0 {
+        return Ok(None);
+    }
+    ensure(
+        count as u64 <= MAX_REQUEST_BYTES,
+        "Request line exceeds 2 MiB; connection closed",
+    )?;
+    Ok(Some(bytes))
+}
+fn response(e: &mut Engine, bytes: &[u8]) -> Value {
+    let result = serde_json::from_slice::<Value>(bytes)
+        .map_err(|e| error(e.to_string()))
+        .and_then(|v| handle(e, v));
+    match result {
+        Ok(value) => json!({"ok":true,"result":value}),
+        Err(err) => json!({"ok":false,"error":err.to_string(),"revision":e.state().revision}),
+    }
+}
+fn write_response(writer: &mut impl Write, response: &Value) -> Result<()> {
+    serde_json::to_writer(&mut *writer, response).map_err(|e| error(e.to_string()))?;
+    writer.write_all(b"\n").map_err(|e| error(e.to_string()))?;
+    writer.flush().map_err(|e| error(e.to_string()))?;
+    Ok(())
 }
 fn handle(e: &mut Engine, v: Value) -> Result<Value> {
     let method = v

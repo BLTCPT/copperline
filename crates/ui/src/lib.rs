@@ -19,6 +19,7 @@ pub enum View {
     Agreements,
     Analytics,
     Scenarios,
+    Governance,
     Audit,
 }
 impl View {
@@ -34,6 +35,7 @@ impl View {
             Self::Agreements => "Agreements & rebates",
             Self::Analytics => "Invoice analytics",
             Self::Scenarios => "Scenarios",
+            Self::Governance => "Approval policy",
             Self::Audit => "Audit history",
         }
     }
@@ -42,6 +44,12 @@ pub struct Workbench {
     pub engine: Engine,
     pub view: View,
     role: usize,
+    pricing_source: Option<PriceSource>,
+    approval_discount: String,
+    approval_margin: String,
+    approval_usd: String,
+    approval_eur: String,
+    approval_gbp: String,
     product: String,
     customer: String,
     date: String,
@@ -80,6 +88,12 @@ pub struct Workbench {
 }
 impl Workbench {
     pub fn new(engine: Engine) -> Self {
+        let thresholds = engine
+            .state()
+            .quote_approval_policies
+            .last()
+            .map(|policy| policy.thresholds.clone())
+            .unwrap_or_default();
         let selected_quote = engine
             .state()
             .quotes
@@ -112,6 +126,12 @@ impl Workbench {
             engine,
             view: View::Workbench,
             role: 0,
+            pricing_source: None,
+            approval_discount: thresholds.max_discount.to_string(),
+            approval_margin: thresholds.min_margin.to_string(),
+            approval_usd: thresholds.usd_value.to_string(),
+            approval_eur: thresholds.eur_value.to_string(),
+            approval_gbp: thresholds.gbp_value.to_string(),
             product: "VLV-100".into(),
             customer: "C-ATLAS".into(),
             date: "2026-10-13".into(),
@@ -163,11 +183,22 @@ impl Workbench {
                 name: "Casey / Admin".into(),
                 role: Role::Admin,
             },
+            4 => Actor {
+                name: "Jordan / Finance".into(),
+                role: Role::Finance,
+            },
             _ => Actor {
                 name: "Alex / Sales".into(),
                 role: Role::Sales,
             },
         }
+    }
+    pub fn select_pricing_source(&mut self, source: PriceSource) -> Result<()> {
+        let mut request = self.request()?;
+        request.source = Some(source.clone());
+        evaluate(self.engine.state(), &request)?;
+        self.pricing_source = Some(source);
+        Ok(())
     }
     fn result<T>(&mut self, result: Result<T>, success: &str) {
         match result {
@@ -196,6 +227,7 @@ impl Workbench {
     }
     fn request(&self) -> Result<PriceRequest> {
         Ok(PriceRequest {
+            source: self.pricing_source.clone(),
             product_id: self.product.clone(),
             customer_id: self.customer.clone(),
             date: Date::parse(&self.date)?,
@@ -240,60 +272,64 @@ impl Workbench {
             .exact_size(204.0)
             .frame(egui::Frame::new().fill(NAVY).inner_margin(18.0))
             .show(ui, |ui| {
-                ui.visuals_mut().override_text_color = Some(Color32::WHITE);
-                ui.add_space(12.0);
-                ui.label(
-                    RichText::new("Copperline")
-                        .size(27.0)
-                        .strong()
-                        .color(Color32::WHITE),
-                );
-                ui.label(
-                    RichText::new("Pricing workbench")
-                        .color(Color32::from_rgb(182, 210, 222))
-                        .size(13.0),
-                );
-                ui.add_space(28.0);
-                for view in [
-                    View::Workbench,
-                    View::Catalog,
-                    View::Rules,
-                    View::LiveGrid,
-                    View::Lists,
-                    View::Quotes,
-                    View::Approvals,
-                    View::Agreements,
-                    View::Analytics,
-                    View::Scenarios,
-                    View::Audit,
-                ] {
-                    let active = self.view == view;
-                    let button = egui::Button::new(RichText::new(view.label()).color(if active {
-                        NAVY
-                    } else {
-                        Color32::WHITE
-                    }))
-                    .fill(if active {
-                        Color32::from_rgb(224, 238, 243)
-                    } else {
-                        Color32::TRANSPARENT
-                    })
-                    .min_size(egui::vec2(168.0, 37.0));
-                    if ui.add(button).clicked() {
-                        self.view = view;
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.visuals_mut().override_text_color = Some(Color32::WHITE);
+                    ui.add_space(12.0);
+                    ui.label(
+                        RichText::new("Copperline")
+                            .size(27.0)
+                            .strong()
+                            .color(Color32::WHITE),
+                    );
+                    ui.label(
+                        RichText::new("Pricing workbench")
+                            .color(Color32::from_rgb(182, 210, 222))
+                            .size(13.0),
+                    );
+                    ui.add_space(28.0);
+                    for view in [
+                        View::Workbench,
+                        View::Catalog,
+                        View::Rules,
+                        View::LiveGrid,
+                        View::Lists,
+                        View::Quotes,
+                        View::Approvals,
+                        View::Agreements,
+                        View::Analytics,
+                        View::Scenarios,
+                        View::Governance,
+                        View::Audit,
+                    ] {
+                        let active = self.view == view;
+                        let button =
+                            egui::Button::new(RichText::new(view.label()).color(if active {
+                                NAVY
+                            } else {
+                                Color32::WHITE
+                            }))
+                            .fill(if active {
+                                Color32::from_rgb(224, 238, 243)
+                            } else {
+                                Color32::TRANSPARENT
+                            })
+                            .min_size(egui::vec2(168.0, 37.0));
+                        if ui.add(button).clicked() {
+                            self.view = view;
+                        }
                     }
-                }
-                ui.add_space(30.0);
-                ui.label(
-                    RichText::new("Synthetic workspace")
-                        .size(12.0)
-                        .color(Color32::from_rgb(182, 210, 222)),
-                );
-                ui.label(
-                    RichText::new("USD · each\nNo enterprise connection")
-                        .size(12.0)
-                        .color(Color32::from_rgb(182, 210, 222)),
-                );
+                    ui.add_space(30.0);
+                    ui.label(
+                        RichText::new("Synthetic workspace")
+                            .size(12.0)
+                            .color(Color32::from_rgb(182, 210, 222)),
+                    );
+                    ui.label(
+                        RichText::new("USD · each\nNo enterprise connection")
+                            .size(12.0)
+                            .color(Color32::from_rgb(182, 210, 222)),
+                    );
+                });
             });
         egui::Panel::top("header")
             .frame(
@@ -313,6 +349,7 @@ impl Workbench {
                                     "Morgan / Pricing",
                                     "Riley / Approval",
                                     "Casey / Admin",
+                                    "Jordan / Finance",
                                 ]
                                 .iter()
                                 .enumerate()
@@ -326,7 +363,7 @@ impl Workbench {
             });
         egui::CentralPanel::default().frame(egui::Frame::new().fill(Color32::from_rgb(241,245,248)).inner_margin(24.0)).show(ui,|ui|{egui::ScrollArea::both().auto_shrink([false,false]).show(ui,|ui|{
    if self.engine.state().products.is_empty(){ui.heading("Start a pricing workspace");ui.label("Load six synthetic industrial products, three customers, costs and a volume rule.");if ui.button("Load synthetic demo").clicked(){self.role=3;self.run(Command::SeedDemo);}return;}
-   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Scenarios=>self.scenarios(ui),View::Audit=>self.audit(ui)}
+   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui)}
   });});
     }
     fn context(&mut self, ui: &mut egui::Ui) {
@@ -356,7 +393,8 @@ impl Workbench {
     }
     fn workbench(&mut self, ui: &mut egui::Ui) {
         self.context(ui);
-        ui.label(RichText::new("Live prices reflect the current catalog and effective rules. Select a product to inspect the full waterfall.").color(SLATE));
+        self.source_picker(ui);
+        ui.label(RichText::new("The catalog table uses current rules. Choose an explicit pricing basis for the selected product and inspect its full waterfall.").color(SLATE));
         ui.add_space(12.0);
         egui::Frame::new()
             .fill(Color32::WHITE)
@@ -390,6 +428,7 @@ impl Workbench {
                                 .request()
                                 .map(|mut r| {
                                     r.product_id = p.id.clone();
+                                    r.source = None;
                                     r.discount = Bps(0);
                                     r.rebate = Bps(0);
                                     r
@@ -488,7 +527,14 @@ impl Workbench {
             .show(ui, |ui| {
                 for (label, value) in [
                     ("List / unit", v.list_unit),
-                    ("After selected rule / unit", v.rule_unit),
+                    (
+                        if v.source.is_some() {
+                            "Approved source / unit"
+                        } else {
+                            "After selected rule / unit"
+                        },
+                        v.rule_unit,
+                    ),
                     ("Invoice / unit", v.invoice_unit),
                     ("Invoice total", v.invoice_total),
                     ("Rebate accrual", v.rebate_total),
@@ -532,11 +578,22 @@ impl Workbench {
         ));
         ui.small(format!(
             "{} · Cost v{}",
-            v.rule
-                .as_deref()
-                .unwrap_or("Catalog list; no matching rule"),
+            v.source
+                .as_ref()
+                .map(|s| s.source.label())
+                .unwrap_or_else(|| v
+                    .rule
+                    .clone()
+                    .unwrap_or_else(|| "Catalog list; no matching rule".into())),
             v.cost_version
         ));
+        if let Some(source) = &v.source {
+            ui.colored_label(TEAL, source.source.label());
+            ui.small(format!(
+                "Source approval r{} · captured r{}",
+                source.approval_revision, source.captured_revision
+            ));
+        }
         for w in &v.warnings {
             ui.colored_label(COPPER, w);
         }
@@ -904,6 +961,7 @@ impl Workbench {
             q.id, q.status, q.version, q.source_revision, q.date
         ));
         ui.add_space(10.0);
+        Self::quote_route(ui, &q);
         Self::lines_table(ui, &q.lines);
         for l in &q.lines {
             for w in &l.warnings {
@@ -999,7 +1057,7 @@ impl Workbench {
         }
     }
     fn approvals(&mut self, ui: &mut egui::Ui) {
-        ui.label("Pending documents are immutable. An approver must be different from the owner and submitter.");
+        ui.label("Pending documents are immutable. Quote stages exclude every contributor and require a different person at each stage.");
         field(ui, "Decision note", &mut self.note);
         let quotes: Vec<_> = self
             .engine
@@ -1027,6 +1085,7 @@ impl Workbench {
                 "Owner {} · Version {} · Source r{}",
                 q.owner, q.version, q.source_revision
             ));
+            Self::quote_route(ui, &q);
             Self::lines_table(ui, &q.lines);
             for l in &q.lines {
                 for w in &l.warnings {
@@ -1078,6 +1137,7 @@ impl Workbench {
     }
     fn scenarios(&mut self, ui: &mut egui::Ui) {
         self.context(ui);
+        self.source_picker(ui);
         ui.heading(format!("{} · Discount sensitivity", self.product));
         ui.label("Projected commercial outcomes for the same product and customer. No demand prediction or historical actuals are implied.");
         field(ui, "Baseline discount %", &mut self.discount);
@@ -1133,6 +1193,178 @@ impl Workbench {
                     ui.end_row();
                 }
             });
+    }
+}
+impl Workbench {
+    fn source_picker(&mut self, ui: &mut egui::Ui) {
+        let mut choices: Vec<PriceSource> = vec![];
+        for item in self.engine.state().grid.values() {
+            if let Some(active) = &item.last_approved
+                && active.evaluation.request.product_id == self.product
+                && active.evaluation.request.customer_id == self.customer
+            {
+                choices.push(PriceSource::Grid {
+                    id: item.id.clone(),
+                    approval_revision: active.decision.revision,
+                });
+            }
+        }
+        for list in self.engine.state().price_lists.values() {
+            if list.status == Status::Published
+                && list.customer_id == self.customer
+                && list
+                    .lines
+                    .iter()
+                    .any(|line| line.request.product_id == self.product)
+            {
+                choices.push(PriceSource::PriceList {
+                    id: list.id.clone(),
+                    version: list.version,
+                });
+            }
+        }
+        ui.horizontal_wrapped(|ui| {
+            ui.label("Quote / scenario pricing basis");
+            egui::ComboBox::from_id_salt("pricing-source")
+                .selected_text(
+                    self.pricing_source
+                        .as_ref()
+                        .map(PriceSource::label)
+                        .unwrap_or_else(|| "Live catalog and effective rules".into()),
+                )
+                .width(360.0)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut self.pricing_source,
+                        None,
+                        "Live catalog and effective rules",
+                    );
+                    for source in choices {
+                        let label = source.label();
+                        ui.selectable_value(&mut self.pricing_source, Some(source), label);
+                    }
+                });
+        });
+        if self.pricing_source.is_some() {
+            ui.small("Approved sources require the exact pricing date and minimum quantity. Stale selections fail explicitly.");
+        }
+    }
+    fn quote_route(ui: &mut egui::Ui, quote: &Quote) {
+        ui.small(format!(
+            "Owner: {}. Owner-only editing and submission; no Admin bypass.",
+            quote.owner
+        ));
+        if let Some(governance) = &quote.governance {
+            ui.small(format!(
+                "Excluded contributors: {}",
+                governance
+                    .contributors
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+            if let Some(cycle) = governance.cycles.last() {
+                ui.label(
+                    RichText::new(format!(
+                        "Frozen approval route · policy v{} · submitted r{}",
+                        cycle.policy.as_ref().map(|p| p.version).unwrap_or(0),
+                        cycle.submitted_revision
+                    ))
+                    .color(NAVY)
+                    .strong(),
+                );
+                for (index, stage) in cycle.stages.iter().enumerate() {
+                    let progress = if let Some(review) = cycle.reviews.get(index) {
+                        format!(
+                            "{} by {} at r{}",
+                            if review.approved {
+                                "Approved"
+                            } else {
+                                "Rejected"
+                            },
+                            review.actor.name,
+                            review.revision
+                        )
+                    } else if cycle.status() == Status::Rejected {
+                        "Not reached".into()
+                    } else if index == cycle.reviews.len() {
+                        "Awaiting review".into()
+                    } else {
+                        "Waiting for previous stage".into()
+                    };
+                    ui.label(format!(
+                        "{}. {:?}: {} — {}",
+                        index + 1,
+                        stage.role,
+                        stage.reason,
+                        progress
+                    ));
+                }
+            }
+        } else {
+            ui.small("Legacy snapshot: the next submission captures a governed route.");
+        }
+    }
+    fn governance(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Sequential quote review");
+        ui.label("Every quote requires independent commercial approval. Enable a second Finance stage for price, margin or value exceptions. Each stage requires a different person; Admin cannot substitute for a required role.");
+        ui.small("These are caller-selected local demo identities. This is not authentication or enterprise access control.");
+        let current = self.engine.state().quote_approval_policies.last().cloned();
+        if let Some(policy) = &current {
+            ui.colored_label(
+                TEAL,
+                format!(
+                    "Active policy v{} · saved r{}",
+                    policy.version, policy.revision
+                ),
+            );
+            ui.label(format!("Finance when effective invoice discount > {}%, weighted pocket margin < {}%, or pocket value ≥ USD {}, EUR {} or GBP {}.", policy.thresholds.max_discount, policy.thresholds.min_margin, policy.thresholds.usd_value, policy.thresholds.eur_value, policy.thresholds.gbp_value));
+            if ui.button("Load current thresholds").clicked() {
+                self.approval_discount = policy.thresholds.max_discount.to_string();
+                self.approval_margin = policy.thresholds.min_margin.to_string();
+                self.approval_usd = policy.thresholds.usd_value.to_string();
+                self.approval_eur = policy.thresholds.eur_value.to_string();
+                self.approval_gbp = policy.thresholds.gbp_value.to_string();
+            }
+        } else {
+            ui.colored_label(COPPER, "Legacy default: one commercial review stage. Save thresholds to enable conditional Finance review.");
+        }
+        ui.separator();
+        field(ui, "Discount above %", &mut self.approval_discount);
+        field(ui, "Margin below %", &mut self.approval_margin);
+        field(ui, "Value at least USD", &mut self.approval_usd);
+        field(ui, "Value at least EUR", &mut self.approval_eur);
+        field(ui, "Value at least GBP", &mut self.approval_gbp);
+        if primary(ui, "Save approval policy") {
+            let thresholds = (|| -> Result<ApprovalThresholds> {
+                Ok(ApprovalThresholds {
+                    max_discount: self.approval_discount.parse()?,
+                    min_margin: self.approval_margin.parse()?,
+                    usd_value: self.approval_usd.parse()?,
+                    eur_value: self.approval_eur.parse()?,
+                    gbp_value: self.approval_gbp.parse()?,
+                })
+            })();
+            match thresholds {
+                Ok(thresholds) => self.run(Command::QuoteApprovalPolicySet {
+                    expected_version: current.as_ref().map(|p| p.version).unwrap_or(0),
+                    thresholds,
+                }),
+                Err(e) => self.result::<()>(Err(e), ""),
+            }
+        }
+        ui.small("Only Admin can save a policy. Pending and approved routes retain their frozen policy. Hard pricing guardrails cannot be overridden by review.");
+        ui.separator();
+        for policy in self.engine.state().quote_approval_policies.iter().rev() {
+            ui.label(format!(
+                "Policy v{} · audit r{} · discount {}% / margin {}%",
+                policy.version,
+                policy.revision,
+                policy.thresholds.max_discount,
+                policy.thresholds.min_margin
+            ));
+        }
     }
 }
 fn field(ui: &mut egui::Ui, label: &str, value: &mut String) {
@@ -1206,6 +1438,48 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn native_two_stage_quote_waits_for_finance()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut h = harness()?;
+        h.state_mut().role = 3;
+        h.state_mut().view = View::Governance;
+        h.state_mut().approval_usd = "100.00".into();
+        h.try_run().map_err(|e| e.to_string())?;
+        h.get_by_label("Save approval policy").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        assert_eq!(h.state().engine.state().quote_approval_policies.len(), 1);
+        h.state_mut().role = 0;
+        h.state_mut().view = View::Workbench;
+        h.try_run().map_err(|e| e.to_string())?;
+        h.get_by_label("Create quote").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        h.get_by_label("Add selected product to quote").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        let id = h.state().selected_quote.clone();
+        h.get_by_label("Open quote").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        h.get_by_label("Submit for approval").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        h.state_mut().role = 2;
+        h.state_mut().view = View::Approvals;
+        h.try_run().map_err(|e| e.to_string())?;
+        h.get_by_label("Approve quote").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        assert_eq!(
+            h.state().engine.state().quotes.get(&id).map(|q| q.status),
+            Some(Status::Pending)
+        );
+        h.state_mut().role = 4;
+        h.try_run().map_err(|e| e.to_string())?;
+        h.get_by_label("Approve quote").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        assert_eq!(
+            h.state().engine.state().quotes.get(&id).map(|q| q.status),
+            Some(Status::Approved)
+        );
+        Ok(())
+    }
+    #[test]
     fn unauthorized_ui_action_shows_error_without_mutation()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut h = harness()?;
@@ -1235,6 +1509,7 @@ mod tests {
             View::Agreements,
             View::Analytics,
             View::Scenarios,
+            View::Governance,
             View::Audit,
         ] {
             h.state_mut().view = view;
@@ -1248,13 +1523,15 @@ impl Workbench {
     fn live_grid(&mut self, ui: &mut egui::Ui) {
         self.context(ui);
         ui.label("Recalculate an item without replacing its last approved price. Rejecting a candidate preserves the active price.");
+        ui.label("Grid candidates calculate from live rules. The workbench's approved-source selection applies only to quotes and scenarios.");
         ui.label(format!(
             "Selected product: {}. Change the product in Price workbench.",
             self.product
         ));
         if primary(ui, "Calculate grid candidate") {
             match self.request() {
-                Ok(request) => {
+                Ok(mut request) => {
+                    request.source = None;
                     let id = format!("G-{}-{}", self.product, self.customer);
                     let version = self
                         .engine

@@ -26,6 +26,7 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
         cost.currency == product.currency && cost.unit == product.unit,
         "Cost currency/unit mismatch",
     )?;
+    let source = state.resolve_pricing_source(request)?;
     // Versions supersede the same rule ID only after their own effective start.
     let mut latest: BTreeMap<&str, &Rule> = BTreeMap::new();
     for r in state
@@ -44,7 +45,8 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
         .values()
         .copied()
         .filter(|r| {
-            r.currency == product.currency
+            source.is_none()
+                && r.currency == product.currency
                 && r.effective_to
                     .as_ref()
                     .is_none_or(|end| &request.date < end)
@@ -63,11 +65,15 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
             )
         });
     let list = product.list_price;
-    let ruled = match rule.map(|r| &r.action) {
-        Some(RuleAction::Discount(b)) => list.sub(list.percent(*b)?)?,
-        Some(RuleAction::Markup(b)) => cost.amount.add(cost.amount.percent(*b)?)?,
-        Some(RuleAction::Fixed(m)) => *m,
-        None => list,
+    let ruled = if let Some(evidence) = &source {
+        evidence.invoice_unit
+    } else {
+        match rule.map(|r| &r.action) {
+            Some(RuleAction::Discount(b)) => list.sub(list.percent(*b)?)?,
+            Some(RuleAction::Markup(b)) => cost.amount.add(cost.amount.percent(*b)?)?,
+            Some(RuleAction::Fixed(m)) => *m,
+            None => list,
+        }
     };
     let invoice = ruled.sub(ruled.percent(request.discount)?)?;
     let rebate = invoice.percent(request.rebate)?;
@@ -138,7 +144,11 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
                 amount: list,
             },
             Step {
-                label: "Selected rule / unit".into(),
+                label: if source.is_some() {
+                    "Approved source / unit".into()
+                } else {
+                    "Selected rule / unit".into()
+                },
                 amount: ruled,
             },
             Step {
@@ -160,6 +170,7 @@ pub fn evaluate(state: &State, request: &PriceRequest) -> Result<Evaluation> {
         ],
         warnings,
         hard_block,
+        source,
     })
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -272,6 +283,7 @@ mod tests {
                 quantity: Quantity(10000),
                 discount: Bps(1000),
                 rebate: Bps(500),
+                source: None,
             },
         ))
     }

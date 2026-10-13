@@ -51,6 +51,7 @@ fn line() -> Result<PriceRequest> {
         quantity: Quantity(10_000),
         discount: Bps(1_000),
         rebate: Bps(500),
+        source: None,
     })
 }
 fn create_quote(engine: &mut Engine) -> Result<()> {
@@ -231,19 +232,34 @@ fn failed_durable_commit_preserves_memory_and_request_can_retry() -> TestResult 
 fn owner_and_distinct_submitter_cannot_approve() -> TestResult {
     let mut engine = demo()?;
     create_quote(&mut engine)?;
+    let before = engine.state().clone();
+    for role in [Role::Sales, Role::Admin] {
+        assert!(
+            engine
+                .run(
+                    actor("submitter", role),
+                    Command::QuoteSubmit {
+                        id: "Q".into(),
+                        version: 2,
+                    }
+                )
+                .is_err()
+        );
+        assert_eq!(engine.state(), &before);
+    }
     engine.run(
-        actor("submitter", Role::Sales),
+        actor("seller", Role::Sales),
         Command::QuoteSubmit {
             id: "Q".into(),
             version: 2,
         },
     )?;
-    for name in ["seller", "submitter"] {
+    for role in [Role::Approver, Role::Admin] {
         let before = engine.state().clone();
         assert!(
             engine
                 .run(
-                    actor(name, Role::Approver),
+                    actor("seller", role),
                     Command::QuoteDecide {
                         id: "Q".into(),
                         version: 3,

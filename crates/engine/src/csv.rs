@@ -121,7 +121,7 @@ pub fn export_quote(q: &Quote) -> Result<String> {
         "Only approved quotes can be exported as a commercial CSV",
     )?;
     let mut output = String::from(
-        "quote_id,quote_version,source_revision,status,product_id,product_name,customer_id,date,quantity,unit,currency,rule,cost_version,list_unit,invoice_unit,invoice_total,rebate_total,pocket_total,cost_total,margin_total\r\n",
+        "quote_id,quote_version,source_revision,status,product_id,product_name,customer_id,date,quantity,unit,currency,rule,cost_version,list_unit,invoice_unit,invoice_total,rebate_total,pocket_total,cost_total,margin_total,pricing_source,pricing_source_version,pricing_source_revision,pricing_source_approval_revision,pricing_source_publication_revision,pricing_source_captured_revision,pricing_source_invoice_unit,pricing_source_min_quantity\r\n",
     );
     for l in &q.lines {
         let fields = [
@@ -136,7 +136,13 @@ pub fn export_quote(q: &Quote) -> Result<String> {
             l.request.quantity.to_string(),
             l.unit.clone(),
             l.currency.to_string(),
-            l.rule.clone().unwrap_or_else(|| "Catalog list".into()),
+            l.rule.clone().unwrap_or_else(|| {
+                if l.source.is_some() {
+                    "Explicit approved source".into()
+                } else {
+                    "Catalog list".into()
+                }
+            }),
             l.cost_version.to_string(),
             l.list_unit.to_string(),
             l.invoice_unit.to_string(),
@@ -145,6 +151,40 @@ pub fn export_quote(q: &Quote) -> Result<String> {
             l.pocket_total.to_string(),
             l.cost_total.to_string(),
             l.margin_total.to_string(),
+            l.source
+                .as_ref()
+                .map(|s| s.source.label())
+                .unwrap_or_else(|| "Live catalog/rules".into()),
+            l.source
+                .as_ref()
+                .and_then(|s| s.document_version)
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            l.source
+                .as_ref()
+                .map(|s| s.pricing_revision.to_string())
+                .unwrap_or_default(),
+            l.source
+                .as_ref()
+                .map(|s| s.approval_revision.to_string())
+                .unwrap_or_default(),
+            l.source
+                .as_ref()
+                .and_then(|s| s.publication_revision)
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+            l.source
+                .as_ref()
+                .map(|s| s.captured_revision.to_string())
+                .unwrap_or_default(),
+            l.source
+                .as_ref()
+                .map(|s| s.invoice_unit.to_string())
+                .unwrap_or_default(),
+            l.source
+                .as_ref()
+                .map(|s| s.min_quantity.to_string())
+                .unwrap_or_default(),
         ];
         output.push_str(&fields.iter().map(|s| safe(s)).collect::<Vec<_>>().join(","));
         output.push_str("\r\n");

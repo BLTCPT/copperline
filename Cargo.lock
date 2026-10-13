@@ -336,6 +336,7 @@ version = "0.1.0"
 dependencies = [
  "copperline-engine",
  "copperline-model",
+ "copperline-storage",
  "serde_json",
 ]
 

@@ -29,5 +29,13 @@ else:
     run('transactions_import',{'csv':Path('fixtures/transactions.csv').read_text()});run('rebate_accrue',{'id':'R-1001','agreement_id':'A-2026','version':3})
     run('list_calculate',{'id':'PL-OCT','name':'October OEM list','customer_id':'C-ATLAS','date':'2026-10-13','quantity':1000,'currency':'USD'})
     run('list_submit',{'id':'PL-OCT','version':1});run('list_decide',{'id':'PL-OCT','version':2,'approve':True,'note':'Synthetic list reviewed'},'approver','Riley / Approval');run('list_publish',{'id':'PL-OCT','version':3})
-    print('Created synthetic review workspace at revision',revision)
+    run('quote_decide',{'id':'Q-1001','version':3,'approve':True,'note':'Baseline synthetic quote reviewed'},'approver','Riley / Approval')
+    run('quote_approval_policy_set',{'expected_version':0,'thresholds':{'max_discount':1500,'min_margin':2500,'usd_value':100000,'eur_value':100000,'gbp_value':100000}},'admin','Casey / Admin')
+    active=call('state')['grid']['G-VLV-ATLAS']['last_approved']
+    sourced=dict(price,source={'kind':'grid','id':'G-VLV-ATLAS','approval_revision':active['decision']['revision']})
+    run('quote_create',{'id':'Q-2001','title':'Approved source · Finance review','customer_id':'C-ATLAS','date':'2026-10-13'},'sales','Alex / Sales')
+    run('quote_add_line',{'id':'Q-2001','version':1,'request':sourced},'sales','Alex / Sales')
+    run('quote_submit',{'id':'Q-2001','version':2},'sales','Alex / Sales')
+    run('quote_decide',{'id':'Q-2001','version':3,'approve':True,'note':'Commercial review completed; Finance remains required'},'approver','Riley / Approval')
+    print('Created synthetic M3 review workspace at revision',revision)
 process.stdin.close();assert process.wait(timeout=10)==0

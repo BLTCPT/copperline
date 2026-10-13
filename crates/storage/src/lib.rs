@@ -32,6 +32,28 @@ pub struct Store {
     hash: String,
     has_state: bool,
 }
+#[derive(Debug, Serialize)]
+pub struct PendingInspection {
+    pub name: String,
+    pub kind: String,
+    pub bytes: u64,
+    pub sha256: Option<String>,
+    pub eligible_for_quarantine: bool,
+    pub snapshot_status: Option<String>,
+}
+#[derive(Debug, Serialize)]
+pub struct StorageInspection {
+    pub committed_revision: Option<u64>,
+    pub next_revision: u64,
+    pub pending: Vec<PendingInspection>,
+}
+#[derive(Debug, Serialize)]
+pub struct QuarantineOutcome {
+    pub preserved_path: PathBuf,
+    pub sha256: String,
+    pub next_revision: u64,
+    pub warnings: Vec<String>,
+}
 impl Store {
     pub fn open(path: impl AsRef<Path>) -> Result<(Self, State)> {
         let root = path.as_ref().to_path_buf();
@@ -115,13 +137,7 @@ impl Store {
     }
     pub fn commit(&mut self, state: &State) -> Result<()> {
         state.validate()?;
-        let expected = if self.has_state {
-            self.revision
-                .checked_add(1)
-                .ok_or_else(|| error("Revision overflow"))?
-        } else {
-            0
-        };
+        let expected = self.next_revision()?;
         ensure(state.revision == expected, "Storage revision conflict")?;
         let new_hash = hash(&self.hash, state)?;
         let bytes = serde_json::to_vec(&Envelope {
@@ -159,6 +175,185 @@ impl Store {
     pub fn path(&self) -> &Path {
         &self.root
     }
+    fn next_revision(&self) -> Result<u64> {
+        if self.has_state {
+            self.revision
+                .checked_add(1)
+                .ok_or_else(|| error("Revision overflow"))
+        } else {
+            Ok(0)
+        }
+    }
+    /// Reports interrupted writes under the exclusive workspace lock. No pending file is promoted.
+    pub fn inspect_pending(&self) -> Result<StorageInspection> {
+        let next = self.next_revision()?;
+        let expected_name = format!("{next:020}.pending");
+        let mut pending = vec![];
+        for entry in fs::read_dir(&self.root).map_err(io)? {
+            let entry = entry.map_err(io)?;
+            let path = entry.path();
+            if path.extension().is_none_or(|e| e != "pending") {
+                continue;
+            }
+            ensure(
+                pending.len() < 1000,
+                "Too many pending files; preserve workspace for manual inspection",
+            )?;
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let meta = fs::symlink_metadata(&path).map_err(io)?;
+            let kind = if meta.file_type().is_symlink() {
+                "symlink"
+            } else if meta.is_dir() {
+                "directory"
+            } else if !meta.is_file() {
+                "nonregular"
+            } else if meta.len() > MAX_BYTES {
+                "oversized"
+            } else {
+                "regular"
+            };
+            let mut sha256 = None;
+            let mut snapshot_status = None;
+            if kind == "regular" {
+                let bytes = read_pending_bytes(&path)?;
+                sha256 = Some(fingerprint(&bytes));
+                snapshot_status = Some(match self.validate_pending_candidate(&bytes, next) {
+                    Ok(()) => "Complete uncommitted candidate; must still be retried through the command API".into(),
+                    Err(e) => format!("Incomplete or invalid uncommitted candidate: {e}"),
+                });
+            }
+            pending.push(PendingInspection {
+                eligible_for_quarantine: kind == "regular" && name == expected_name,
+                name,
+                kind: kind.into(),
+                bytes: meta.len(),
+                sha256,
+                snapshot_status,
+            });
+        }
+        pending.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(StorageInspection {
+            committed_revision: self.has_state.then_some(self.revision),
+            next_revision: next,
+            pending,
+        })
+    }
+    fn validate_pending_candidate(&self, bytes: &[u8], next: u64) -> Result<()> {
+        let envelope: Envelope = serde_json::from_slice(bytes).map_err(|e| error(e.to_string()))?;
+        ensure(
+            envelope.state.revision == next,
+            "Unexpected pending revision",
+        )?;
+        ensure(
+            envelope.previous_hash == self.hash
+                && envelope.hash == hash(&self.hash, &envelope.state)?,
+            "Pending checksum mismatch",
+        )?;
+        envelope.state.validate()
+    }
+    /// Preserve exactly the next interrupted write in a new recovery directory.
+    /// The caller must supply the byte checksum from inspection. Never replay or delete evidence.
+    pub fn quarantine_pending(&self, name: &str, expected_hash: &str) -> Result<QuarantineOutcome> {
+        let next = self.next_revision()?;
+        ensure(
+            name == format!("{next:020}.pending"),
+            "Only the exactly-next pending filename can be quarantined",
+        )?;
+        ensure(
+            expected_hash.len() == 64 && expected_hash.bytes().all(|c| c.is_ascii_hexdigit()),
+            "Supply the SHA-256 returned by storage-inspect",
+        )?;
+        let source = self.root.join(name);
+        let (file, bytes) = read_pending_file(&source, true)?;
+        let actual_hash = fingerprint(&bytes);
+        ensure(
+            actual_hash == expected_hash,
+            "Pending bytes changed; inspect again before quarantine",
+        )?;
+        // A pending write may have crashed before the original file sync. Flush
+        // exactly the inspected handle before moving it; failure leaves the path intact.
+        file.sync_all().map_err(io)?;
+        drop(file);
+        let recovery = self.root.join("recovery");
+        match fs::create_dir(&recovery) {
+            Ok(()) => (),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                let meta = fs::symlink_metadata(&recovery).map_err(io)?;
+                ensure(
+                    meta.is_dir() && !meta.file_type().is_symlink(),
+                    "Recovery location must be a regular directory",
+                )?;
+            }
+            Err(e) => return Err(io(e)),
+        }
+        let mut case = None;
+        for suffix in 0..1000 {
+            let candidate = recovery.join(format!("pending-{next:020}-{actual_hash}-{suffix:03}"));
+            match fs::create_dir(&candidate) {
+                Ok(()) => {
+                    case = Some(candidate);
+                    break;
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => (),
+                Err(e) => return Err(io(e)),
+            }
+        }
+        let case =
+            case.ok_or_else(|| error("Recovery directory limit reached; nothing was moved"))?;
+        let preserved_path = case.join(name);
+        // The destination directory was exclusively created while the Store lock is held.
+        // Its unique path avoids overwriting any earlier recovery evidence on every platform.
+        fs::rename(&source, &preserved_path).map_err(io)?;
+        let mut warnings = Vec::new();
+        #[cfg(unix)]
+        for dir in [&self.root, &recovery, &case] {
+            if let Err(e) = File::open(dir).and_then(|f| f.sync_all()) {
+                warnings.push(format!(
+                    "Evidence was moved to {}; directory sync failed for {}: {e}",
+                    preserved_path.display(),
+                    dir.display()
+                ));
+            }
+        }
+        #[cfg(not(unix))]
+        warnings
+            .push("Evidence was moved; directory sync is not available on this platform".into());
+        Ok(QuarantineOutcome {
+            preserved_path,
+            sha256: actual_hash,
+            next_revision: next,
+            warnings,
+        })
+    }
+}
+fn read_pending_bytes(path: &Path) -> Result<Vec<u8>> {
+    read_pending_file(path, false).map(|(_, bytes)| bytes)
+}
+fn read_pending_file(path: &Path, writable: bool) -> Result<(File, Vec<u8>)> {
+    let meta = fs::symlink_metadata(path).map_err(io)?;
+    ensure(
+        meta.is_file() && !meta.file_type().is_symlink(),
+        "Pending evidence must be a regular file, not a symlink",
+    )?;
+    ensure(
+        meta.len() <= MAX_BYTES,
+        "Pending file exceeds 16 MiB; preserve for manual inspection",
+    )?;
+    let mut bytes = Vec::new();
+    let mut file = OpenOptions::new()
+        .read(true)
+        .write(writable)
+        .open(path)
+        .map_err(io)?;
+    (&mut file)
+        .take(MAX_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(io)?;
+    ensure(
+        bytes.len() as u64 <= MAX_BYTES,
+        "Pending file grew during inspection",
+    )?;
+    Ok((file, bytes))
 }
 #[cfg(test)]
 mod tests {
@@ -181,6 +376,7 @@ mod tests {
             },
             command: "test".into(),
             detail: "Storage fixture".into(),
+            target: None,
         });
         state.receipts.push(copperline_model::Receipt {
             request_id: "test".into(),

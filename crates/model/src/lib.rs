@@ -3,6 +3,10 @@ use copperline_money::{Bps, Money, Quantity};
 pub use copperline_money::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+mod approval;
+pub use approval::*;
+mod pricing_source;
+pub use pricing_source::*;
 pub fn error(s: impl Into<String>) -> Error {
     Error(s.into())
 }
@@ -94,6 +98,7 @@ pub enum Role {
     Analyst,
     Sales,
     Approver,
+    Finance,
     Admin,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -184,6 +189,8 @@ pub struct PriceRequest {
     pub quantity: Quantity,
     pub discount: Bps,
     pub rebate: Bps,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<PriceSource>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Step {
@@ -213,6 +220,8 @@ pub struct Evaluation {
     pub steps: Vec<Step>,
     pub warnings: Vec<String>,
     pub hard_block: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<SourceEvidence>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -232,6 +241,8 @@ pub struct Decision {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Quote {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub governance: Option<QuoteGovernance>,
     pub id: String,
     pub title: String,
     pub owner: String,
@@ -262,6 +273,8 @@ pub struct PriceList {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Audit {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
     pub revision: u64,
     pub actor: Actor,
     pub command: String,
@@ -275,6 +288,8 @@ pub struct Receipt {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct State {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub quote_approval_policies: Vec<QuoteApprovalPolicy>,
     pub schema_version: u32,
     pub revision: u64,
     pub products: BTreeMap<String, Product>,
@@ -300,6 +315,7 @@ pub struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
+            quote_approval_policies: vec![],
             schema_version: 1,
             revision: 0,
             products: BTreeMap::new(),
@@ -430,6 +446,7 @@ impl State {
             )?;
         }
         self.validate_documents()?;
+        self.validate_quote_governance()?;
         self.validate_grid()?;
         self.validate_commercial()?;
         Ok(())
@@ -449,6 +466,7 @@ impl Policy {
 }
 impl Evaluation {
     pub fn validate_snapshot(&self) -> Result<()> {
+        self.validate_pricing_source_snapshot()?;
         id(&self.request.product_id)?;
         id(&self.request.customer_id)?;
         self.request.date.validate()?;
@@ -619,7 +637,7 @@ impl State {
                 "Quotes cannot use list published status",
             )?;
             q.policy.validate()?;
-            self.validate_decision_audit(&q.decisions)?;
+            self.validate_decision_audit(&q.decisions, "quote_decide", &quote_target(&q.id))?;
             document_valid(
                 q.status,
                 &q.owner,
@@ -638,7 +656,7 @@ impl State {
                     "Quote line context mismatch",
                 )?;
                 l.check_policy(&q.policy)?;
-                self.validate_snapshot_references(l)?;
+                self.validate_snapshot_references(l, q.source_revision)?;
             }
         }
         for (key, l) in &self.price_lists {
@@ -650,7 +668,7 @@ impl State {
                 "Price list identity mismatch",
             )?;
             l.policy.validate()?;
-            self.validate_decision_audit(&l.decisions)?;
+            self.validate_decision_audit(&l.decisions, "list_decide", &format!("list:{}", l.id))?;
             document_valid(
                 l.status,
                 &l.owner,
@@ -663,7 +681,7 @@ impl State {
             )?;
             for line in &l.lines {
                 line.check_policy(&l.policy)?;
-                self.validate_snapshot_references(line)?;
+                self.validate_snapshot_references(line, l.source_revision)?;
                 ensure(
                     line.request.customer_id == l.customer_id
                         && line.request.date == l.date
@@ -698,7 +716,8 @@ impl State {
 }
 
 impl State {
-    fn validate_snapshot_references(&self, l: &Evaluation) -> Result<()> {
+    fn validate_snapshot_references(&self, l: &Evaluation, source_revision: u64) -> Result<()> {
+        self.validate_pricing_source_reference(l, source_revision)?;
         ensure(
             self.customers.contains_key(&l.request.customer_id),
             "Snapshot customer missing",
@@ -727,7 +746,12 @@ impl State {
 }
 
 impl State {
-    fn validate_decision_audit(&self, decisions: &[Decision]) -> Result<()> {
+    fn validate_decision_audit(
+        &self,
+        decisions: &[Decision],
+        command: &str,
+        target: &str,
+    ) -> Result<()> {
         for d in decisions {
             let a = self
                 .audit
@@ -736,11 +760,10 @@ impl State {
                 .ok_or_else(|| error("Decision audit missing"))?;
             ensure(
                 a.actor.name == d.actor
-                    && matches!(a.actor.role, Role::Approver | Role::Admin)
-                    && matches!(
-                        a.command.as_str(),
-                        "quote_decide" | "list_decide" | "grid_decide" | "agreement_decide"
-                    ),
+                    && (matches!(a.actor.role, Role::Approver | Role::Admin)
+                        || (command == "quote_decide" && a.actor.role == Role::Finance))
+                    && a.command == command
+                    && a.target.as_deref().is_none_or(|t| t == target),
                 "Decision actor does not match approval audit",
             )?;
         }
@@ -755,6 +778,8 @@ pub struct ApprovedPrice {
     pub policy: Policy,
     pub source_revision: u64,
     pub decision: Decision,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub document_version: Option<u64>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GridItem {
@@ -768,6 +793,8 @@ pub struct GridItem {
     pub submitted_by: Option<String>,
     pub decisions: Vec<Decision>,
     pub last_approved: Option<ApprovedPrice>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub approved_history: BTreeMap<u64, ApprovedPrice>,
 }
 impl State {
     fn validate_grid(&self) -> Result<()> {
@@ -789,9 +816,13 @@ impl State {
                 self.revision,
                 std::slice::from_ref(&item.candidate),
             )?;
-            self.validate_snapshot_references(&item.candidate)?;
+            self.validate_snapshot_references(&item.candidate, item.source_revision)?;
             item.candidate.check_policy(&item.policy)?;
-            self.validate_decision_audit(&item.decisions)?;
+            self.validate_decision_audit(
+                &item.decisions,
+                "grid_decide",
+                &format!("grid:{}", item.id),
+            )?;
             ensure(
                 item.last_approved.as_ref().map(|p| &p.decision)
                     == item.decisions.iter().rev().find(|d| d.approved),
@@ -801,8 +832,12 @@ impl State {
                 approved.policy.validate()?;
                 approved.evaluation.validate_snapshot()?;
                 approved.evaluation.check_policy(&approved.policy)?;
-                self.validate_snapshot_references(&approved.evaluation)?;
-                self.validate_decision_audit(std::slice::from_ref(&approved.decision))?;
+                self.validate_snapshot_references(&approved.evaluation, approved.source_revision)?;
+                self.validate_decision_audit(
+                    std::slice::from_ref(&approved.decision),
+                    "grid_decide",
+                    &format!("grid:{}", item.id),
+                )?;
                 ensure(
                     approved.decision.approved
                         && approved.decision.revision > approved.source_revision
@@ -830,6 +865,7 @@ impl State {
                     "Active grid price differs from approved candidate",
                 )?;
             }
+            self.validate_grid_source_history(item)?;
         }
         Ok(())
     }
@@ -1000,7 +1036,11 @@ impl State {
                         .ok_or_else(|| error("Agreement submitter missing"))?,
                 )?;
             }
-            self.validate_decision_audit(&a.decisions)?;
+            self.validate_decision_audit(
+                &a.decisions,
+                "agreement_decide",
+                &format!("agreement:{}", a.terms.id),
+            )?;
             let mut previous = 0;
             for d in &a.decisions {
                 ensure(

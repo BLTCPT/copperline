@@ -13,8 +13,10 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 | Live grid calculations | Implemented local subset | Persisted per-item candidate/active prices and independent review |
 | Candidate recalculation without replacing last approved grid item | Implemented | Recalculate/reject preserves active approved price; engine/UI tests |
 | Quote creation, line edits, discount and rebate waterfall | Implemented | Golden financial case and E2E |
-| Frozen quotes and separate-person approval | Implemented local subset | Lifecycle/immutability tests; caller-selected demo identities |
-| Configurable multistep approvals, delegation, thresholds by role | Partial | One explicit review step, hard/soft guardrails, no routing engine |
+| Frozen quotes and separate-person approval | Implemented local subset | Owner-only authoring, contributor exclusions, target-bound reviews and legacy compatibility; caller-selected demo identities |
+| Configurable multistep approvals, delegation, thresholds by role | Partial | Quotes freeze commercial → conditional Finance routes with exact thresholds, owner/contributor exclusions and distinct reviewers; no delegation/general hierarchy |
+| Approved price consumption in quotes | Implemented explicit subset | Select current grid approval or published list version; exact-date/minimum-quantity qualification and frozen source evidence |
+| Interrupted-write recovery and concurrent local API | Implemented local subset | Locked inspect/hash-verified quarantine, 16 bounded clients and per-command optimistic conflicts |
 | Scenario comparison | Implemented deterministic subset | Same product/customer comparison; no demand estimation |
 | Analytics actuals, segmentation, dashboards, alerts | Partial | Recorded invoice ledger and customer/currency weighted margin; no warehouse, alerting or advanced segmentation |
 | Customer agreements / contract terms / renewals | Partial | Independently approved immutable rebate terms, dates, retrospective tiers; no renewal/amendment |
@@ -26,7 +28,7 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 | Integrations / ERP / CRM / external market data | Partial | Documented command boundary and CSV; no live adapters or write-back |
 | Enterprise identity, tenant isolation, scalable data pipelines | Missing | Explicit security boundary; local single-writer snapshots |
 | Audit, revision conflict detection, retry safety | Implemented local subset | Durable snapshots, receipts, tests; no external immutable audit service |
-| Native Windows desktop | Build and CLI verified | Windows CI passed M2 gates/build/E2E/portable packaging; interactive desktop visual test remains |
+| Native Windows desktop | Build and CLI verified at M2 | M3 native/process/transport CI prepared; interactive desktop visual test remains |
 
 ## Public workflow references
 

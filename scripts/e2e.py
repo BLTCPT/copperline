@@ -90,7 +90,42 @@ with tempfile.TemporaryDirectory(prefix='copperline-e2e-') as directory:
     assert accrual['eligible_invoice'] == 100000 and accrual['rebate'] == 5000
     actuals = call('analytics')
     assert actuals['ok'] and actuals['result'][0]['invoice_margin'] == 35000 and actuals['result'][0]['margin_bps'] == 3500, actuals
+    # M3: explicit approved source, owner-only authorship and frozen two-stage review.
+    source_request = dict(price, discount=500, rebate=0, source={'kind': 'grid', 'id': 'G-E2E', 'approval_revision': grid['last_approved']['decision']['revision']})
+    thresholds = {'max_discount': 1000, 'min_margin': 2000, 'usd_value': 80000, 'eur_value': 80000, 'gbp_value': 80000}
+    execute('quote_approval_policy_set', {'expected_version': 0, 'thresholds': thresholds}, 'Administrator', 'admin')
+    execute('quote_create', {'id': 'Q-M3', 'title': 'Approved grid with sequential review', 'customer_id': 'C-ATLAS', 'date': '2026-10-13'}, 'Sales', 'sales')
+    execute('quote_add_line', {'id': 'Q-M3', 'version': 1, 'request': source_request}, 'Sales', 'sales')
+    execute('quote_reprice', {'id': 'Q-M3', 'version': 2}, 'Other administrator', 'admin', fail=True)
+    execute('quote_submit', {'id': 'Q-M3', 'version': 2}, 'Sales', 'sales')
+    execute('quote_decide', {'id': 'Q-M3', 'version': 3, 'approve': True, 'note': 'Cannot skip commercial review'}, 'Finance', 'finance', fail=True)
+    first_review, _ = execute('quote_decide', {'id': 'Q-M3', 'version': 3, 'approve': True, 'note': 'Commercial review'}, 'Approver', 'approver')
+    assert not call('export_quote', {'id': 'Q-M3'})['ok']
+    execute('quote_decide', {'id': 'Q-M3', 'version': 4, 'approve': True, 'note': 'Admin cannot substitute Finance'}, 'Administrator', 'admin', fail=True)
+    relaxed = dict(thresholds, max_discount=10000, min_margin=0, usd_value=10000000)
+    execute('quote_approval_policy_set', {'expected_version': 1, 'thresholds': relaxed}, 'Administrator', 'admin')
+    pending = call('state')['result']['quotes']['Q-M3']
+    assert pending['status'] == 'pending' and len(pending['governance']['cycles'][-1]['stages']) == 2
+    assert pending['governance']['cycles'][-1]['policy']['version'] == 1
+    execute('quote_decide', {'id': 'Q-M3', 'version': 4, 'approve': True, 'note': 'Same person cannot review twice'}, 'Approver', 'finance', fail=True)
+    execute('quote_decide', {'id': 'Q-M3', 'version': 4, 'approve': True, 'note': 'Independent Finance review'}, 'Finance', 'finance')
+    repeat_review = call('execute', first_review)
+    assert repeat_review['ok'] and repeat_review['result']['replayed']
+    m3_export = call('export_quote', {'id': 'Q-M3'})
+    assert m3_export['ok'] and 'G-E2E' in m3_export['result']['csv']
+    execute('grid_calculate', {'id': 'G-E2E', 'version': 6, 'request': changed})
+    execute('grid_submit', {'id': 'G-E2E', 'version': 7})
+    execute('grid_decide', {'id': 'G-E2E', 'version': 8, 'approve': True, 'note': 'New active source'}, 'Approver', 'approver')
+    assert not call('evaluate', source_request)['ok']
+    assert call('export_quote', {'id': 'Q-M3'}) == m3_export
+    from_list = dict(price, quantity=1000, discount=0, rebate=0, source={'kind': 'price_list', 'id': 'PL-E2E', 'version': 4})
+    assert call('evaluate', from_list)['result']['source']['source']['id'] == 'PL-E2E'
+    execute('rebate_accrue', {'id': 'R-E2E-SECOND-SNAPSHOT', 'agreement_id': 'A-E2E', 'version': 3})
+    repeated_accrual = call('state')['result']['accruals']['R-E2E-SECOND-SNAPSHOT']
+    assert repeated_accrual['rebate'] == accrual['rebate']
+    assert call('analytics') == actuals  # Alternative snapshots never add liabilities to actuals.
     state = call('state')['result']
+    assert state['quotes']['Q-M3']['status'] == 'approved'
     assert state['price_lists']['PL-E2E']['status'] == 'published'
     assert state['quotes']['Q-E2E']['status'] == 'approved'
     assert len(state['audit']) == revision
@@ -103,6 +138,7 @@ with tempfile.TemporaryDirectory(prefix='copperline-e2e-') as directory:
     process = start()
     assert call('state')['result'] == state
     assert call('export_quote', {'id': 'Q-E2E'}) == exported
+    assert call('export_quote', {'id': 'Q-M3'}) == m3_export
     execute('quote_revise', {'id': 'Q-E2E', 'version': 4}, 'Sales', 'sales')
     assert not call('export_quote', {'id': 'Q-E2E'})['ok']
     process.stdin.close()
@@ -110,4 +146,4 @@ with tempfile.TemporaryDirectory(prefix='copperline-e2e-') as directory:
     print(json.dumps({'result': 'PASS', 'api_requests': request_count + 1, 'committed_revisions': revision,
                       'golden_usd': {'invoice': '900.00', 'rebate': '45.00', 'pocket': '855.00', 'margin': '255.00'},
                       'verified': ['quote approval/export/revise', 'list approve/publish', 'idempotent retry', 'stale version',
-                                   'separate approver', 'atomic import', 'malformed input survival', 'process restart persistence', 'grid candidate/active separation', 'tier agreement approval', 'atomic transaction import', 'frozen accrual', 'invoice analytics']}, indent=2))
+                                   'separate approver', 'atomic import', 'malformed input survival', 'process restart persistence', 'grid candidate/active separation', 'tier agreement approval', 'atomic transaction import', 'frozen accrual', 'invoice analytics', 'owner-only quote editing', 'conditional sequential Finance review', 'frozen route policy', 'decision retry after completion', 'approved grid/list pricing', 'source replacement preserves quote export', 'repeated accrual snapshots do not change actuals']}, indent=2))

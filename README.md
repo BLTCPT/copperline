@@ -24,14 +24,16 @@ The desktop uses a native Rust egui window with no browser or Node runtime. Wind
 - Versioned, effective-dated single-winner rules: fixed price, list discount or cost markup, with documented precedence.
 - Live evaluation and an explained list → invoice → rebate → pocket → cost → margin waterfall.
 - Frozen price lists with whole-list approval and separate local publication.
+- Explicit approved grid/list prices feed quotes with pinned source evidence; replacement preserves prior quotes.
 - Persistent live-grid candidates and last-approved prices that survive recalculation and rejection.
 - Approved retrospective rebate agreements, atomic invoice CSV ingestion, frozen accrual snapshots and recorded-invoice analytics.
-- Versioned quotes, frozen pricing data, discount/margin guardrails, separate-person approval, revision and approved CSV export.
+- Owner-controlled quotes, retained contributor exclusions, frozen commercial/Finance routes, exact thresholds, revision and approved CSV export.
 - Deterministic scenario comparison and weighted aggregate margins.
 - Durable full-state revisions with exclusive locks, checksum validation, audit records and idempotent commands.
-- One command engine behind native UI, CLI, stdio and an opt-in loopback JSON API.
+- One command engine behind native UI, CLI, stdio and a bounded concurrent loopback JSON API.
+- Interrupted-write inspection and checksum-verified quarantine preserve evidence before retry.
 
-[Demo runbook](docs/demo.md) · [API contract](docs/api.md) · [Architecture](docs/architecture.md) · [Security boundaries](docs/security.md) · [Capability/parity matrix](docs/parity.md) · [Remaining gaps](docs/gaps.md) · [License](LICENSE)
+[Demo runbook](docs/demo.md) · [API contract](docs/api.md) · [Architecture](docs/architecture.md) · [Security boundaries](docs/security.md) · [Capability/parity matrix](docs/parity.md) · [Quote governance](docs/quote-governance.md) · [Approved pricing sources](docs/pricing-sources.md) · [Recovery](docs/recovery.md) · [Remaining gaps](docs/gaps.md) · [License](LICENSE)
 
 ## Development playbook
 

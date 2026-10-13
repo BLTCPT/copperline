@@ -36,3 +36,16 @@ The build host initially had Rust 1.93.1. A task-isolated Rust 1.95.0 was downlo
 4. In **Invoice analytics**, Morgan can record synthetic invoices from the current workbench calculation. Two USD 900 invoices give USD 1,800 eligible revenue. These records are labeled synthetic and do not post to any external system.
 5. Return to the approved agreement and calculate an accrual snapshot. At USD 1,800, the retrospective 5% tier produces USD 90 rebate. Add another invoice and calculate a new snapshot: the old snapshot remains unchanged. Do not add snapshots together; each covers the whole period.
 6. Invoice analytics shows recorded invoice revenue/cost and weighted invoice margin, excluding quote projections and accruals. This avoids presenting scenario projections as actuals or double counting rebates.
+
+## M3 complete workflow
+
+1. As Casey / Admin, open **Approval policy**. Save 15% maximum effective discount, 25% minimum weighted margin and USD/EUR/GBP 1,000 pocket-value thresholds. These are separate currency amounts, not FX rates.
+2. Create and independently approve a grid price for the selected product/customer/date/quantity. Back in **Price workbench**, choose its explicit approval under **Quote / scenario pricing basis**. The approved invoice unit is the new base; the waterfall and source revisions explain the result.
+3. As Alex / Sales, create/add a quote and submit it. A sufficiently discounted, low-margin or high-value quote shows two frozen stages. Changing the policy now does not remove the pending Finance stage.
+4. As Riley / Approval, approve commercial review. The quote stays Pending and cannot export. As Jordan / Finance, finish the independent second review. Casey / Admin cannot substitute for Finance or edit Alex's quote.
+5. Revise and approve a different grid price. The old approved quote/export remains unchanged. Repricing a Draft using the old selected grid approval fails; deliberately remove/replace that line with the new selection.
+6. Run `python3 scripts/e2e.py` for the complete process workflow. Run `python3 scripts/transport_e2e.py` for concurrent clients, conflict/retry races and interrupted-write recovery.
+
+For a fully populated synthetic review workspace, run `python3 scripts/demo_seed.py --data data/m3-review`, then open `copperline-desktop --data data/m3-review`. It leaves Q-2001 awaiting Finance. `--source-grid G-VLV-ATLAS` opens the workbench with its approved pricing basis explicitly selected. Existing nonempty workspaces are preserved.
+
+Recovery uses the CLI's checksum-confirmed inspect/quarantine flow in [recovery.md](recovery.md). Keep preserved evidence. Full-period accrual snapshots are alternative calculations; never sum repeated snapshots as payables.

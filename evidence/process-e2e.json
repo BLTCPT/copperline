@@ -1,7 +1,7 @@
 {
   "result": "PASS",
-  "api_requests": 40,
-  "committed_revisions": 21,
+  "api_requests": 65,
+  "committed_revisions": 32,
   "golden_usd": {
     "invoice": "900.00",
     "rebate": "45.00",
@@ -21,6 +21,13 @@
     "tier agreement approval",
     "atomic transaction import",
     "frozen accrual",
-    "invoice analytics"
+    "invoice analytics",
+    "owner-only quote editing",
+    "conditional sequential Finance review",
+    "frozen route policy",
+    "decision retry after completion",
+    "approved grid/list pricing",
+    "source replacement preserves quote export",
+    "repeated accrual snapshots do not change actuals"
   ]
 }

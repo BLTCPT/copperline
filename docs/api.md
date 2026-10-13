@@ -8,7 +8,7 @@ Mutation envelope:
 {"method":"execute","params":{"request_id":"seed-1","expected_revision":0,"actor":{"name":"Demo admin","role":"admin"},"command":"seed_demo"}}
 ```
 
-Read methods: `state`, `catalog`, `evaluate`, `compare`, `export_quote`. `evaluate` accepts a PriceRequest:
+Read methods: `state`, `catalog`, `evaluate`, `compare`, `export_quote`, `analytics`. `evaluate` accepts a PriceRequest:
 
 ```json
 {"method":"evaluate","params":{"product_id":"VLV-100","customer_id":"C-ATLAS","date":"2026-10-13","quantity":10000,"discount":1000,"rebate":500}}
@@ -63,3 +63,11 @@ Additional commands:
 Read `analytics` returns recorded invoice aggregates per customer/currency. It excludes quote projections and all accrual snapshots. Agreement start is inclusive, end exclusive. Approved agreement terms never mutate. Accrual uses retrospective tiers on eligible invoice totals. Recalculate accruals under new IDs; do not sum old and new snapshots.
 
 Transaction CSV columns: `id,source,product_id,customer_id,date,quantity,unit,currency,invoice_total,cost_total`. CSV money is decimal major units and quantity decimal product units, while JSON money and quantity are scaled integers. See fixtures/transactions.csv. All fixture/source labels clearly identify synthetic data.
+
+## M3 governance, sources and transport
+
+`quote_approval_policy_set` takes `{expected_version, thresholds: {max_discount, min_margin, usd_value, eur_value, gbp_value}}`; Admin only. Percentages are basis points and amounts cents. Quote authoring/submission is owner-only with no Admin bypass. `quote_decide` remains the command for each sequential review; use the returned current document/workspace revision. Required roles are `approver`, then conditional `finance`, with distinct non-contributors. See [quote governance](quote-governance.md) for exact triggers, migration and frozen policy semantics.
+
+PriceRequest adds optional `source`: `{"kind":"grid","id":"G1","approval_revision":4}` or `{"kind":"price_list","id":"L1","version":4}`. Omit it for live rules. Source IDs/revisions are examples; use confirmed workspace identities. Selection never silently falls back. See [approved pricing sources](pricing-sources.md) for eligibility, exact financial semantics and frozen evidence.
+
+The trusted-local TCP transport supports up to 16 clients and serializes each request separately. Concurrent mutation losers receive revision errors, while simultaneous exact retries commit once. CLI `storage-inspect` and `quarantine-pending NAME SHA256` preserve interrupted-write evidence; see [recovery](recovery.md). Neither command promotes pending data or bypasses committed-state validation.

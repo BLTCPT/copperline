@@ -1,17 +1,15 @@
 # Verification checkpoint — 2026-10-13
 
-Local Apple Silicon macOS, Rust 1.95.0. Second runnable milestone:
+Local Apple Silicon macOS, Rust 1.95.0. Third runnable milestone:
 
-- `cargo xtask ci`: PASS (layer gate, asset attribution, fmt, workspace/all-target clippy -D warnings, workspace tests).
-- 42 core unit/integration tests and 4 native UI interaction/rendering tests: PASS. Independent reviewer supplied 27 regression tests and verified all reported fixes.
-- `python3 scripts/e2e.py`: PASS, 40 JSON API requests, 21 committed revisions, actual process restart and frozen CSV comparison. Golden USD 900 invoice / 45 rebate / 855 pocket / 255 margin. Expanded flow includes grid approval/recalculation, agreement approval, atomic invoice ingestion, accrual and weighted invoice analytics.
-- Native macOS desktop built, launched and screenshot visually inspected. Screenshot capture required permission to access the native window service outside the command sandbox. No host security settings changed.
-- Optional localhost TCP API smoke test: PASS. Malformed JSON returns an error and the same connection recovers; a line over 2 MiB disconnects that client; a subsequent connection reads unchanged state. This used a temporary synthetic workspace and terminated the test server afterward. See transport-smoke.json.
-- M2 source `f1a68639f0ae3b832f97b8acee93eb538ad59ebe`: [Windows/macOS/Linux CI passed](https://github.com/BLTCPT/copperline/actions/runs/38348721478). Each platform ran quality gates, a native release build and CLI process E2E. Windows additionally produced an unsigned portable ZIP. Windows x64 and macOS arm64 artifacts were downloaded and checksummed. The ZIP contains both executables, launcher, documentation and dependency notices. See artifact-manifest.json. Interactive Windows desktop behavior remains unverified.
-- Published baseline `6083f03f3df0b361f46df290c8b0fb2f56843dd4` also passed [Windows/macOS/Linux CI](https://github.com/BLTCPT/copperline/actions/runs/38347140721).
+- `cargo xtask ci`: PASS (layer gate, asset attribution, fmt, workspace/all-target Clippy with warnings denied, workspace tests).
+- 79 tests: 74 core unit/integration tests and 5 native UI interaction/rendering tests. These include independent approval, source/governance and persistence regressions.
+- `python3 scripts/e2e.py`: PASS, 65 JSON API requests, 32 committed revisions, actual process restart and frozen CSV comparison. Golden USD 900 invoice / 45 rebate / 855 pocket / 255 margin.
+- Expanded process workflow verifies owner-only editing, sequential commercial/Finance review, frozen policy, exact decision retry after completion, approved grid/list sources, unchanged export after source replacement and repeated accrual snapshots leaving invoice actuals unchanged.
+- `python3 scripts/transport_e2e.py`: PASS, 13 scenarios including simultaneous callers/retries, stale revisions, bounded connections, idle timeout, oversized/malformed input, restart, recovery locking, hash mismatch, quarantine without promotion and retry after interrupted save. See transport-e2e.json.
+- Native macOS desktop built, launched and visually inspected. Screenshots show approved-source waterfall, conditional Finance queue, policy editor and active/candidate grid separation. Native window and loopback checks required sandbox escape; no host security settings changed.
+- M3 cross-platform CI and artifact verification follow source publication. Prior M2 source `f1a68639f0ae3b832f97b8acee93eb538ad59ebe` passed [Windows/macOS/Linux CI](https://github.com/BLTCPT/copperline/actions/runs/38348721478). Interactive Windows desktop behavior remains unverified.
 
-Independent review fixes: pending-file exclusive creation; symlink/nonregular snapshot handling; frozen arithmetic, currency/UOM/cost/aggregate validation; approval chronology and actor audit consistency; currency-scoped price lists; disk-failure rollback and reopen idempotency.
+Independent M3 findings fixed: editing-Admin bypass via another submitter; exact review outcome/document version bound to audit evidence; collision-safe local request IDs; interrupted pending-file sync before quarantine. Additional regressions exercise exact discount/margin boundaries, historical contributors, distinct reviewers, role/stage order, immutable pending policy, authentic M2 snapshot checksums, explicit source qualification, stale source selection, preserved historical exports and source-derived discount escalation.
 
-Additional review coverage: active grid price preservation, prior approver reauthoring, strict agreement overlap boundaries, accrual inclusion of every eligible invoice available at the source revision, no future invoice inclusion, transaction provenance, duplicate-import rollback, aggregate overflow and original snapshot compatibility.
-
-Evidence: quality-gates.txt, process-e2e.json, workbench.png, grid.png, agreements.png, analytics.png and approvals.png. Screenshots are rendered native macOS windows using clearly synthetic data. No benchmark or full-parity claim.
+Evidence: quality-gates.txt, process-e2e.json, transport-e2e.json, workbench.png, grid.png, policy.png, agreements.png, analytics.png and approvals.png. Screenshots use synthetic data. No benchmark, authentication or full-parity claim.

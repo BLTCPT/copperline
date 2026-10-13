@@ -7,6 +7,10 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
             request,
         } => {
             id(key)?;
+            ensure(
+                request.source.is_none(),
+                "Grid candidates must use live rules; approved pricing sources are for quote/scenario selection",
+            )?;
             let existing = s.grid.get(key);
             ensure(
                 existing.map(|i| i.version).unwrap_or(0) == *version,
@@ -35,6 +39,9 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                 submitted_by: None,
                 decisions: existing.map(|i| i.decisions.clone()).unwrap_or_default(),
                 last_approved: existing.and_then(|i| i.last_approved.clone()),
+                approved_history: existing
+                    .map(|i| i.approved_history.clone())
+                    .unwrap_or_default(),
             };
             s.grid.insert(key.clone(), item);
             Ok(format!(
@@ -85,11 +92,16 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                 approved: *approve,
             };
             if *approve {
+                if let Some(previous) = item.last_approved.take() {
+                    item.approved_history
+                        .insert(previous.decision.revision, previous);
+                }
                 item.last_approved = Some(ApprovedPrice {
                     evaluation: item.candidate.clone(),
                     policy: item.policy.clone(),
                     source_revision: item.source_revision,
                     decision: decision.clone(),
+                    document_version: Some(next_version(item.version)?),
                 });
             }
             item.decisions.push(decision);
@@ -127,6 +139,7 @@ mod tests {
             quantity: Quantity(1000),
             discount: Bps(0),
             rebate: Bps(0),
+            source: None,
         };
         e.run(
             a("pricing", Role::Analyst),

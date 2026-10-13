@@ -71,6 +71,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
     let mut app = Workbench::new(engine);
+    if let Some(id) = value("--source-grid") {
+        let revision = app
+            .engine
+            .state()
+            .grid
+            .get(&id)
+            .and_then(|item| item.last_approved.as_ref())
+            .map(|price| price.decision.revision)
+            .ok_or("Grid has no approved price")?;
+        app.select_pricing_source(copperline_model::PriceSource::Grid {
+            id,
+            approval_revision: revision,
+        })?;
+    }
     app.view = match value("--view").as_deref() {
         Some("catalog") => View::Catalog,
         Some("rules") => View::Rules,
@@ -81,6 +95,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         Some("agreements") => View::Agreements,
         Some("analytics") => View::Analytics,
         Some("scenarios") => View::Scenarios,
+        Some("policy") => View::Governance,
         Some("audit") => View::Audit,
         _ => View::Workbench,
     };

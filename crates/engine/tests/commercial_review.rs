@@ -49,6 +49,7 @@ fn price_request() -> Result<PriceRequest> {
         quantity: Quantity(1_000),
         discount: Bps(0),
         rebate: Bps(0),
+        source: None,
     })
 }
 fn approved_grid(e: &mut Engine) -> Result<()> {
@@ -61,7 +62,7 @@ fn approved_grid(e: &mut Engine) -> Result<()> {
         },
     )?;
     e.run(
-        actor("submitter", Role::Analyst),
+        actor("analyst", Role::Analyst),
         Command::GridSubmit {
             id: "GRID".into(),
             version: 1,
@@ -105,7 +106,7 @@ fn approve_agreement(e: &mut Engine, terms: AgreementTerms) -> Result<()> {
         Command::AgreementCreate { terms },
     )?;
     e.run(
-        actor("submitter", Role::Analyst),
+        actor("analyst", Role::Analyst),
         Command::AgreementSubmit {
             id: id.clone(),
             version: 1,
@@ -199,18 +200,31 @@ fn grid_reauthoring_retains_history_and_requires_fresh_independent_approval() ->
             .and_then(|g| g.last_approved.clone()),
         Some(active.clone())
     );
+    let before = e.state().clone();
+    assert!(
+        e.run(
+            actor("submitter", Role::Analyst),
+            Command::GridSubmit {
+                id: "GRID".into(),
+                version: 4,
+            },
+        )
+        .is_err(),
+        "Only the current owner may submit"
+    );
+    assert_eq!(e.state(), &before);
     e.run(
-        actor("submitter", Role::Analyst),
+        actor("reviewer", Role::Admin),
         Command::GridSubmit {
             id: "GRID".into(),
             version: 4,
         },
     )?;
-    for name in ["reviewer", "submitter"] {
+    for role in [Role::Approver, Role::Admin] {
         let before = e.state().clone();
         assert!(
             e.run(
-                actor(name, Role::Admin),
+                actor("reviewer", role),
                 Command::GridDecide {
                     id: "GRID".into(),
                     version: 5,
@@ -351,7 +365,7 @@ fn agreement_overlap_is_atomic_but_adjacent_period_is_approvable() -> TestResult
         },
     )?;
     e.run(
-        actor("submitter", Role::Analyst),
+        actor("analyst", Role::Analyst),
         Command::AgreementSubmit {
             id: "OVERLAP".into(),
             version: 1,
@@ -440,18 +454,31 @@ fn agreement_requires_independent_approval_and_valid_tiers() -> TestResult {
             terms: terms("AGREEMENT")?,
         },
     )?;
+    let before = e.state().clone();
+    assert!(
+        e.run(
+            actor("submitter", Role::Analyst),
+            Command::AgreementSubmit {
+                id: "AGREEMENT".into(),
+                version: 1,
+            },
+        )
+        .is_err(),
+        "Only the original agreement owner may submit"
+    );
+    assert_eq!(e.state(), &before);
     e.run(
-        actor("submitter", Role::Analyst),
+        actor("analyst", Role::Analyst),
         Command::AgreementSubmit {
             id: "AGREEMENT".into(),
             version: 1,
         },
     )?;
-    for name in ["analyst", "submitter"] {
+    for role in [Role::Approver, Role::Admin] {
         let before = e.state().clone();
         assert!(
             e.run(
-                actor(name, Role::Admin),
+                actor("analyst", role),
                 Command::AgreementDecide {
                     id: "AGREEMENT".into(),
                     version: 2,

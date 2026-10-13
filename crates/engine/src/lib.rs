@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 mod commercial;
 mod csv;
+mod governance;
 mod grid;
 pub use commercial::analytics;
 pub use csv::{export_quote, import_products};
@@ -20,6 +21,10 @@ pub use csv::{export_quote, import_products};
 )]
 pub enum Command {
     SeedDemo,
+    QuoteApprovalPolicySet {
+        expected_version: u64,
+        thresholds: ApprovalThresholds,
+    },
     AgreementCreate {
         terms: AgreementTerms,
     },
@@ -126,6 +131,7 @@ impl Command {
     pub fn name(&self) -> &'static str {
         match self {
             Self::SeedDemo => "seed_demo",
+            Self::QuoteApprovalPolicySet { .. } => "quote_approval_policy_set",
             Self::AgreementCreate { .. } => "agreement_create",
             Self::AgreementSubmit { .. } => "agreement_submit",
             Self::AgreementDecide { .. } => "agreement_decide",
@@ -156,7 +162,9 @@ impl Command {
     }
     fn allowed(&self, role: Role) -> bool {
         match self {
-            Self::SeedDemo | Self::PolicySet(_) => role == Role::Admin,
+            Self::SeedDemo | Self::PolicySet(_) | Self::QuoteApprovalPolicySet { .. } => {
+                role == Role::Admin
+            }
             Self::AgreementCreate { .. }
             | Self::AgreementSubmit { .. }
             | Self::TransactionAdd(_)
@@ -172,11 +180,11 @@ impl Command {
             | Self::ListCalculate { .. }
             | Self::ListSubmit { .. }
             | Self::ListPublish { .. } => matches!(role, Role::Analyst | Role::Admin),
-            Self::AgreementDecide { .. }
-            | Self::GridDecide { .. }
-            | Self::QuoteDecide { .. }
-            | Self::ListDecide { .. } => {
+            Self::AgreementDecide { .. } | Self::GridDecide { .. } | Self::ListDecide { .. } => {
                 matches!(role, Role::Approver | Role::Admin)
+            }
+            Self::QuoteDecide { .. } => {
+                matches!(role, Role::Approver | Role::Finance | Role::Admin)
             }
             _ => matches!(role, Role::Sales | Role::Admin),
         }
@@ -260,6 +268,7 @@ impl Engine {
         let mut next = self.state.clone();
         // Escaped dependency panics cannot partially change the current state or durable revision.
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            governance::prepare(&mut next, &request.actor, &request.action)?;
             apply(&mut next, &request.actor, &request.action)
         }));
         let detail = match result {
@@ -276,6 +285,7 @@ impl Engine {
             .checked_add(1)
             .ok_or_else(|| error("Revision overflow"))?;
         next.audit.push(Audit {
+            target: governance::target(&request.action),
             revision: next.revision,
             actor: request.actor.clone(),
             command: request.action.name().into(),
@@ -299,8 +309,30 @@ impl Engine {
     }
     pub fn run(&mut self, actor: Actor, action: Command) -> Result<Outcome> {
         let revision = self.state.revision;
+        let next = revision
+            .checked_add(1)
+            .ok_or_else(|| error("Revision overflow"))?;
+        let base = format!("local-{next}-{}", action.name());
+        let used: std::collections::BTreeSet<_> = self
+            .state
+            .receipts
+            .iter()
+            .map(|receipt| receipt.request_id.as_str())
+            .collect();
+        // External clients share the idempotency namespace. At most `used.len()`
+        // candidates can be occupied, so this bounded search always has a free ID.
+        let request_id = (0..=used.len())
+            .map(|suffix| {
+                if suffix == 0 {
+                    base.clone()
+                } else {
+                    format!("{base}-{suffix}")
+                }
+            })
+            .find(|candidate| !used.contains(candidate.as_str()))
+            .ok_or_else(|| error("No unused local request ID"))?;
         self.execute(Request {
-            request_id: format!("local-{}-{}", revision + 1, action.name()),
+            request_id,
             expected_revision: revision,
             actor,
             action,
@@ -324,6 +356,7 @@ fn quote_mut<'a>(s: &'a mut State, key: &str) -> Result<&'a mut Quote> {
 }
 fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
     match c {
+        Command::QuoteApprovalPolicySet { .. } => governance::apply(s, actor, c),
         Command::AgreementCreate { .. }
         | Command::AgreementSubmit { .. }
         | Command::AgreementDecide { .. }
@@ -420,6 +453,10 @@ fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
             s.quotes.insert(
                 key.clone(),
                 Quote {
+                    governance: Some(QuoteGovernance {
+                        contributors: std::collections::BTreeSet::from([actor.name.clone()]),
+                        cycles: vec![],
+                    }),
                     id: key.clone(),
                     title: title.clone(),
                     owner: actor.name.clone(),
@@ -494,53 +531,7 @@ fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
             q.version = next_version(q.version)?;
             Ok(format!("Repriced {id} against revision {rev}"))
         }
-        Command::QuoteSubmit { id, version } => {
-            let q = quote_mut(s, id)?;
-            draft(q, *version)?;
-            totals(&q.lines)?;
-            ensure(
-                !q.lines.iter().any(|l| l.hard_block),
-                "Quote violates a hard guardrail; revise the price",
-            )?;
-            q.status = Status::Pending;
-            q.submitted_by = Some(actor.name.clone());
-            q.version = next_version(q.version)?;
-            Ok(format!("Submitted {id} for approval"))
-        }
-        Command::QuoteDecide {
-            id,
-            version,
-            approve,
-            note,
-        } => {
-            text(note)?;
-            let rev = s.revision + 1;
-            let q = quote_mut(s, id)?;
-            ensure(
-                q.version == *version && q.status == Status::Pending,
-                "Decision requires the current pending quote version",
-            )?;
-            ensure(
-                q.submitted_by.as_ref() != Some(&actor.name) && q.owner != actor.name,
-                "A different person must approve this quote",
-            )?;
-            q.status = if *approve {
-                Status::Approved
-            } else {
-                Status::Rejected
-            };
-            q.decisions.push(Decision {
-                actor: actor.name.clone(),
-                note: note.clone(),
-                revision: rev,
-                approved: *approve,
-            });
-            q.version = next_version(q.version)?;
-            Ok(format!(
-                "{} {id}",
-                if *approve { "Approved" } else { "Rejected" }
-            ))
-        }
+        Command::QuoteSubmit { .. } | Command::QuoteDecide { .. } => governance::apply(s, actor, c),
         Command::QuoteRevise { id, version } => {
             let q = quote_mut(s, id)?;
             ensure(
@@ -577,6 +568,7 @@ fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
                     evaluate(
                         s,
                         &PriceRequest {
+                            source: None,
                             product_id: p.id.clone(),
                             customer_id: customer_id.clone(),
                             date: date.clone(),
@@ -774,6 +766,7 @@ mod tests {
     }
     fn request() -> Result<PriceRequest> {
         Ok(PriceRequest {
+            source: None,
             product_id: "VLV-100".into(),
             customer_id: "C-ATLAS".into(),
             date: Date::parse("2026-10-13")?,
