@@ -1,0 +1,9 @@
+{
+  "version": "Copperline CLI 0.1.0",
+  "source_commit": "a36d4877228b14732aff84d77d32776e9c8260ae",
+  "macos_ci_cli_sha256": "ea9baa3612c47016f12df6d3e8566746863ec6eab1e1571a0d2812bd1d27b3d2",
+  "review_revision": 65,
+  "credit_eur_cents": 24300,
+  "closed_nominal_invoice_eur_cents": 72900,
+  "result": "PASS"
+}

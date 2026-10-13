@@ -1,0 +1,22 @@
+{
+  "source_commit": "a36d4877228b14732aff84d77d32776e9c8260ae",
+  "host": "native macOS arm64 release application",
+  "data": "synthetic M9 fixture r65",
+  "capture": "built-in application screenshot command; visually inspected",
+  "images": [
+    {
+      "path": "evidence/credits.png",
+      "width": 2880,
+      "height": 1666,
+      "size_bytes": 646671,
+      "sha256": "108d3eeee46ef065e0e52b08d171a2d6885311f8e1dc9efb4c751d781a70675e"
+    },
+    {
+      "path": "evidence/period-close.png",
+      "width": 2880,
+      "height": 1666,
+      "size_bytes": 763453,
+      "sha256": "76ce8cddc894d93371fa0925261fbf02b39908a3fc69ffcd55f79e96417066e9"
+    }
+  ]
+}
