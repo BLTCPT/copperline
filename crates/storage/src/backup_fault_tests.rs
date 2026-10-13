@@ -58,7 +58,8 @@ fn all_precommit_restore_faults_preserve_source_and_block_owned_partial_targets(
             assert!(target.is_dir());
             assert!(guard.is_file());
             let message = result.err().ok_or("Missing failure")?.to_string();
-            assert!(message.contains(&target.display().to_string()));
+            // Windows TEMP may use an 8.3 alias; restore reports the resolved path.
+            assert!(message.contains(&fs::canonicalize(&target)?.display().to_string()));
             assert!(message.contains(&guard.display().to_string()));
             assert!(Store::open(&target).is_err());
             assert!(Store::open(target.join("nested").join("workspace")).is_err());
@@ -210,7 +211,11 @@ fn interrupted_backup_preserves_partial_archive_and_never_changes_source() -> Te
             }
         });
         let problem = result.err().ok_or("Expected injected archive failure")?;
-        assert!(problem.to_string().contains(&output.display().to_string()));
+        assert!(
+            problem
+                .to_string()
+                .contains(&fs::canonicalize(&output)?.display().to_string())
+        );
         assert!(output.is_file());
         assert!(inspect(&output).is_err());
         let preserved = fs::read(&output)?;
