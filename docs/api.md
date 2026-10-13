@@ -97,3 +97,5 @@ Record statuses serialize as `Draft`, `Pending`, `Approved`, `Rejected`, `Withdr
 | quote_replace_line | id, version, index (zero-based), request; Draft owner Sales/Admin |
 
 Read `export_contract {id, edition}` returns frozen approved contractual CSV. CLI `export-contract ID EDITION FILE` creates a new file only. PriceRequest source now accepts `{kind:"contract",id,edition}` or `{kind:"customer_contract"}`. The latter is opt-in automatic selection; absent source still uses live rules. Use separate business edition and workflow version. Complete terms schema, interval/conflict rules, frozen-origin semantics and exact units are in [customer price agreements](customer-price-agreements.md).
+
+All JSON-line requests/responses and CSV files use UTF-8. Clients must select UTF-8 explicitly rather than a platform locale (especially Windows subprocess clients). CSV content inside JSON retains its escaped CRLF bytes; direct-file exports match its UTF-8 encoding.

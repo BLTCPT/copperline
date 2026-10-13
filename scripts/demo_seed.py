@@ -3,7 +3,7 @@
 import argparse,json,subprocess
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--binary',default='target/debug/copperline-cli');p.add_argument('--data',default='data/review-demo');a=p.parse_args()
-process=subprocess.Popen([str(Path(a.binary).resolve()),'--data',a.data,'api'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True)
+process=subprocess.Popen([str(Path(a.binary).resolve()),'--data',a.data,'api'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,text=True, encoding="utf-8")
 def call(method,params=None):
     process.stdin.write(json.dumps({'method':method,'params':params})+'\n');process.stdin.flush();out=json.loads(process.stdout.readline());assert out['ok'],out;return out['result']
 revision=call('state')['revision']
@@ -26,7 +26,7 @@ else:
     run('grid_calculate',{'id':'G-VLV-ATLAS','version':3,'request':dict(price,discount=1500)})
     terms={'id':'A-2026','name':'Atlas annual volume rebate','customer_id':'C-ATLAS','currency':'USD','start':'2026-01-01','end':'2027-01-01','tiers':[{'threshold':0,'rate':200},{'threshold':100000,'rate':500}]}
     run('agreement_create',{'terms':terms});run('agreement_submit',{'id':'A-2026','version':1});run('agreement_decide',{'id':'A-2026','version':2,'approve':True,'note':'Retrospective tiers reviewed'},'approver','Riley / Approval')
-    run('transactions_import',{'csv':Path('fixtures/transactions.csv').read_text()});run('rebate_accrue',{'id':'R-1001','agreement_id':'A-2026','version':3})
+    run('transactions_import',{'csv':Path('fixtures/transactions.csv').read_text(encoding="utf-8")});run('rebate_accrue',{'id':'R-1001','agreement_id':'A-2026','version':3})
     run('list_calculate',{'id':'PL-OCT','name':'October OEM list','customer_id':'C-ATLAS','date':'2026-10-13','quantity':1000,'currency':'USD'})
     run('list_submit',{'id':'PL-OCT','version':1});run('list_decide',{'id':'PL-OCT','version':2,'approve':True,'note':'Synthetic list reviewed'},'approver','Riley / Approval');run('list_publish',{'id':'PL-OCT','version':3})
     run('quote_decide',{'id':'Q-1001','version':3,'approve':True,'note':'Baseline synthetic quote reviewed'},'approver','Riley / Approval')

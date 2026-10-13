@@ -96,7 +96,7 @@ with tempfile.TemporaryDirectory(prefix='copperline-transport-') as directory:
             assert state['revision'] == 2 and len(state['audit']) == 2
             # Recovery cannot inspect or mutate files while a business process owns the lock.
             locked = subprocess.run([binary, '--data', directory, 'storage-inspect'],
-                                    capture_output=True, text=True, timeout=10)
+                                    capture_output=True, text=True, encoding="utf-8", timeout=10)
             assert locked.returncode != 0 and 'already open' in locked.stderr, locked
             oversized = Client(port)
             clients.append(oversized)
@@ -146,13 +146,13 @@ with tempfile.TemporaryDirectory(prefix='copperline-transport-') as directory:
             process.terminate()
             process.wait(timeout=10)
         reopened = subprocess.run([binary, '--data', directory, 'state'], check=True,
-                                  capture_output=True, text=True, timeout=10)
+                                  capture_output=True, text=True, encoding="utf-8", timeout=10)
         assert json.loads(reopened.stdout) == state
 
 with tempfile.TemporaryDirectory(prefix='copperline-recovery-process-') as directory:
     def cli(*parts, succeeds=True):
         p = subprocess.run([binary, '--data', directory, *parts],
-                           capture_output=True, text=True, timeout=10)
+                           capture_output=True, text=True, encoding="utf-8", timeout=10)
         assert (p.returncode == 0) == succeeds, p
         return json.loads(p.stdout) if succeeds else p.stderr
 

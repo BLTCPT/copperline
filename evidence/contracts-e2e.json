@@ -14,7 +14,7 @@
     "immutable approval cycles",
     "restart and exact retry",
     "byte-stable historical exports",
-    "formula-safe contract CSV",
+    "UTF-8 and formula-safe contract CSV",
     "no-overwrite CLI export"
   ]
 }

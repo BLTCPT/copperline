@@ -18,7 +18,7 @@ revision = 0
 with tempfile.TemporaryDirectory(prefix='copperline-m4-e2e-') as directory:
     def start():
         return subprocess.Popen([binary, '--data', directory, 'api'], stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
 
     process = start()
     def call(method, params=None, okay=True):
@@ -131,11 +131,11 @@ with tempfile.TemporaryDirectory(prefix='copperline-m4-e2e-') as directory:
             process.stdin.close()
             assert process.wait(timeout=10) == 0
     export_path = str(Path(directory, 'approved-refund.csv'))
-    exported = subprocess.run([binary, '--data', directory, 'export-settlement', 'S1', export_path], capture_output=True, text=True, timeout=10)
+    exported = subprocess.run([binary, '--data', directory, 'export-settlement', 'S1', export_path], capture_output=True, text=True, encoding="utf-8", timeout=10)
     assert exported.returncode == 0, exported.stderr
-    assert Path(export_path).read_text() == refund_export
-    duplicate = subprocess.run([binary, '--data', directory, 'export-settlement', 'S1', export_path], capture_output=True, text=True, timeout=10)
-    assert duplicate.returncode != 0 and Path(export_path).read_text() == refund_export
+    assert Path(export_path).read_text(encoding="utf-8") == refund_export
+    duplicate = subprocess.run([binary, '--data', directory, 'export-settlement', 'S1', export_path], capture_output=True, text=True, encoding="utf-8", timeout=10)
+    assert duplicate.returncode != 0 and Path(export_path).read_text(encoding="utf-8") == refund_export
 
 print(json.dumps({'result': 'PASS', 'api_requests': count, 'committed_revisions': state['revision'],
                   'settlement_adjustments_usd': ['150.00', '-140.00', '-2.00', '-8.00'],

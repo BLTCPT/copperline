@@ -13,7 +13,7 @@ binary = str(Path(args.binary).resolve())
 
 with tempfile.TemporaryDirectory(prefix='copperline-e2e-') as directory:
     def start():
-        return subprocess.Popen([binary, '--data', directory, 'api'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return subprocess.Popen([binary, '--data', directory, 'api'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
     process = start()
     revision = 0
     request_count = 0

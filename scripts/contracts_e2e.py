@@ -17,7 +17,7 @@ revision = 0
 with tempfile.TemporaryDirectory(prefix='copperline-m5-e2e-') as directory:
     def start():
         return subprocess.Popen([binary, '--data', directory, 'api'], stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
     process = start()
     def call(method, params=None, okay=True):
         global count
@@ -49,7 +49,7 @@ with tempfile.TemporaryDirectory(prefix='copperline-m5-e2e-') as directory:
         return {'id': row_id, 'product_id': 'VLV-100', 'unit': 'each', 'min_quantity': minimum,
                 'max_quantity': maximum, 'basis': {'kind': 'fixed', 'invoice_unit': amount}}
     def terms(id='CP', edition=1, start='2026-10-01', end='2027-01-01', priority=10, rows=None):
-        return {'id': id, 'edition': edition, 'name': '=Synthetic contract', 'customer_id': 'C-ATLAS',
+        return {'id': id, 'edition': edition, 'name': '=Synthetic contract – étalon', 'customer_id': 'C-ATLAS',
                 'currency': 'USD', 'start': start, 'end': end, 'priority': priority,
                 'rows': rows or [fixed('BULK',10000,None,8500)]}
     def contract(t, approve=True):
@@ -86,7 +86,9 @@ with tempfile.TemporaryDirectory(prefix='copperline-m5-e2e-') as directory:
         row=next(csv.DictReader(io.StringIO(old_quote)))
         assert row['contract_selection']=='automatic' and row['contract_row']=='BULK'
         assert row['contract_start']=='2026-10-01' and row['contract_end_exclusive']=='2027-01-01'
-        assert next(csv.DictReader(io.StringIO(old_contract)))['name'].startswith("'=")
+        contract_rows=list(csv.DictReader(io.StringIO(old_contract)))
+        assert contract_rows[0]['name']=="'=Synthetic contract – étalon"
+        assert contract_rows[1]['origin']=='Grid G · approval 4'
         contract(terms(edition=2,start='2026-11-01',end='2026-12-01'))
         assert call('evaluate',price())['rule_unit']==8500
         call('evaluate',price(source={'kind':'contract','id':'CP','edition':1}),okay=False)
@@ -129,16 +131,16 @@ with tempfile.TemporaryDirectory(prefix='copperline-m5-e2e-') as directory:
         assert call('export_contract',{'id':'CP','edition':1})['csv']==old_contract
         process.stdin.close();assert process.wait(timeout=10)==0
         output=Path(directory)/'contract.csv'
-        first_export=subprocess.run([binary,'--data',directory,'export-contract','CP','1',str(output)],capture_output=True,text=True)
+        first_export=subprocess.run([binary,'--data',directory,'export-contract','CP','1',str(output)],capture_output=True,text=True, encoding="utf-8")
         assert first_export.returncode==0,first_export.stderr
-        assert output.read_bytes()==old_contract.encode()
-        duplicate=subprocess.run([binary,'--data',directory,'export-contract','CP','1',str(output)],capture_output=True,text=True)
-        assert duplicate.returncode!=0 and output.read_bytes()==old_contract.encode()
+        assert output.read_bytes()==old_contract.encode("utf-8")
+        duplicate=subprocess.run([binary,'--data',directory,'export-contract','CP','1',str(output)],capture_output=True,text=True, encoding="utf-8")
+        assert duplicate.returncode!=0 and output.read_bytes()==old_contract.encode("utf-8")
         print(json.dumps({'result':'PASS','api_requests':count,'committed_revisions':revision,
               'verified':['half-open date and quantity boundaries','independent source-contributor review','frozen grid origins',
               'edition supersession without resurrection','explicit priority and overlap rejection','no implicit currency/UOM conversion',
               'automatic versus exact source selection','atomic quote-line replacement','immutable approval cycles',
-              'restart and exact retry','byte-stable historical exports','formula-safe contract CSV','no-overwrite CLI export']},indent=2))
+              'restart and exact retry','byte-stable historical exports','UTF-8 and formula-safe contract CSV','no-overwrite CLI export']},indent=2))
     finally:
         if process.poll() is None:
             process.kill();process.wait(timeout=10)
