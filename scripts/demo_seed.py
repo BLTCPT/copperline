@@ -46,5 +46,19 @@ else:
     run('rebate_accrue',{'id':'R-2001','agreement_id':'A-2026','version':3})
     run('settlement_create',{'id':'ST-2001','accrual_id':'R-2001','reason':'Synthetic tier correction: 50.00 recognized, 18.00 now due'})
     run('settlement_submit',{'id':'ST-2001','version':1})
-    print('Created synthetic M4 review workspace at revision',revision)
+    contract_rows=[{'id':'RETAIL','product_id':'VLV-100','unit':'each','min_quantity':1000,'max_quantity':10000,'basis':{'kind':'fixed','invoice_unit':9500}},
+                   {'id':'BULK','product_id':'VLV-100','unit':'each','min_quantity':10000,'max_quantity':None,'basis':{'kind':'approved_source','request':dict(sourced,discount=0,rebate=0)}}]
+    contract_terms={'id':'CP-ATLAS','edition':1,'name':'Atlas service price agreement','customer_id':'C-ATLAS','currency':'USD','start':'2026-10-01','end':'2027-01-01','priority':100,'rows':contract_rows}
+    run('contract_create',{'terms':contract_terms})
+    run('contract_submit',{'id':'CP-ATLAS','edition':1,'version':1})
+    run('contract_decide',{'id':'CP-ATLAS','edition':1,'version':2,'approve':True,'note':'Independent date and volume terms review'},'approver','Riley / Approval')
+    contracted=dict(price,date='2026-11-15',discount=0,rebate=0,source={'kind':'customer_contract'})
+    run('quote_create',{'id':'Q-3001','title':'November contracted service parts','customer_id':'C-ATLAS','date':'2026-11-15'},'sales','Alex / Sales')
+    run('quote_add_line',{'id':'Q-3001','version':1,'request':contracted},'sales','Alex / Sales')
+    run('quote_submit',{'id':'Q-3001','version':2},'sales','Alex / Sales')
+    run('quote_decide',{'id':'Q-3001','version':3,'approve':True,'note':'Frozen contract source reviewed'},'approver','Riley / Approval')
+    successor=dict(contract_terms,edition=2,start='2026-11-01',rows=[dict(contract_rows[0]),dict(contract_rows[1],basis={'kind':'fixed','invoice_unit':8500})])
+    run('contract_create',{'terms':successor})
+    run('contract_submit',{'id':'CP-ATLAS','edition':2,'version':1})
+    print('Created synthetic M5 review workspace at revision',revision)
 process.stdin.close();assert process.wait(timeout=10)==0

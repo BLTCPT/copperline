@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 mod approval;
 pub use approval::*;
+mod contracts;
+pub use contracts::*;
 mod pricing_source;
 pub use pricing_source::*;
 mod corrections;
@@ -318,6 +320,8 @@ pub struct State {
     pub corrections: BTreeMap<String, Correction>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub settlements: BTreeMap<String, Settlement>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub price_contracts: BTreeMap<String, PriceContract>,
     pub policy: Policy,
     pub audit: Vec<Audit>,
     pub receipts: Vec<Receipt>,
@@ -341,6 +345,7 @@ impl Default for State {
             accruals: BTreeMap::new(),
             corrections: BTreeMap::new(),
             settlements: BTreeMap::new(),
+            price_contracts: BTreeMap::new(),
             policy: Policy::default(),
             audit: vec![],
             receipts: vec![],
@@ -457,6 +462,7 @@ impl State {
                 "Unknown quote customer",
             )?;
         }
+        self.validate_price_contracts()?;
         self.validate_documents()?;
         self.validate_quote_governance()?;
         self.validate_grid()?;

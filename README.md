@@ -24,6 +24,8 @@ The desktop uses a native Rust egui window with no browser or Node runtime. Wind
 - Versioned, effective-dated single-winner rules: fixed price, list discount or cost markup, with documented precedence.
 - Live evaluation and an explained list → invoice → rebate → pocket → cost → margin waterfall.
 - Frozen price lists with whole-list approval and separate local publication.
+- Independently approved customer price agreements add half-open validity periods, quantity bands, explicit priority and frozen source origins.
+- Atomic quote-line replacement recalculates the full Draft transactionally and preserves approval history.
 - Explicit approved grid/list prices feed quotes with pinned source evidence; replacement preserves prior quotes.
 - Persistent live-grid candidates and last-approved prices that survive recalculation and rejection.
 - Approved retrospective rebate agreements, atomic invoice CSV ingestion, frozen accrual snapshots and net invoice analytics.
@@ -35,7 +37,7 @@ The desktop uses a native Rust egui window with no browser or Node runtime. Wind
 - One command engine behind native UI, CLI, stdio and a bounded concurrent loopback JSON API.
 - Interrupted-write inspection and checksum-verified quarantine preserve evidence before retry.
 
-[Demo runbook](docs/demo.md) · [API contract](docs/api.md) · [Architecture](docs/architecture.md) · [Security boundaries](docs/security.md) · [Capability/parity matrix](docs/parity.md) · [Quote governance](docs/quote-governance.md) · [Approved pricing sources](docs/pricing-sources.md) · [Recovery](docs/recovery.md) · [Corrections and reconciliation](docs/corrections-reconciliation.md) · [Remaining gaps](docs/gaps.md) · [Next milestones](docs/roadmap.md) · [License](LICENSE)
+[Demo runbook](docs/demo.md) · [API contract](docs/api.md) · [Architecture](docs/architecture.md) · [Security boundaries](docs/security.md) · [Capability/parity matrix](docs/parity.md) · [Quote governance](docs/quote-governance.md) · [Approved pricing sources](docs/pricing-sources.md) · [Customer price agreements](docs/customer-price-agreements.md) · [Recovery](docs/recovery.md) · [Corrections and reconciliation](docs/corrections-reconciliation.md) · [Remaining gaps](docs/gaps.md) · [Next milestones](docs/roadmap.md) · [License](LICENSE)
 
 ## Development playbook
 

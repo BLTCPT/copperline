@@ -85,10 +85,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             approval_revision: revision,
         })?;
     }
+    if args.iter().any(|a| a == "--customer-contract") {
+        app.select_pricing_source(copperline_model::PriceSource::CustomerContract)?;
+    }
     app.view = match value("--view").as_deref() {
         Some("catalog") => View::Catalog,
         Some("rules") => View::Rules,
         Some("grid") => View::LiveGrid,
+        Some("contracts") => View::Contracts,
         Some("lists") => View::Lists,
         Some("quotes") => View::Quotes,
         Some("approvals") => View::Approvals,

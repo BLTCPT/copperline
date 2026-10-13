@@ -86,3 +86,14 @@ The trusted-local TCP transport supports up to 16 clients and serializes each re
 `reconciliation` takes `{agreement_id}` and returns current gross/reversal/net basis, tier, target rebate, approved settlement IDs, recognized rebate and signed remaining adjustment. `export_settlement` takes `{id}` and returns approved frozen CSV. CLI `export-settlement ID FILE` writes the same CSV to a new path only. `analytics` now exposes gross/reversal values and net invoice actuals; `transaction_count` is the count of active invoices, while `gross_transaction_count` includes reversed originals.
 
 Record statuses serialize as `Draft`, `Pending`, `Approved`, `Rejected`, `Withdrawn`; versions start at 1 and increment per transition. Approval of a replacement inserts it atomically at that revision. Correction `effective_date` is a record date, not scheduled activation. Reversals restate original-period rebates; replacements qualify independently. All JSON financial units remain cents/thousandths/basis points. See [corrections and reconciliation](corrections-reconciliation.md) for exact qualification, stale checks, contributor exclusions and settlement delta semantics.
+
+## M5 customer price agreements and atomic replacement
+
+| Command | Payload / role |
+|---|---|
+| contract_create | terms: ContractTerms; Analyst/Admin, existing family owner |
+| contract_submit / contract_withdraw | id, edition, version; owner Analyst/Admin |
+| contract_decide | id, edition, version, approve, note; independent non-contributor Approver |
+| quote_replace_line | id, version, index (zero-based), request; Draft owner Sales/Admin |
+
+Read `export_contract {id, edition}` returns frozen approved contractual CSV. CLI `export-contract ID EDITION FILE` creates a new file only. PriceRequest source now accepts `{kind:"contract",id,edition}` or `{kind:"customer_contract"}`. The latter is opt-in automatic selection; absent source still uses live rules. Use separate business edition and workflow version. Complete terms schema, interval/conflict rules, frozen-origin semantics and exact units are in [customer price agreements](customer-price-agreements.md).

@@ -123,8 +123,16 @@ pub fn export_quote(q: &Quote) -> Result<String> {
     let mut output = String::from(
         "quote_id,quote_version,source_revision,status,product_id,product_name,customer_id,date,quantity,unit,currency,rule,cost_version,list_unit,invoice_unit,invoice_total,rebate_total,pocket_total,cost_total,margin_total,pricing_source,pricing_source_version,pricing_source_revision,pricing_source_approval_revision,pricing_source_publication_revision,pricing_source_captured_revision,pricing_source_invoice_unit,pricing_source_min_quantity\r\n",
     );
+    let contracts = q
+        .lines
+        .iter()
+        .any(|l| l.source.as_ref().is_some_and(|s| s.contract.is_some()));
+    if contracts {
+        output.truncate(output.len().saturating_sub(2));
+        output.push_str(",contract_selection,contract_row,contract_start,contract_end_exclusive,contract_max_quantity_exclusive,contract_priority,contract_fingerprint\r\n");
+    }
     for l in &q.lines {
-        let fields = [
+        let mut fields = vec![
             q.id.clone(),
             q.version.to_string(),
             q.source_revision.to_string(),
@@ -186,6 +194,28 @@ pub fn export_quote(q: &Quote) -> Result<String> {
                 .map(|s| s.min_quantity.to_string())
                 .unwrap_or_default(),
         ];
+        if contracts {
+            let c = l.source.as_ref().and_then(|s| s.contract.as_ref());
+            fields.extend([
+                c.map(|_| {
+                    if l.request.source == Some(PriceSource::CustomerContract) {
+                        "automatic"
+                    } else {
+                        "exact"
+                    }
+                    .into()
+                })
+                .unwrap_or_default(),
+                c.map(|c| c.row_id.clone()).unwrap_or_default(),
+                c.map(|c| c.start.to_string()).unwrap_or_default(),
+                c.map(|c| c.end.to_string()).unwrap_or_default(),
+                c.and_then(|c| c.max_quantity)
+                    .map(|q| q.to_string())
+                    .unwrap_or_default(),
+                c.map(|c| c.priority.to_string()).unwrap_or_default(),
+                c.map(|c| c.terms_fingerprint.clone()).unwrap_or_default(),
+            ]);
+        }
         output.push_str(&fields.iter().map(|s| safe(s)).collect::<Vec<_>>().join(","));
         output.push_str("\r\n");
     }
@@ -243,6 +273,81 @@ pub fn export_settlement(state: &State, id: &str) -> Result<String> {
             .collect::<Vec<_>>()
             .join(",")
     ))
+}
+
+/// Immutable approved contractual terms, independent of later edition activation.
+pub fn export_contract(state: &State, id: &str, edition: u64) -> Result<String> {
+    let c = state.contract(id, edition)?;
+    ensure(
+        c.status == RecordStatus::Approved,
+        "Only approved contract editions may export",
+    )?;
+    let review = c
+        .review
+        .as_ref()
+        .ok_or_else(|| error("Contract approval missing"))?;
+    let fingerprint = contract_fingerprint(c)?;
+    let mut output = String::from(
+        "contract_id,edition,name,customer_id,currency,start,end_exclusive,priority,row_id,product_id,unit,min_quantity,max_quantity_exclusive,invoice_unit,origin,origin_capture_revision,origin_approval_revision,owner,reviewer,approval_revision,terms_fingerprint\r\n",
+    );
+    for row in &c.terms.rows {
+        let frozen = c
+            .rows
+            .iter()
+            .find(|r| r.row_id == row.id)
+            .ok_or_else(|| error("Frozen contract row missing"))?;
+        let fields = [
+            c.terms.id.clone(),
+            edition.to_string(),
+            c.terms.name.clone(),
+            c.terms.customer_id.clone(),
+            c.terms.currency.to_string(),
+            c.terms.start.to_string(),
+            c.terms.end.to_string(),
+            c.terms.priority.to_string(),
+            row.id.clone(),
+            row.product_id.clone(),
+            row.unit.clone(),
+            row.min_quantity.to_string(),
+            row.max_quantity.map(|q| q.to_string()).unwrap_or_default(),
+            frozen.invoice_unit.to_string(),
+            frozen
+                .origin
+                .as_ref()
+                .map(|o| o.source.label())
+                .unwrap_or_else(|| "Fixed approved contract price".into()),
+            frozen
+                .origin
+                .as_ref()
+                .map(|o| o.captured_revision.to_string())
+                .unwrap_or_default(),
+            frozen
+                .origin
+                .as_ref()
+                .map(|o| o.approval_revision.to_string())
+                .unwrap_or_default(),
+            c.owner.clone(),
+            review.actor.name.clone(),
+            review.revision.to_string(),
+            fingerprint.clone(),
+        ];
+        output.push_str(
+            &fields
+                .iter()
+                .enumerate()
+                .map(|(i, s)| {
+                    if matches!(i, 1 | 7 | 11 | 12 | 13 | 15 | 16 | 19) {
+                        format!("\"{s}\"")
+                    } else {
+                        safe(s)
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+        output.push_str("\r\n");
+    }
+    Ok(output)
 }
 
 #[cfg(test)]

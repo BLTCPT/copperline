@@ -36,7 +36,7 @@ fn run() -> Result<()> {
     let verb = args.get(i).map(String::as_str).unwrap_or("help");
     if verb == "help" {
         println!(
-            "Copperline pricing workbench\nUsage: copperline-cli [--data DIR] demo|state|execute JSON|api|serve PORT|export-quote ID FILE|export-settlement ID FILE|commands\nRecovery: storage-inspect | quarantine-pending NAME SHA256\napi: bounded JSON lines over stdin/stdout. serve: opt-in loopback JSON lines, maximum 16 clients, no remote authentication.\nRecovery verifies committed history and preserves pending evidence; it never promotes an interrupted write.\nAll figures and identities in the demo are synthetic.\n--version prints the build version."
+            "Copperline pricing workbench\nUsage: copperline-cli [--data DIR] demo|state|execute JSON|api|serve PORT|export-quote ID FILE|export-settlement ID FILE|export-contract ID EDITION FILE|commands\nRecovery: storage-inspect | quarantine-pending NAME SHA256\napi: bounded JSON lines over stdin/stdout. serve: opt-in loopback JSON lines, maximum 16 clients, no remote authentication.\nRecovery verifies committed history and preserves pending evidence; it never promotes an interrupted write.\nAll figures and identities in the demo are synthetic.\n--version prints the build version."
         );
         return Ok(());
     }
@@ -91,8 +91,30 @@ fn run() -> Result<()> {
                 serde_json::to_string(&e.execute(request)?).map_err(|e| error(e.to_string()))?
             );
         }
+        "export-contract" => {
+            let id = args
+                .get(i + 1)
+                .ok_or_else(|| error("export-contract requires ID EDITION FILE"))?;
+            let edition = args
+                .get(i + 2)
+                .ok_or_else(|| error("Missing contract edition"))?
+                .parse::<u64>()
+                .map_err(|_| error("Invalid contract edition"))?;
+            let path = args
+                .get(i + 3)
+                .ok_or_else(|| error("Missing export path"))?;
+            let csv = copperline_engine::export_contract(e.state(), id, edition)?;
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(path)
+                .map_err(|e| error(e.to_string()))?;
+            file.write_all(csv.as_bytes())
+                .map_err(|e| error(e.to_string()))?;
+            println!("Exported approved contract evidence");
+        }
         "commands" => println!(
-            "seed_demo correction_create correction_submit correction_decide correction_withdraw settlement_create settlement_submit settlement_decide settlement_withdraw grid_calculate grid_submit grid_decide agreement_create agreement_submit agreement_decide transaction_add transactions_import rebate_accrue product_put customer_put cost_add rule_add policy_set quote_approval_policy_set products_import quote_create quote_add_line quote_remove_line quote_reprice quote_submit quote_decide quote_revise list_calculate list_submit list_decide list_publish\nRead API: state evaluate compare export_quote export_settlement reconciliation analytics catalog"
+            "seed_demo contract_create contract_submit contract_decide contract_withdraw correction_create correction_submit correction_decide correction_withdraw settlement_create settlement_submit settlement_decide settlement_withdraw grid_calculate grid_submit grid_decide agreement_create agreement_submit agreement_decide transaction_add transactions_import rebate_accrue product_put customer_put cost_add rule_add policy_set quote_approval_policy_set products_import quote_create quote_add_line quote_replace_line quote_remove_line quote_reprice quote_submit quote_decide quote_revise list_calculate list_submit list_decide list_publish\nRead API: state evaluate compare export_quote export_contract export_settlement reconciliation analytics catalog"
         ),
         "api" => {
             let stdin = io::stdin();
@@ -287,6 +309,17 @@ fn handle(e: &mut Engine, v: Value) -> Result<Value> {
                 .ok_or_else(|| error("Quote not found"))?;
             Ok(json!({"csv":export_quote(q)?}))
         }
+        "export_contract" => {
+            let id = params
+                .get("id")
+                .and_then(Value::as_str)
+                .ok_or_else(|| error("Missing contract ID"))?;
+            let edition = params
+                .get("edition")
+                .and_then(Value::as_u64)
+                .ok_or_else(|| error("Missing contract edition"))?;
+            Ok(json!({"csv":copperline_engine::export_contract(e.state(),id,edition)?}))
+        }
         "export_settlement" => {
             let id = params
                 .get("id")
@@ -305,7 +338,7 @@ fn handle(e: &mut Engine, v: Value) -> Result<Value> {
         "analytics" => serde_json::to_value(copperline_engine::analytics(e.state())?)
             .map_err(|e| error(e.to_string())),
         "catalog" => Ok(
-            json!({"api_version":1,"money":"integer cents","quantity":"integer thousandths","percent":"integer basis points","methods":["state","execute","evaluate","compare","export_quote","export_settlement","reconciliation","analytics","catalog"]}),
+            json!({"api_version":1,"money":"integer cents","quantity":"integer thousandths","percent":"integer basis points","methods":["state","execute","evaluate","compare","export_quote","export_contract","export_settlement","reconciliation","analytics","catalog"]}),
         ),
         _ => Err(error("Unknown API method")),
     }

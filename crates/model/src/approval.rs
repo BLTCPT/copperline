@@ -142,7 +142,12 @@ pub fn quote_target(id: &str) -> String {
 fn author_command(command: &str) -> bool {
     matches!(
         command,
-        "quote_create" | "quote_add_line" | "quote_remove_line" | "quote_reprice" | "quote_revise"
+        "quote_create"
+            | "quote_add_line"
+            | "quote_replace_line"
+            | "quote_remove_line"
+            | "quote_reprice"
+            | "quote_revise"
     )
 }
 fn legacy_author(a: &Audit, id: &str) -> bool {

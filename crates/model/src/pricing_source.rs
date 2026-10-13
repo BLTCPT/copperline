@@ -7,6 +7,8 @@ use super::*;
 pub enum PriceSource {
     Grid { id: String, approval_revision: u64 },
     PriceList { id: String, version: u64 },
+    Contract { id: String, edition: u64 },
+    CustomerContract,
 }
 impl PriceSource {
     pub fn label(&self) -> String {
@@ -16,6 +18,8 @@ impl PriceSource {
                 approval_revision,
             } => format!("Grid {id} · approval {approval_revision}"),
             Self::PriceList { id, version } => format!("List {id} · v{version}"),
+            Self::Contract { id, edition } => format!("Contract {id} · edition {edition}"),
+            Self::CustomerContract => "Automatic customer contract (highest priority)".into(),
         }
     }
     pub fn validate(&self) -> Result<()> {
@@ -25,6 +29,8 @@ impl PriceSource {
                 approval_revision,
             } => (id, approval_revision),
             Self::PriceList { id, version } => (id, version),
+            Self::Contract { id, edition } => (id, edition),
+            Self::CustomerContract => return Ok(()),
         };
         id(key)?;
         ensure(
@@ -53,10 +59,13 @@ pub struct SourceEvidence {
     pub customer_id: String,
     pub currency: Currency,
     pub unit: String,
-    /// Approved records are point-date snapshots, not open-ended agreements.
+    /// Evaluated pricing date. Legacy grid/list sources require this exact date;
+    /// optional contract evidence supplies the approved interval and quantity band.
     pub effective_date: Date,
     pub min_quantity: Quantity,
     pub invoice_unit: Money,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract: Option<ContractSourceEvidence>,
 }
 impl SourceEvidence {
     fn validate_for(&self, evaluation: &Evaluation) -> Result<()> {
@@ -68,10 +77,19 @@ impl SourceEvidence {
                 } => {
                     *approval_revision == self.approval_revision
                         && self.publication_revision.is_none()
+                        && self.contract.is_none()
                 }
                 PriceSource::PriceList { version, .. } => {
-                    self.document_version == Some(*version) && self.publication_revision.is_some()
+                    self.document_version == Some(*version)
+                        && self.publication_revision.is_some()
+                        && self.contract.is_none()
                 }
+                PriceSource::Contract { edition, .. } => {
+                    self.document_version == Some(*edition)
+                        && self.publication_revision.is_none()
+                        && self.contract.is_some()
+                }
+                PriceSource::CustomerContract => false,
             },
             "Source identity does not match approval/publication evidence",
         )?;
@@ -93,8 +111,34 @@ impl SourceEvidence {
                     .is_none_or(|r| r > self.approval_revision && r <= self.captured_revision),
             "Pricing source revision evidence is invalid",
         )?;
+        if let Some(contract) = &self.contract {
+            id(&contract.row_id)?;
+            contract.start.validate()?;
+            contract.end.validate()?;
+            ensure(
+                contract.start <= evaluation.request.date && evaluation.request.date < contract.end,
+                "Frozen contract date is outside its half-open effective interval",
+            )?;
+            if let Some(max) = contract.max_quantity {
+                max.validate()?;
+                ensure(
+                    max > self.min_quantity && evaluation.request.quantity < max,
+                    "Frozen contract quantity is outside its half-open band",
+                )?;
+            }
+            ensure(
+                contract.terms_fingerprint.len() == 64
+                    && contract
+                        .terms_fingerprint
+                        .bytes()
+                        .all(|c| c.is_ascii_hexdigit()),
+                "Contract terms fingerprint invalid",
+            )?;
+        }
         ensure(
-            evaluation.request.source.as_ref() == Some(&self.source)
+            (evaluation.request.source.as_ref() == Some(&self.source)
+                || (evaluation.request.source == Some(PriceSource::CustomerContract)
+                    && matches!(self.source, PriceSource::Contract { .. })))
                 && evaluation.request.product_id == self.product_id
                 && evaluation.request.customer_id == self.customer_id
                 && evaluation.currency == self.currency
@@ -124,11 +168,28 @@ impl State {
     /// Resolve only currently active, explicitly identified commercial prices.
     /// Old grid prices remain usable as historical evidence, never new selections.
     pub fn resolve_pricing_source(&self, request: &PriceRequest) -> Result<Option<SourceEvidence>> {
+        self.pricing_source_at(request, self.revision, false)
+    }
+    pub(crate) fn pricing_source_at(
+        &self,
+        request: &PriceRequest,
+        revision: u64,
+        historical: bool,
+    ) -> Result<Option<SourceEvidence>> {
         let Some(source) = &request.source else {
             return Ok(None);
         };
         source.validate()?;
-        let evidence = self.source_evidence(source, &request.product_id, self.revision, false)?;
+        request.date.validate()?;
+        request.quantity.validate()?;
+        let evidence = if matches!(
+            source,
+            PriceSource::Contract { .. } | PriceSource::CustomerContract
+        ) {
+            self.contract_source_evidence(request, revision)?
+        } else {
+            self.source_evidence(source, &request.product_id, revision, historical)?
+        };
         ensure(
             evidence.product_id == request.product_id
                 && evidence.customer_id == request.customer_id,
@@ -251,6 +312,9 @@ impl State {
                         Some(publication.revision),
                     )
                 }
+                PriceSource::Contract { .. } | PriceSource::CustomerContract => {
+                    return Err(error("Contract source requires interval resolution"));
+                }
             };
         ensure(
             line.request.source.is_none() && line.source.is_none(),
@@ -260,6 +324,9 @@ impl State {
         let (command, target) = match source {
             PriceSource::Grid { id, .. } => ("grid_decide", format!("grid:{id}")),
             PriceSource::PriceList { id, .. } => ("list_decide", format!("list:{id}")),
+            PriceSource::Contract { .. } | PriceSource::CustomerContract => {
+                return Err(error("Unexpected legacy source kind"));
+            }
         };
         self.validate_decision_audit(std::slice::from_ref(decision), command, &target)?;
         ensure(
@@ -288,6 +355,7 @@ impl State {
             effective_date: line.request.date.clone(),
             min_quantity: line.request.quantity,
             invoice_unit: line.invoice_unit,
+            contract: None,
         })
     }
 
@@ -302,12 +370,9 @@ impl State {
                 evidence.captured_revision <= source_revision,
                 "Pricing source evidence postdates this document's calculation",
             )?;
-            let expected = self.source_evidence(
-                &evidence.source,
-                &line.request.product_id,
-                evidence.captured_revision,
-                true,
-            )?;
+            let expected = self
+                .pricing_source_at(&line.request, evidence.captured_revision, true)?
+                .ok_or_else(|| error("Frozen source selector missing"))?;
             ensure(
                 *evidence == expected,
                 "Frozen source evidence differs from approved source history",

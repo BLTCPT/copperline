@@ -62,3 +62,16 @@ Create a fresh populated workspace with `python3 scripts/demo_seed.py --data dat
 6. For concurrency/provenance cases, run `python3 scripts/reconciliation_e2e.py`. It exercises a +150/−140/−2/−8 sequence to zero, same-person denial, competing proposals, reserved IDs, retry after restart, frozen exports and no-overwrite behavior.
 
 A stale pending proposal can be rejected by eligible Finance or withdrawn by its owner. Calculate a new snapshot/proposal rather than editing a reviewed history record.
+
+## M5 customer contract and quote replacement walkthrough
+
+Run `python3 scripts/demo_seed.py --data data/m5-review`, then `target/debug/copperline-desktop --data data/m5-review --view contracts`. On Windows use the CLI/desktop `.exe` binaries and pass their paths with `--binary` to the seed script. Existing nonempty workspaces are preserved. The fixture is revision 41, with CP-ATLAS edition 1 approved and edition 2 pending commercial review; Q-3001 retains the edition-1 November price.
+
+1. Open **Customer price agreements**. Edition 1 covers October 1 through exclusive January 1: quantities below 10 use USD 95; quantity 10 and above uses a frozen USD 90 grid invoice unit. Edition 2 starts November 1 and proposes USD 85 for that bulk band.
+2. As Riley / Approval, approve edition 2. The automatic November selection changes; October still selects edition 1. Q-3001 and its existing approval cycle remain unchanged.
+3. In **Price workbench**, select Atlas, VLV-100, November 15, quantity 10, and **Automatic customer contract**. Inspect the selected edition, row, interval and priority in the waterfall. `--customer-contract` selects this source mode on startup at the default demo date.
+4. As Alex / Sales, open Q-3001 and revise it. Expand **Replace a draft line atomically**, set the matching quote date/customer, choose the current contract selection and line, then replace. All retained lines recalculate together. A wrong date or stale retained source leaves the quote intact.
+5. Resubmit and complete the frozen review route. Export the approved quote to a new CSV path; it includes contract selection, row, interval, priority and fingerprint. Contract terms have their own approved CSV export.
+6. As Morgan / Pricing, expand the contract preparation form. Add fixed price bands or capture an explicitly selected approved grid/list origin. Create an edition, submit and review with Riley. Adjacent intervals are allowed; equal-priority overlapping date/product/quantity coverage is rejected.
+
+Run `python3 scripts/contracts_e2e.py` for boundaries, conflicts, non-resurrection, frozen sources, atomic replacement, restart, retry and export verification. Contract prices never imply FX or unit conversion.

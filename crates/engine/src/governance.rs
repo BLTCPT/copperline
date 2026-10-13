@@ -4,6 +4,7 @@ fn quote_id(c: &Command) -> Option<&str> {
     match c {
         Command::QuoteCreate { id, .. }
         | Command::QuoteAddLine { id, .. }
+        | Command::QuoteReplaceLine { id, .. }
         | Command::QuoteRemoveLine { id, .. }
         | Command::QuoteReprice { id, .. }
         | Command::QuoteSubmit { id, .. }
@@ -17,6 +18,10 @@ pub(super) fn target(c: &Command) -> Option<String> {
         return Some(quote_target(id));
     }
     match c {
+        Command::ContractCreate { terms } => Some(contract_target(&terms.id, terms.edition)),
+        Command::ContractSubmit { id, edition, .. }
+        | Command::ContractDecide { id, edition, .. }
+        | Command::ContractWithdraw { id, edition, .. } => Some(contract_target(id, *edition)),
         Command::RebateAccrue { id, .. } => Some(format!("accrual:{id}")),
         Command::TransactionAdd(t) => Some(format!("invoice:{}", t.id)),
         Command::CorrectionCreate { proposal } => Some(format!("correction:{}", proposal.id)),
@@ -80,6 +85,7 @@ pub(super) fn prepare(s: &mut State, actor: &Actor, c: &Command) -> Result<()> {
     if matches!(
         c,
         Command::QuoteAddLine { .. }
+            | Command::QuoteReplaceLine { .. }
             | Command::QuoteRemoveLine { .. }
             | Command::QuoteReprice { .. }
             | Command::QuoteRevise { .. }

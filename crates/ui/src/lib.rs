@@ -3,6 +3,7 @@ use copperline_engine::{Command, Engine, compare, evaluate, export_quote, totals
 use copperline_model::*;
 use copperline_money::{Bps, Money, Quantity};
 use eframe::egui::{self, Color32, RichText};
+mod contracts;
 mod corrections;
 mod settlements;
 const NAVY: Color32 = Color32::from_rgb(24, 62, 84);
@@ -15,6 +16,7 @@ pub enum View {
     Catalog,
     Rules,
     LiveGrid,
+    Contracts,
     Lists,
     Quotes,
     Approvals,
@@ -33,6 +35,7 @@ impl View {
             Self::Catalog => "Catalog & costs",
             Self::Rules => "Pricing rules",
             Self::LiveGrid => "Live price grid",
+            Self::Contracts => "Customer price agreements",
             Self::Lists => "Price lists",
             Self::Quotes => "Quotes",
             Self::Approvals => "Approvals",
@@ -49,6 +52,7 @@ impl View {
 pub struct Workbench {
     pub engine: Engine,
     pub view: View,
+    contract_form: contracts::ContractForm,
     correction_form: corrections::CorrectionForm,
     settlement_form: settlements::SettlementForm,
     role: usize,
@@ -137,6 +141,7 @@ impl Workbench {
             settlement_form: Default::default(),
             role: 0,
             pricing_source: None,
+            contract_form: contracts::ContractForm::default(),
             approval_discount: thresholds.max_discount.to_string(),
             approval_margin: thresholds.min_margin.to_string(),
             approval_usd: thresholds.usd_value.to_string(),
@@ -302,6 +307,7 @@ impl Workbench {
                         View::Catalog,
                         View::Rules,
                         View::LiveGrid,
+                        View::Contracts,
                         View::Lists,
                         View::Quotes,
                         View::Approvals,
@@ -375,7 +381,7 @@ impl Workbench {
             });
         egui::CentralPanel::default().frame(egui::Frame::new().fill(Color32::from_rgb(241,245,248)).inner_margin(24.0)).show(ui,|ui|{egui::ScrollArea::both().auto_shrink([false,false]).show(ui,|ui|{
    if self.engine.state().products.is_empty(){ui.heading("Start a pricing workspace");ui.label("Load six synthetic industrial products, three customers, costs and a volume rule.");if ui.button("Load synthetic demo").clicked(){self.role=3;self.run(Command::SeedDemo);}return;}
-   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Corrections=>self.corrections_view(ui),View::Settlements=>self.settlements_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui)}
+   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Contracts=>self.contracts_view(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Corrections=>self.corrections_view(ui),View::Settlements=>self.settlements_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui)}
   });});
     }
     fn context(&mut self, ui: &mut egui::Ui) {
@@ -533,6 +539,28 @@ impl Workbench {
             ))
             .strong(),
         );
+        if let Some(source) = &v.source {
+            ui.colored_label(TEAL, source.source.label());
+            if let Some(contract) = &source.contract {
+                ui.small(format!(
+                    "Row {} · {} <= date < {} · {} <= quantity < {} · priority {}",
+                    contract.row_id,
+                    contract.start,
+                    contract.end,
+                    source.min_quantity,
+                    contract
+                        .max_quantity
+                        .map(|q| q.to_string())
+                        .unwrap_or_else(|| "unbounded".into()),
+                    contract.priority
+                ));
+            }
+            ui.small(format!(
+                "Source approval r{} · captured r{}",
+                source.approval_revision, source.captured_revision
+            ));
+        }
+        ui.add_space(6.0);
         egui::Grid::new("waterfall-values")
             .num_columns(2)
             .spacing([24.0, 8.0])
@@ -599,13 +627,6 @@ impl Workbench {
                     .unwrap_or_else(|| "Catalog list; no matching rule".into())),
             v.cost_version
         ));
-        if let Some(source) = &v.source {
-            ui.colored_label(TEAL, source.source.label());
-            ui.small(format!(
-                "Source approval r{} · captured r{}",
-                source.approval_revision, source.captured_revision
-            ));
-        }
         for w in &v.warnings {
             ui.colored_label(COPPER, w);
         }
@@ -981,6 +1002,23 @@ impl Workbench {
             }
         }
         ui.add_space(16.0);
+        egui::CollapsingHeader::new("Replace a draft line atomically").show(ui, |ui| {
+            ui.label("Uses the current selected product, quantity, discount, rebate and pricing basis. All retained lines recalculate together; any failure preserves the entire quote.");
+            self.context(ui);
+            self.source_picker(ui);
+            ui.horizontal_wrapped(|ui| {
+                egui::ComboBox::from_id_salt("replacement-product").selected_text(&self.product).show_ui(ui,|ui|{
+                    for p in self.engine.state().products.values(){ui.selectable_value(&mut self.product,p.id.clone(),&p.id);}
+                });
+                field(ui,"Discount %",&mut self.discount);field(ui,"Rebate %",&mut self.rebate);
+            });
+            egui::ComboBox::from_id_salt("replace-quote-line").selected_text(format!("Line {}",self.contract_form.replace_index.saturating_add(1))).show_ui(ui,|ui| {
+                for (i,l) in q.lines.iter().enumerate(){ui.selectable_value(&mut self.contract_form.replace_index,i,format!("Line {} · {}",i+1,l.request.product_id));}
+            });
+            if ui.add_enabled(q.status==Status::Draft && !q.lines.is_empty() && q.owner==self.actor().name,egui::Button::new("Replace selected line")).clicked(){
+                match self.request(){Ok(request)=>self.run(Command::QuoteReplaceLine{id:q.id.clone(),version:q.version,index:self.contract_form.replace_index,request}),Err(e)=>self.result::<()>(Err(e),"")}
+            }
+        });
         ui.horizontal_wrapped(|ui| {
             if ui
                 .add_enabled(
@@ -1209,7 +1247,18 @@ impl Workbench {
 }
 impl Workbench {
     fn source_picker(&mut self, ui: &mut egui::Ui) {
-        let mut choices: Vec<PriceSource> = vec![];
+        let mut choices: Vec<PriceSource> = vec![PriceSource::CustomerContract];
+        for c in self.engine.state().price_contracts.values() {
+            if c.status == RecordStatus::Approved
+                && c.terms.customer_id == self.customer
+                && c.terms.rows.iter().any(|r| r.product_id == self.product)
+            {
+                choices.push(PriceSource::Contract {
+                    id: c.terms.id.clone(),
+                    edition: c.terms.edition,
+                });
+            }
+        }
         for item in self.engine.state().grid.values() {
             if let Some(active) = &item.last_approved
                 && active.evaluation.request.product_id == self.product
@@ -1258,7 +1307,7 @@ impl Workbench {
                 });
         });
         if self.pricing_source.is_some() {
-            ui.small("Approved sources require the exact pricing date and minimum quantity. Stale selections fail explicitly.");
+            ui.small("Grid/list snapshots use their exact date and minimum quantity. Contracts use approved date intervals and quantity bands. Ineligible or stale selections fail explicitly.");
         }
     }
     fn quote_route(ui: &mut egui::Ui, quote: &Quote) {
@@ -1600,6 +1649,68 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn native_contract_approval_and_atomic_line_replacement()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut h = harness()?;
+        h.set_size(egui::vec2(1440.0, 1500.0));
+        h.state_mut().role = 1;
+        h.state_mut().view = View::Contracts;
+        h.state_mut().contract_form.max_quantity.clear();
+        fn click(
+            h: &mut Harness<'static, Workbench>,
+            label: &str,
+        ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+            h.get_by_label(label).click();
+            h.try_run().map_err(|e| e.to_string())?;
+            assert!(!h.state().failed, "{}", h.state().status);
+            Ok(())
+        }
+        h.try_run().map_err(|e| e.to_string())?;
+        click(&mut h, "Add price band to draft")?;
+        click(&mut h, "Create immutable contract edition")?;
+        click(&mut h, "Prepare a contract edition")?;
+        click(&mut h, "Submit contract")?;
+        h.state_mut().role = 2;
+        h.try_run().map_err(|e| e.to_string())?;
+        click(&mut h, "Approve contract")?;
+        assert_eq!(
+            h.state().engine.state().contract("CP-ATLAS", 1)?.status,
+            RecordStatus::Approved
+        );
+        click(&mut h, "Use automatic customer contracts in workbench")?;
+        h.state_mut().role = 0;
+        h.state_mut().discount = "0".into();
+        h.state_mut().rebate = "0".into();
+        h.try_run().map_err(|e| e.to_string())?;
+        click(&mut h, "Create quote")?;
+        click(&mut h, "Add selected product to quote")?;
+        click(&mut h, "Open quote")?;
+        click(&mut h, "Replace a draft line atomically")?;
+        h.state_mut().quantity = "2".into();
+        h.state_mut().discount = "5".into();
+        h.try_run().map_err(|e| e.to_string())?;
+        click(&mut h, "Replace selected line")?;
+        let q = h
+            .state()
+            .engine
+            .state()
+            .quotes
+            .get(&h.state().selected_quote)
+            .ok_or("Missing quote")?;
+        assert_eq!(q.lines.len(), 1);
+        assert_eq!(q.version, 3);
+        assert_eq!(q.lines.first().map(|l| l.invoice_total), Some(Money(17100)));
+        assert_eq!(
+            q.lines
+                .first()
+                .and_then(|l| l.source.as_ref())
+                .and_then(|s| s.contract.as_ref())
+                .map(|c| c.row_id.as_str()),
+            Some("ROW-1")
+        );
+        Ok(())
+    }
+    #[test]
     fn unauthorized_ui_action_shows_error_without_mutation()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut h = harness()?;
@@ -1623,6 +1734,7 @@ mod tests {
             View::Catalog,
             View::Rules,
             View::LiveGrid,
+            View::Contracts,
             View::Lists,
             View::Quotes,
             View::Approvals,

@@ -6,13 +6,14 @@ use copperline_storage::Store;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 mod commercial;
+mod contracts;
 mod corrections;
 mod csv;
 mod governance;
 mod grid;
 mod settlements;
 pub use commercial::analytics;
-pub use csv::{export_quote, export_settlement, import_products};
+pub use csv::{export_contract, export_quote, export_settlement, import_products};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(
@@ -22,6 +23,26 @@ pub use csv::{export_quote, export_settlement, import_products};
     deny_unknown_fields
 )]
 pub enum Command {
+    ContractCreate {
+        terms: ContractTerms,
+    },
+    ContractSubmit {
+        id: String,
+        edition: u64,
+        version: u64,
+    },
+    ContractDecide {
+        id: String,
+        edition: u64,
+        version: u64,
+        approve: bool,
+        note: String,
+    },
+    ContractWithdraw {
+        id: String,
+        edition: u64,
+        version: u64,
+    },
     SeedDemo,
     CorrectionCreate {
         proposal: CorrectionProposal,
@@ -119,6 +140,12 @@ pub enum Command {
         version: u64,
         request: PriceRequest,
     },
+    QuoteReplaceLine {
+        id: String,
+        version: u64,
+        index: usize,
+        request: PriceRequest,
+    },
     QuoteRemoveLine {
         id: String,
         version: u64,
@@ -168,6 +195,10 @@ pub enum Command {
 impl Command {
     pub fn name(&self) -> &'static str {
         match self {
+            Self::ContractCreate { .. } => "contract_create",
+            Self::ContractSubmit { .. } => "contract_submit",
+            Self::ContractDecide { .. } => "contract_decide",
+            Self::ContractWithdraw { .. } => "contract_withdraw",
             Self::SeedDemo => "seed_demo",
             Self::CorrectionCreate { .. } => "correction_create",
             Self::CorrectionSubmit { .. } => "correction_submit",
@@ -195,6 +226,7 @@ impl Command {
             Self::ProductsImport { .. } => "products_import",
             Self::QuoteCreate { .. } => "quote_create",
             Self::QuoteAddLine { .. } => "quote_add_line",
+            Self::QuoteReplaceLine { .. } => "quote_replace_line",
             Self::QuoteRemoveLine { .. } => "quote_remove_line",
             Self::QuoteReprice { .. } => "quote_reprice",
             Self::QuoteSubmit { .. } => "quote_submit",
@@ -211,7 +243,10 @@ impl Command {
             Self::SeedDemo | Self::PolicySet(_) | Self::QuoteApprovalPolicySet { .. } => {
                 role == Role::Admin
             }
-            Self::CorrectionCreate { .. }
+            Self::ContractCreate { .. }
+            | Self::ContractSubmit { .. }
+            | Self::ContractWithdraw { .. }
+            | Self::CorrectionCreate { .. }
             | Self::CorrectionSubmit { .. }
             | Self::CorrectionWithdraw { .. }
             | Self::SettlementCreate { .. }
@@ -232,6 +267,7 @@ impl Command {
             | Self::ListCalculate { .. }
             | Self::ListSubmit { .. }
             | Self::ListPublish { .. } => matches!(role, Role::Analyst | Role::Admin),
+            Self::ContractDecide { .. } => role == Role::Approver,
             Self::CorrectionDecide { .. } | Self::SettlementDecide { .. } => role == Role::Finance,
             Self::AgreementDecide { .. } | Self::GridDecide { .. } | Self::ListDecide { .. } => {
                 matches!(role, Role::Approver | Role::Admin)
@@ -417,6 +453,10 @@ fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
         | Command::SettlementSubmit { .. }
         | Command::SettlementDecide { .. }
         | Command::SettlementWithdraw { .. } => settlements::apply(s, actor, c),
+        Command::ContractCreate { .. }
+        | Command::ContractSubmit { .. }
+        | Command::ContractDecide { .. }
+        | Command::ContractWithdraw { .. } => contracts::apply(s, actor, c),
         Command::QuoteApprovalPolicySet { .. } => governance::apply(s, actor, c),
         Command::AgreementCreate { .. }
         | Command::AgreementSubmit { .. }
@@ -566,6 +606,38 @@ fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
             q.source_revision = revision;
             q.policy = policy;
             Ok(format!("Added line and recalculated {id}"))
+        }
+        Command::QuoteReplaceLine {
+            id,
+            version,
+            index,
+            request,
+        } => {
+            let q = s.quotes.get(id).ok_or_else(|| error("Quote not found"))?;
+            draft(q, *version)?;
+            ensure(*index < q.lines.len(), "Line index not found")?;
+            ensure(
+                request.customer_id == q.customer_id && request.date == q.date,
+                "Line customer/date must match quote",
+            )?;
+            let mut requests: Vec<_> = q.lines.iter().map(|l| l.request.clone()).collect();
+            let slot = requests
+                .get_mut(*index)
+                .ok_or_else(|| error("Line index not found"))?;
+            *slot = request.clone();
+            let lines = requests
+                .iter()
+                .map(|r| evaluate(s, r))
+                .collect::<Result<Vec<_>>>()?;
+            totals(&lines)?;
+            let revision = s.revision;
+            let policy = s.policy.clone();
+            let q = quote_mut(s, id)?;
+            q.lines = lines;
+            q.version = next_version(q.version)?;
+            q.source_revision = revision;
+            q.policy = policy;
+            Ok(format!("Replaced line and recalculated {id}"))
         }
         Command::QuoteRemoveLine { id, version, index } => {
             let q = quote_mut(s, id)?;

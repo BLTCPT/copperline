@@ -12,14 +12,14 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 | Price lists, whole-list approval, distinct publication | Implemented local subset | Engine lifecycle and process E2E; no external delivery |
 | Live grid calculations | Implemented local subset | Persisted per-item candidate/active prices and independent review |
 | Candidate recalculation without replacing last approved grid item | Implemented | Recalculate/reject preserves active approved price; engine/UI tests |
-| Quote creation, line edits, discount and rebate waterfall | Implemented | Golden financial case and E2E |
+| Quote creation, line edits, discount and rebate waterfall | Implemented | Golden financial case, atomic full-draft line replacement and E2E |
 | Frozen quotes and separate-person approval | Implemented local subset | Owner-only authoring, contributor exclusions, target-bound reviews and legacy compatibility; caller-selected demo identities |
 | Configurable multistep approvals, delegation, thresholds by role | Partial | Quotes freeze commercial → conditional Finance routes with exact thresholds, owner/contributor exclusions and distinct reviewers; no delegation/general hierarchy |
-| Approved price consumption in quotes | Implemented explicit subset | Select current grid approval or published list version; exact-date/minimum-quantity qualification and frozen source evidence |
+| Approved price consumption in quotes | Implemented explicit subset | Select current grid/list snapshot or approved customer contract edition; explicit date/quantity qualification, priority/conflict rules and frozen source evidence |
 | Interrupted-write recovery and concurrent local API | Implemented local subset | Locked inspect/hash-verified quarantine, 16 bounded clients and per-command optimistic conflicts |
 | Scenario comparison | Implemented deterministic subset | Same product/customer comparison; no demand estimation |
 | Analytics actuals, segmentation, dashboards, alerts | Partial | Gross/reversed/net invoice ledger and customer/currency weighted margin; no warehouse, alerting or advanced segmentation |
-| Customer agreements / contract terms / renewals | Partial | Independently approved immutable rebate terms, dates, retrospective tiers; no renewal/amendment |
+| Customer agreements / contract terms / renewals | Partial | Approved customer price-contract editions with periods, quantity bands and frozen origins; separate retrospective rebate terms; broader amendments/renewals remain |
 | Rebates, tier programs, accrual/settlement/reconciliation | Partial | Retrospective net accruals, signed local settlement recognition, exact baseline/source checks and independent Finance review; no payment or external accounting reconciliation |
 | Correctable invoice actuals and credit provenance | Implemented full-reversal subset | Immutable original, reviewed full reversal/atomic replacement, reserved IDs, historical basis and zero-net recalculation; partial credit allocation remains missing |
 | Promotions and promotional effectiveness | Missing | No calendar, uplift/demand or budget model |
@@ -40,3 +40,5 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 - [Public platform navigation](https://www.pricefx.com/platform/price-management/): agreements, promotions, rebates, channel management and optimization define additional roadmap areas.
 
 No vendor screenshots, examples, assets or implementation were imported. Advanced capabilities remain gaps until implemented and verified against explicit acceptance criteria.
+
+M5 adds a working local customer-contract subset: immutable editions, date/quantity qualification, explicit automatic priority, overlap rejection, origin snapshots and atomic quote-line replacement. It does not add FX/UOM conversion, enterprise contract delivery or full CPQ. See [contract semantics](customer-price-agreements.md).
