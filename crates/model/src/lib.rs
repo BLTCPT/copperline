@@ -283,6 +283,16 @@ pub struct State {
     pub rules: Vec<Rule>,
     pub quotes: BTreeMap<String, Quote>,
     pub price_lists: BTreeMap<String, PriceList>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub grid: BTreeMap<String, GridItem>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub agreements: BTreeMap<String, Agreement>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub transactions: BTreeMap<String, Transaction>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub transaction_revisions: BTreeMap<String, u64>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub accruals: BTreeMap<String, Accrual>,
     pub policy: Policy,
     pub audit: Vec<Audit>,
     pub receipts: Vec<Receipt>,
@@ -298,6 +308,11 @@ impl Default for State {
             rules: vec![],
             quotes: BTreeMap::new(),
             price_lists: BTreeMap::new(),
+            grid: BTreeMap::new(),
+            agreements: BTreeMap::new(),
+            transactions: BTreeMap::new(),
+            transaction_revisions: BTreeMap::new(),
+            accruals: BTreeMap::new(),
             policy: Policy::default(),
             audit: vec![],
             receipts: vec![],
@@ -415,6 +430,8 @@ impl State {
             )?;
         }
         self.validate_documents()?;
+        self.validate_grid()?;
+        self.validate_commercial()?;
         Ok(())
     }
 }
@@ -550,7 +567,7 @@ fn document_valid(
         text(&d.actor)?;
         text(&d.note)?;
         ensure(
-            d.revision > 0 && d.revision <= current && d.actor != owner,
+            d.revision > 0 && d.revision <= current,
             "Invalid approval decision",
         )?;
     }
@@ -566,7 +583,9 @@ fn document_valid(
             "Current approval predates pricing data",
         )?;
         ensure(
-            d.approved == (status != Status::Rejected) && Some(&d.actor) != submitter.as_ref(),
+            d.approved == (status != Status::Rejected)
+                && d.actor != owner
+                && Some(&d.actor) != submitter.as_ref(),
             "Decision does not match document status or submitter",
         )?;
     }
@@ -680,6 +699,10 @@ impl State {
 
 impl State {
     fn validate_snapshot_references(&self, l: &Evaluation) -> Result<()> {
+        ensure(
+            self.customers.contains_key(&l.request.customer_id),
+            "Snapshot customer missing",
+        )?;
         let product = self
             .products
             .get(&l.request.product_id)
@@ -714,8 +737,390 @@ impl State {
             ensure(
                 a.actor.name == d.actor
                     && matches!(a.actor.role, Role::Approver | Role::Admin)
-                    && matches!(a.command.as_str(), "quote_decide" | "list_decide"),
+                    && matches!(
+                        a.command.as_str(),
+                        "quote_decide" | "list_decide" | "grid_decide" | "agreement_decide"
+                    ),
                 "Decision actor does not match approval audit",
+            )?;
+        }
+        Ok(())
+    }
+}
+
+/// A live grid keeps the candidate separate from the last independently approved price.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ApprovedPrice {
+    pub evaluation: Evaluation,
+    pub policy: Policy,
+    pub source_revision: u64,
+    pub decision: Decision,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GridItem {
+    pub id: String,
+    pub owner: String,
+    pub version: u64,
+    pub source_revision: u64,
+    pub policy: Policy,
+    pub status: Status,
+    pub candidate: Evaluation,
+    pub submitted_by: Option<String>,
+    pub decisions: Vec<Decision>,
+    pub last_approved: Option<ApprovedPrice>,
+}
+impl State {
+    fn validate_grid(&self) -> Result<()> {
+        ensure(self.grid.len() <= 10_000, "Live grid item limit reached")?;
+        for (key, item) in &self.grid {
+            id(&item.id)?;
+            ensure(
+                key == &item.id && item.status != Status::Published,
+                "Invalid grid item identity/status",
+            )?;
+            item.policy.validate()?;
+            document_valid(
+                item.status,
+                &item.owner,
+                &item.submitted_by,
+                &item.decisions,
+                item.version,
+                item.source_revision,
+                self.revision,
+                std::slice::from_ref(&item.candidate),
+            )?;
+            self.validate_snapshot_references(&item.candidate)?;
+            item.candidate.check_policy(&item.policy)?;
+            self.validate_decision_audit(&item.decisions)?;
+            ensure(
+                item.last_approved.as_ref().map(|p| &p.decision)
+                    == item.decisions.iter().rev().find(|d| d.approved),
+                "Active grid price must preserve the latest approved decision",
+            )?;
+            if let Some(approved) = &item.last_approved {
+                approved.policy.validate()?;
+                approved.evaluation.validate_snapshot()?;
+                approved.evaluation.check_policy(&approved.policy)?;
+                self.validate_snapshot_references(&approved.evaluation)?;
+                self.validate_decision_audit(std::slice::from_ref(&approved.decision))?;
+                ensure(
+                    approved.decision.approved
+                        && approved.decision.revision > approved.source_revision
+                        && approved.source_revision <= self.revision
+                        && !approved.evaluation.hard_block,
+                    "Invalid approved grid price",
+                )?;
+                ensure(
+                    approved.evaluation.request.product_id == item.candidate.request.product_id
+                        && approved.evaluation.request.customer_id
+                            == item.candidate.request.customer_id,
+                    "Grid item identity cannot change",
+                )?;
+            }
+            if item.status == Status::Approved {
+                let approved = item
+                    .last_approved
+                    .as_ref()
+                    .ok_or_else(|| error("Approved grid item has no active price"))?;
+                ensure(
+                    approved.evaluation == item.candidate
+                        && approved.source_revision == item.source_revision
+                        && approved.policy == item.policy
+                        && item.decisions.last() == Some(&approved.decision),
+                    "Active grid price differs from approved candidate",
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RebateTier {
+    pub threshold: Money,
+    pub rate: Bps,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AgreementTerms {
+    pub id: String,
+    pub name: String,
+    pub customer_id: String,
+    pub currency: Currency,
+    pub start: Date,
+    pub end: Date,
+    pub tiers: Vec<RebateTier>,
+}
+impl AgreementTerms {
+    pub fn validate(&self) -> Result<()> {
+        id(&self.id)?;
+        text(&self.name)?;
+        id(&self.customer_id)?;
+        self.start.validate()?;
+        self.end.validate()?;
+        ensure(
+            self.start < self.end,
+            "Agreement end is exclusive and must follow start",
+        )?;
+        ensure(
+            !self.tiers.is_empty() && self.tiers.len() <= 20,
+            "Agreement requires 1–20 tiers",
+        )?;
+        let mut previous = None;
+        let mut previous_rate = Bps(0);
+        for t in &self.tiers {
+            t.threshold.nonnegative()?;
+            t.rate.validate()?;
+            if let Some(p) = previous {
+                ensure(t.threshold > p, "Tier thresholds must strictly increase")?;
+            } else {
+                ensure(t.threshold == Money(0), "First tier must start at zero")?;
+            }
+            ensure(t.rate >= previous_rate, "Tier rates must not decrease")?;
+            previous = Some(t.threshold);
+            previous_rate = t.rate;
+        }
+        Ok(())
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Agreement {
+    pub terms: AgreementTerms,
+    pub owner: String,
+    pub version: u64,
+    pub source_revision: u64,
+    pub status: Status,
+    pub submitted_by: Option<String>,
+    pub decisions: Vec<Decision>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Transaction {
+    pub id: String,
+    pub source: String,
+    pub product_id: String,
+    pub customer_id: String,
+    pub date: Date,
+    pub quantity: Quantity,
+    pub unit: String,
+    pub currency: Currency,
+    pub invoice_total: Money,
+    pub cost_total: Money,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Accrual {
+    pub id: String,
+    pub agreement_id: String,
+    pub agreement_version: u64,
+    pub source_revision: u64,
+    pub currency: Currency,
+    pub transaction_ids: Vec<String>,
+    pub eligible_invoice: Money,
+    pub rate: Bps,
+    pub rebate: Money,
+}
+impl State {
+    fn validate_commercial(&self) -> Result<()> {
+        ensure(
+            self.agreements.len() <= 1000
+                && self.transactions.len() <= 50_000
+                && self.accruals.len() <= 10_000,
+            "Commercial dataset limit reached",
+        )?;
+        ensure(
+            self.transactions.len() == self.transaction_revisions.len(),
+            "Transaction source revision map mismatch",
+        )?;
+        let mut groups: BTreeMap<(String, String), (Money, Money)> = BTreeMap::new();
+        for (key, t) in &self.transactions {
+            let source = *self
+                .transaction_revisions
+                .get(key)
+                .ok_or_else(|| error("Transaction source revision missing"))?;
+            let a = self
+                .audit
+                .iter()
+                .find(|a| a.revision == source)
+                .ok_or_else(|| error("Transaction ingestion audit missing"))?;
+            ensure(
+                matches!(
+                    a.command.as_str(),
+                    "transaction_add" | "transactions_import"
+                ) && matches!(a.actor.role, Role::Analyst | Role::Admin),
+                "Transaction ingestion audit invalid",
+            )?;
+            let g = groups
+                .entry((t.customer_id.clone(), t.currency.to_string()))
+                .or_insert((Money(0), Money(0)));
+            g.0 = g.0.add(t.invoice_total)?;
+            g.1 = g.1.add(t.cost_total)?;
+            id(&t.id)?;
+            ensure(key == &t.id, "Transaction key mismatch")?;
+            text(&t.source)?;
+            t.date.validate()?;
+            t.quantity.validate()?;
+            ensure(
+                t.invoice_total.0 >= 0 && t.cost_total.0 >= 0,
+                "Transaction values must be nonnegative; credit memos are not supported",
+            )?;
+            let p = self
+                .products
+                .get(&t.product_id)
+                .ok_or_else(|| error("Transaction product missing"))?;
+            ensure(
+                t.unit == p.unit
+                    && t.currency == p.currency
+                    && self.customers.contains_key(&t.customer_id),
+                "Transaction context mismatch",
+            )?;
+        }
+        for (invoice, cost) in groups.values() {
+            let margin = invoice.sub(*cost)?;
+            if invoice.0 > 0 {
+                i32::try_from(copperline_money::ratio(margin.0, 10_000, invoice.0)?)
+                    .map_err(|_| error("Invoice analytics margin overflow"))?;
+            }
+        }
+        for (key, a) in &self.agreements {
+            a.terms.validate()?;
+            ensure(
+                key == &a.terms.id
+                    && self.customers.contains_key(&a.terms.customer_id)
+                    && a.version > 0
+                    && a.source_revision <= self.revision,
+                "Agreement identity/version invalid",
+            )?;
+            text(&a.owner)?;
+            ensure(a.status != Status::Published, "Agreement status invalid")?;
+            if a.status != Status::Draft {
+                text(
+                    a.submitted_by
+                        .as_deref()
+                        .ok_or_else(|| error("Agreement submitter missing"))?,
+                )?;
+            }
+            self.validate_decision_audit(&a.decisions)?;
+            let mut previous = 0;
+            for d in &a.decisions {
+                ensure(
+                    d.revision > previous
+                        && d.revision <= self.revision
+                        && d.actor != a.owner
+                        && Some(&d.actor) != a.submitted_by.as_ref(),
+                    "Agreement decision invalid",
+                )?;
+                previous = d.revision;
+            }
+            if matches!(a.status, Status::Approved | Status::Rejected) {
+                let d = a
+                    .decisions
+                    .last()
+                    .ok_or_else(|| error("Agreement decision missing"))?;
+                ensure(
+                    d.approved == (a.status == Status::Approved) && d.revision > a.source_revision,
+                    "Agreement decision mismatches status",
+                )?;
+            }
+        }
+        let approved: Vec<_> = self
+            .agreements
+            .values()
+            .filter(|a| a.status == Status::Approved)
+            .collect();
+        for (i, a) in approved.iter().enumerate() {
+            for b in approved.iter().skip(i + 1) {
+                ensure(
+                    !(a.terms.customer_id == b.terms.customer_id
+                        && a.terms.currency == b.terms.currency
+                        && a.terms.start < b.terms.end
+                        && b.terms.start < a.terms.end),
+                    "Approved rebate agreements cannot overlap for the same customer/currency",
+                )?;
+            }
+        }
+        for (key, a) in &self.accruals {
+            id(&a.id)?;
+            ensure(
+                key == &a.id && a.source_revision < self.revision,
+                "Accrual identity/source invalid",
+            )?;
+            let agreement = self
+                .agreements
+                .get(&a.agreement_id)
+                .ok_or_else(|| error("Accrual agreement missing"))?;
+            ensure(
+                agreement
+                    .decisions
+                    .last()
+                    .is_some_and(|d| d.approved && d.revision <= a.source_revision),
+                "Accrual predates agreement approval",
+            )?;
+            ensure(
+                agreement.status == Status::Approved
+                    && agreement.version == a.agreement_version
+                    && a.currency == agreement.terms.currency,
+                "Accrual agreement mismatch",
+            )?;
+            ensure(
+                !a.transaction_ids.is_empty() && a.transaction_ids.len() <= 50_000,
+                "Accrual must contain transactions",
+            )?;
+            let expected_ids: Vec<_> = self
+                .transactions
+                .values()
+                .filter(|t| {
+                    t.customer_id == agreement.terms.customer_id
+                        && t.currency == a.currency
+                        && t.date >= agreement.terms.start
+                        && t.date < agreement.terms.end
+                        && self
+                            .transaction_revisions
+                            .get(&t.id)
+                            .is_some_and(|r| *r <= a.source_revision)
+                })
+                .map(|t| t.id.clone())
+                .collect();
+            ensure(
+                a.transaction_ids == expected_ids,
+                "Accrual must include every eligible invoice known at its source revision",
+            )?;
+            let mut ids = std::collections::BTreeSet::new();
+            let mut invoice = Money(0);
+            for id in &a.transaction_ids {
+                ensure(ids.insert(id), "Duplicate accrued transaction")?;
+                ensure(
+                    self.transaction_revisions
+                        .get(id)
+                        .is_some_and(|r| *r <= a.source_revision),
+                    "Accrual predates transaction ingestion",
+                )?;
+                let t = self
+                    .transactions
+                    .get(id)
+                    .ok_or_else(|| error("Accrued transaction missing"))?;
+                ensure(
+                    t.customer_id == agreement.terms.customer_id
+                        && t.currency == a.currency
+                        && t.date >= agreement.terms.start
+                        && t.date < agreement.terms.end,
+                    "Accrued transaction outside agreement",
+                )?;
+                invoice = invoice.add(t.invoice_total)?;
+            }
+            let rate = agreement
+                .terms
+                .tiers
+                .iter()
+                .filter(|t| t.threshold <= invoice)
+                .map(|t| t.rate)
+                .next_back()
+                .ok_or_else(|| error("No rebate tier"))?;
+            ensure(
+                invoice == a.eligible_invoice
+                    && a.rate == rate
+                    && a.rebate == invoice.percent(rate)?,
+                "Accrual arithmetic mismatch",
             )?;
         }
         Ok(())

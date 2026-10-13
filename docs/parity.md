@@ -10,15 +10,15 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 | Effective cost and missing-cost handling | Implemented | Pricing golden/missing-cost tests |
 | Versioned rules and explicit precedence | Implemented | Rule precedence/effectivity tests; single-winner fixed/discount/markup |
 | Price lists, whole-list approval, distinct publication | Implemented local subset | Engine lifecycle and process E2E; no external delivery |
-| Live grid calculations | Partial | Workbench evaluates current data; no item-level approved-price history yet |
-| Candidate recalculation without replacing last approved grid item | Missing | Roadmap; must preserve approved values during recalculation |
+| Live grid calculations | Implemented local subset | Persisted per-item candidate/active prices and independent review |
+| Candidate recalculation without replacing last approved grid item | Implemented | Recalculate/reject preserves active approved price; engine/UI tests |
 | Quote creation, line edits, discount and rebate waterfall | Implemented | Golden financial case and E2E |
 | Frozen quotes and separate-person approval | Implemented local subset | Lifecycle/immutability tests; caller-selected demo identities |
 | Configurable multistep approvals, delegation, thresholds by role | Partial | One explicit review step, hard/soft guardrails, no routing engine |
 | Scenario comparison | Implemented deterministic subset | Same product/customer comparison; no demand estimation |
-| Analytics actuals, segmentation, dashboards, alerts | Partial | Weighted quote totals; no actuals warehouse or historical performance |
-| Customer agreements / contract terms / renewals | Missing | No agreement lifecycle yet |
-| Rebates, tier programs, accrual/settlement/reconciliation | Partial | Exact per-line percentage accrual only; no settlement |
+| Analytics actuals, segmentation, dashboards, alerts | Partial | Recorded invoice ledger and customer/currency weighted margin; no warehouse, alerting or advanced segmentation |
+| Customer agreements / contract terms / renewals | Partial | Independently approved immutable rebate terms, dates, retrospective tiers; no renewal/amendment |
+| Rebates, tier programs, accrual/settlement/reconciliation | Partial | Exact line rebate and approved retrospective tier accrual snapshots; no settlement/reconciliation |
 | Promotions and promotional effectiveness | Missing | No calendar, uplift/demand or budget model |
 | Channel management / distributor claims | Missing | No channel program or claims workflow |
 | CPQ configuration, bundles, templates, quote document delivery | Partial | Flat quote items and CSV export; no configurable BOM or document templates |
@@ -26,7 +26,7 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 | Integrations / ERP / CRM / external market data | Partial | Documented command boundary and CSV; no live adapters or write-back |
 | Enterprise identity, tenant isolation, scalable data pipelines | Missing | Explicit security boundary; local single-writer snapshots |
 | Audit, revision conflict detection, retry safety | Implemented local subset | Durable snapshots, receipts, tests; no external immutable audit service |
-| Native Windows desktop | In verification | Rust/egui implementation and Windows CI; evidence tracked separately |
+| Native Windows desktop | Build and CLI verified | Windows CI passed baseline gates/build/E2E/portable packaging; interactive desktop visual test remains |
 
 ## Public workflow references
 

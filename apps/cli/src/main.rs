@@ -66,7 +66,7 @@ fn run() -> Result<()> {
             );
         }
         "commands" => println!(
-            "seed_demo product_put customer_put cost_add rule_add policy_set products_import quote_create quote_add_line quote_remove_line quote_reprice quote_submit quote_decide quote_revise list_calculate list_submit list_decide list_publish\nRead API: state evaluate compare export_quote catalog"
+            "seed_demo grid_calculate grid_submit grid_decide agreement_create agreement_submit agreement_decide transaction_add transactions_import rebate_accrue product_put customer_put cost_add rule_add policy_set products_import quote_create quote_add_line quote_remove_line quote_reprice quote_submit quote_decide quote_revise list_calculate list_submit list_decide list_publish\nRead API: state evaluate compare export_quote analytics catalog"
         ),
         "api" => {
             let stdin = io::stdin();
@@ -194,8 +194,10 @@ fn handle(e: &mut Engine, v: Value) -> Result<Value> {
                 .ok_or_else(|| error("Quote not found"))?;
             Ok(json!({"csv":export_quote(q)?}))
         }
+        "analytics" => serde_json::to_value(copperline_engine::analytics(e.state())?)
+            .map_err(|e| error(e.to_string())),
         "catalog" => Ok(
-            json!({"api_version":1,"money":"integer cents","quantity":"integer thousandths","percent":"integer basis points","methods":["state","execute","evaluate","compare","export_quote","catalog"]}),
+            json!({"api_version":1,"money":"integer cents","quantity":"integer thousandths","percent":"integer basis points","methods":["state","execute","evaluate","compare","export_quote","analytics","catalog"]}),
         ),
         _ => Err(error("Unknown API method")),
     }

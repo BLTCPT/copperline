@@ -12,9 +12,12 @@ pub enum View {
     Workbench,
     Catalog,
     Rules,
+    LiveGrid,
     Lists,
     Quotes,
     Approvals,
+    Agreements,
+    Analytics,
     Scenarios,
     Audit,
 }
@@ -24,9 +27,12 @@ impl View {
             Self::Workbench => "Price workbench",
             Self::Catalog => "Catalog & costs",
             Self::Rules => "Pricing rules",
+            Self::LiveGrid => "Live price grid",
             Self::Lists => "Price lists",
             Self::Quotes => "Quotes",
             Self::Approvals => "Approvals",
+            Self::Agreements => "Agreements & rebates",
+            Self::Analytics => "Invoice analytics",
             Self::Scenarios => "Scenarios",
             Self::Audit => "Audit history",
         }
@@ -45,6 +51,12 @@ pub struct Workbench {
     scenario_discount: String,
     selected_quote: String,
     selected_list: String,
+    selected_grid: String,
+    selected_agreement: String,
+    agreement_end: String,
+    tier_threshold: String,
+    base_rate: String,
+    tier_rate: String,
     title: String,
     note: String,
     status: String,
@@ -68,6 +80,34 @@ pub struct Workbench {
 }
 impl Workbench {
     pub fn new(engine: Engine) -> Self {
+        let selected_quote = engine
+            .state()
+            .quotes
+            .keys()
+            .next()
+            .cloned()
+            .unwrap_or_default();
+        let selected_list = engine
+            .state()
+            .price_lists
+            .keys()
+            .next()
+            .cloned()
+            .unwrap_or_default();
+        let selected_grid = engine
+            .state()
+            .grid
+            .keys()
+            .next()
+            .cloned()
+            .unwrap_or_default();
+        let selected_agreement = engine
+            .state()
+            .agreements
+            .keys()
+            .next()
+            .cloned()
+            .unwrap_or_default();
         Self {
             engine,
             view: View::Workbench,
@@ -79,8 +119,14 @@ impl Workbench {
             discount: "10".into(),
             rebate: "5".into(),
             scenario_discount: "15".into(),
-            selected_quote: String::new(),
-            selected_list: String::new(),
+            selected_quote,
+            selected_list,
+            selected_grid,
+            selected_agreement,
+            agreement_end: "2027-01-01".into(),
+            tier_threshold: "1000.00".into(),
+            base_rate: "2".into(),
+            tier_rate: "5".into(),
             title: "October service program".into(),
             note: "Reviewed against commercial guardrails".into(),
             status: "Ready. All demo data is synthetic.".into(),
@@ -212,9 +258,12 @@ impl Workbench {
                     View::Workbench,
                     View::Catalog,
                     View::Rules,
+                    View::LiveGrid,
                     View::Lists,
                     View::Quotes,
                     View::Approvals,
+                    View::Agreements,
+                    View::Analytics,
                     View::Scenarios,
                     View::Audit,
                 ] {
@@ -277,7 +326,7 @@ impl Workbench {
             });
         egui::CentralPanel::default().frame(egui::Frame::new().fill(Color32::from_rgb(241,245,248)).inner_margin(24.0)).show(ui,|ui|{egui::ScrollArea::both().auto_shrink([false,false]).show(ui,|ui|{
    if self.engine.state().products.is_empty(){ui.heading("Start a pricing workspace");ui.label("Load six synthetic industrial products, three customers, costs and a volume rule.");if ui.button("Load synthetic demo").clicked(){self.role=3;self.run(Command::SeedDemo);}return;}
-   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Scenarios=>self.scenarios(ui),View::Audit=>self.audit(ui)}
+   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Scenarios=>self.scenarios(ui),View::Audit=>self.audit(ui)}
   });});
     }
     fn context(&mut self, ui: &mut egui::Ui) {
@@ -1179,15 +1228,448 @@ mod tests {
             View::Workbench,
             View::Catalog,
             View::Rules,
+            View::LiveGrid,
             View::Lists,
             View::Quotes,
             View::Approvals,
+            View::Agreements,
+            View::Analytics,
             View::Scenarios,
             View::Audit,
         ] {
             h.state_mut().view = view;
             h.try_run().map_err(|e| e.to_string())?;
         }
+        Ok(())
+    }
+}
+
+impl Workbench {
+    fn live_grid(&mut self, ui: &mut egui::Ui) {
+        self.context(ui);
+        ui.label("Recalculate an item without replacing its last approved price. Rejecting a candidate preserves the active price.");
+        ui.label(format!(
+            "Selected product: {}. Change the product in Price workbench.",
+            self.product
+        ));
+        if primary(ui, "Calculate grid candidate") {
+            match self.request() {
+                Ok(request) => {
+                    let id = format!("G-{}-{}", self.product, self.customer);
+                    let version = self
+                        .engine
+                        .state()
+                        .grid
+                        .get(&id)
+                        .map(|i| i.version)
+                        .unwrap_or(0);
+                    self.run(Command::GridCalculate {
+                        id: id.clone(),
+                        version,
+                        request,
+                    });
+                    if !self.failed {
+                        self.selected_grid = id;
+                    }
+                }
+                Err(e) => self.result::<()>(Err(e), ""),
+            }
+        }
+        ui.add_space(12.0);
+        egui::Grid::new("live-grid-approval")
+            .striped(true)
+            .spacing([20.0, 12.0])
+            .show(ui, |ui| {
+                for h in [
+                    "Item",
+                    "Candidate / unit",
+                    "Last approved / unit",
+                    "Status",
+                    "Source revision",
+                ] {
+                    ui.strong(h);
+                }
+                ui.end_row();
+                for item in self.engine.state().grid.values() {
+                    if ui
+                        .selectable_label(self.selected_grid == item.id, &item.id)
+                        .clicked()
+                    {
+                        self.selected_grid = item.id.clone();
+                        self.product = item.candidate.request.product_id.clone();
+                        self.customer = item.candidate.request.customer_id.clone();
+                    }
+                    ui.label(item.candidate.invoice_unit.to_string());
+                    ui.label(
+                        item.last_approved
+                            .as_ref()
+                            .map(|a| a.evaluation.invoice_unit.to_string())
+                            .unwrap_or_else(|| "No approved price".into()),
+                    );
+                    ui.label(format!("{:?}", item.status));
+                    ui.label(item.source_revision.to_string());
+                    ui.end_row();
+                }
+            });
+        if let Some(item) = self.engine.state().grid.get(&self.selected_grid).cloned() {
+            ui.separator();
+            ui.heading(format!("{} · Candidate v{}", item.id, item.version));
+            Self::waterfall(ui, &item.candidate);
+            field(ui, "Decision note", &mut self.note);
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(
+                        item.status == Status::Draft,
+                        egui::Button::new("Submit grid candidate"),
+                    )
+                    .clicked()
+                {
+                    self.run(Command::GridSubmit {
+                        id: item.id.clone(),
+                        version: item.version,
+                    });
+                }
+                if ui
+                    .add_enabled(
+                        item.status == Status::Pending,
+                        egui::Button::new("Approve and activate"),
+                    )
+                    .clicked()
+                {
+                    self.run(Command::GridDecide {
+                        id: item.id.clone(),
+                        version: item.version,
+                        approve: true,
+                        note: self.note.clone(),
+                    });
+                }
+                if ui
+                    .add_enabled(
+                        item.status == Status::Pending,
+                        egui::Button::new("Reject candidate"),
+                    )
+                    .clicked()
+                {
+                    self.run(Command::GridDecide {
+                        id: item.id.clone(),
+                        version: item.version,
+                        approve: false,
+                        note: self.note.clone(),
+                    });
+                }
+            });
+            if let Some(active) = &item.last_approved {
+                ui.colored_label(
+                    TEAL,
+                    format!(
+                        "Active approved price: {} {} / {} · {} · Approval r{}",
+                        active.evaluation.currency,
+                        active.evaluation.invoice_unit,
+                        active.evaluation.unit,
+                        active.decision.actor,
+                        active.decision.revision
+                    ),
+                );
+            }
+        }
+    }
+}
+
+impl Workbench {
+    fn agreements(&mut self, ui: &mut egui::Ui) {
+        self.context(ui);
+        ui.label("Retrospective invoice rebates: the achieved tier applies to all eligible invoice revenue in the agreement period. No settlement or payment is performed.");
+        ui.collapsing("Create a rebate agreement", |ui| {
+            field(ui, "Agreement name", &mut self.title);
+            field(ui, "Exclusive end date", &mut self.agreement_end);
+            field(ui, "Base rebate %", &mut self.base_rate);
+            field(ui, "Tier threshold · USD", &mut self.tier_threshold);
+            field(ui, "Tier rebate %", &mut self.tier_rate);
+            if primary(ui, "Create agreement") {
+                let result = (|| {
+                    Ok(AgreementTerms {
+                        id: format!("A-{:04}", self.engine.state().revision + 1),
+                        name: self.title.clone(),
+                        customer_id: self.customer.clone(),
+                        currency: Currency::USD,
+                        start: Date::parse(&self.date)?,
+                        end: Date::parse(&self.agreement_end)?,
+                        tiers: vec![
+                            RebateTier {
+                                threshold: Money(0),
+                                rate: self.base_rate.parse()?,
+                            },
+                            RebateTier {
+                                threshold: self.tier_threshold.parse()?,
+                                rate: self.tier_rate.parse()?,
+                            },
+                        ],
+                    })
+                })();
+                match result {
+                    Ok(terms) => {
+                        let id = terms.id.clone();
+                        self.run(Command::AgreementCreate { terms });
+                        if !self.failed {
+                            self.selected_agreement = id;
+                        }
+                    }
+                    Err(e) => self.result::<()>(Err(e), ""),
+                }
+            }
+        });
+        ui.add_space(12.0);
+        egui::Grid::new("agreements")
+            .striped(true)
+            .spacing([20.0, 12.0])
+            .show(ui, |ui| {
+                for h in ["Agreement", "Name", "Customer", "Period", "Status"] {
+                    ui.strong(h);
+                }
+                ui.end_row();
+                for a in self.engine.state().agreements.values() {
+                    if ui
+                        .selectable_label(self.selected_agreement == a.terms.id, &a.terms.id)
+                        .clicked()
+                    {
+                        self.selected_agreement = a.terms.id.clone();
+                    }
+                    ui.label(&a.terms.name);
+                    ui.label(&a.terms.customer_id);
+                    ui.label(format!("{} to {}", a.terms.start, a.terms.end));
+                    ui.label(format!("{:?}", a.status));
+                    ui.end_row();
+                }
+            });
+        if let Some(a) = self
+            .engine
+            .state()
+            .agreements
+            .get(&self.selected_agreement)
+            .cloned()
+        {
+            ui.separator();
+            ui.heading(format!(
+                "{} · {:?} · v{}",
+                a.terms.name, a.status, a.version
+            ));
+            for t in &a.terms.tiers {
+                ui.label(format!(
+                    "At {} {} invoice revenue: {}% rebate on all eligible revenue",
+                    a.terms.currency, t.threshold, t.rate
+                ));
+            }
+            field(ui, "Decision note", &mut self.note);
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .add_enabled(
+                        a.status == Status::Draft,
+                        egui::Button::new("Submit agreement"),
+                    )
+                    .clicked()
+                {
+                    self.run(Command::AgreementSubmit {
+                        id: a.terms.id.clone(),
+                        version: a.version,
+                    });
+                }
+                if ui
+                    .add_enabled(
+                        a.status == Status::Pending,
+                        egui::Button::new("Approve agreement"),
+                    )
+                    .clicked()
+                {
+                    self.run(Command::AgreementDecide {
+                        id: a.terms.id.clone(),
+                        version: a.version,
+                        approve: true,
+                        note: self.note.clone(),
+                    });
+                }
+                if ui
+                    .add_enabled(
+                        a.status == Status::Pending,
+                        egui::Button::new("Reject agreement"),
+                    )
+                    .clicked()
+                {
+                    self.run(Command::AgreementDecide {
+                        id: a.terms.id.clone(),
+                        version: a.version,
+                        approve: false,
+                        note: self.note.clone(),
+                    });
+                }
+                if ui
+                    .add_enabled(
+                        a.status == Status::Approved,
+                        egui::Button::new("Calculate accrual snapshot"),
+                    )
+                    .clicked()
+                {
+                    self.run(Command::RebateAccrue {
+                        id: format!("R-{:04}", self.engine.state().revision + 1),
+                        agreement_id: a.terms.id.clone(),
+                        version: a.version,
+                    });
+                }
+            });
+        }
+        ui.add_space(18.0);
+        ui.heading("Accrual snapshots");
+        ui.label("Each row recalculates the whole agreement period. Rows are alternatives at different data revisions; do not sum them.");
+        egui::Grid::new("accruals")
+            .striped(true)
+            .spacing([20.0, 12.0])
+            .show(ui, |ui| {
+                for h in [
+                    "Snapshot",
+                    "Agreement",
+                    "Source revision",
+                    "Invoices",
+                    "Eligible revenue",
+                    "Rebate",
+                ] {
+                    ui.strong(h);
+                }
+                ui.end_row();
+                for a in self.engine.state().accruals.values() {
+                    ui.label(&a.id);
+                    ui.label(&a.agreement_id);
+                    ui.label(a.source_revision.to_string());
+                    ui.label(a.transaction_ids.len().to_string());
+                    ui.label(format!("{} {}", a.currency, a.eligible_invoice));
+                    ui.label(a.rebate.to_string());
+                    ui.end_row();
+                }
+            });
+    }
+    fn analytics_view(&mut self, ui: &mut egui::Ui) {
+        ui.label("Recorded invoice data, separate from quote projections. Invoice margin excludes rebate accruals, tax and freight. Demo-generated invoices remain explicitly synthetic.");
+        match copperline_engine::analytics(self.engine.state()) {
+            Ok(groups) => {
+                if groups.is_empty() {
+                    ui.label("No recorded invoices. Add a synthetic invoice below or import transaction CSV through the command API.");
+                }
+                egui::Grid::new("invoice-analytics")
+                    .striped(true)
+                    .spacing([24.0, 14.0])
+                    .show(ui, |ui| {
+                        for h in [
+                            "Customer",
+                            "Currency",
+                            "Invoices",
+                            "Revenue",
+                            "Cost",
+                            "Invoice margin",
+                            "Margin %",
+                        ] {
+                            ui.strong(h);
+                        }
+                        ui.end_row();
+                        for g in groups {
+                            ui.label(g.customer_id);
+                            ui.label(g.currency.to_string());
+                            ui.label(g.transaction_count.to_string());
+                            ui.label(g.invoice.to_string());
+                            ui.label(g.cost.to_string());
+                            ui.label(g.invoice_margin.to_string());
+                            ui.label(
+                                g.margin_bps
+                                    .map(|b| Bps(b).to_string())
+                                    .unwrap_or_else(|| "Undefined".into()),
+                            );
+                            ui.end_row();
+                        }
+                    });
+            }
+            Err(e) => {
+                ui.colored_label(Color32::DARK_RED, e.to_string());
+            }
+        }
+        ui.separator();
+        ui.heading("Record a synthetic invoice");
+        self.context(ui);
+        ui.label(format!("Use the current {} calculation from Price workbench. This is a local demo ledger, not an ERP posting.",self.product));
+        if primary(ui, "Record synthetic invoice") {
+            match self.live() {
+                Ok(v) => self.run(Command::TransactionAdd(Transaction {
+                    id: format!("T-{:04}", self.engine.state().revision + 1),
+                    source: "synthetic-demo".into(),
+                    product_id: v.request.product_id,
+                    customer_id: v.request.customer_id,
+                    date: v.request.date,
+                    quantity: v.request.quantity,
+                    unit: v.unit,
+                    currency: v.currency,
+                    invoice_total: v.invoice_total,
+                    cost_total: v.cost_total,
+                })),
+                Err(e) => self.result::<()>(Err(e), ""),
+            }
+        }
+        ui.add_space(14.0);
+        egui::Grid::new("transactions")
+            .striped(true)
+            .spacing([20.0, 12.0])
+            .show(ui, |ui| {
+                for h in ["External ID", "Source", "Date", "Product", "Invoice"] {
+                    ui.strong(h);
+                }
+                ui.end_row();
+                for t in self.engine.state().transactions.values().rev().take(100) {
+                    ui.label(&t.id);
+                    ui.label(&t.source);
+                    ui.label(t.date.to_string());
+                    ui.label(&t.product_id);
+                    ui.label(format!("{} {}", t.currency, t.invoice_total));
+                    ui.end_row();
+                }
+            });
+    }
+}
+
+#[cfg(test)]
+mod grid_ui_tests {
+    use super::*;
+    use egui_kittest::{Harness, kittest::Queryable};
+    #[test]
+    fn grid_buttons_activate_independent_candidate()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut engine = Engine::memory();
+        engine.run(
+            Actor {
+                name: "Admin".into(),
+                role: Role::Admin,
+            },
+            Command::SeedDemo,
+        )?;
+        let mut app = Workbench::new(engine);
+        app.role = 1;
+        app.view = View::LiveGrid;
+        let mut h = Harness::builder()
+            .with_size(egui::vec2(1440.0, 1400.0))
+            .build_ui_state(|ui, app: &mut Workbench| app.ui(ui), app);
+        h.get_by_label("Calculate grid candidate").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        assert_eq!(h.state().engine.state().grid.len(), 1);
+        h.get_by_label("Submit grid candidate").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        h.state_mut().role = 2;
+        h.try_run().map_err(|e| e.to_string())?;
+        h.get_by_label("Approve and activate").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        let item = h
+            .state()
+            .engine
+            .state()
+            .grid
+            .values()
+            .next()
+            .ok_or_else(|| error("Grid item absent"))?;
+        assert_eq!(item.status, Status::Approved);
+        assert!(item.last_approved.is_some());
         Ok(())
     }
 }

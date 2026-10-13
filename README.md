@@ -24,6 +24,8 @@ The desktop uses a native Rust egui window with no browser or Node runtime. Wind
 - Versioned, effective-dated single-winner rules: fixed price, list discount or cost markup, with documented precedence.
 - Live evaluation and an explained list → invoice → rebate → pocket → cost → margin waterfall.
 - Frozen price lists with whole-list approval and separate local publication.
+- Persistent live-grid candidates and last-approved prices that survive recalculation and rejection.
+- Approved retrospective rebate agreements, atomic invoice CSV ingestion, frozen accrual snapshots and recorded-invoice analytics.
 - Versioned quotes, frozen pricing data, discount/margin guardrails, separate-person approval, revision and approved CSV export.
 - Deterministic scenario comparison and weighted aggregate margins.
 - Durable full-state revisions with exclusive locks, checksum validation, audit records and idempotent commands.

@@ -7,3 +7,6 @@ All application artwork, styling, UI layouts and demo fixtures are original Copp
 | scenarios.png | Copperline native application screenshot, synthetic fixture | MIT |
 | approvals.png | Copperline native application screenshot, synthetic fixture | MIT |
 | catalog.png | Copperline native application screenshot, synthetic fixture | MIT |
+| grid.png | Copperline native application screenshot, synthetic fixture | MIT |
+| agreements.png | Copperline native application screenshot, synthetic fixture | MIT |
+| analytics.png | Copperline native application screenshot, synthetic fixture | MIT |

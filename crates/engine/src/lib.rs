@@ -5,7 +5,10 @@ pub use copperline_pricing::{Comparison, Totals, compare, evaluate, totals};
 use copperline_storage::Store;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+mod commercial;
 mod csv;
+mod grid;
+pub use commercial::analytics;
 pub use csv::{export_quote, import_products};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,6 +20,43 @@ pub use csv::{export_quote, import_products};
 )]
 pub enum Command {
     SeedDemo,
+    AgreementCreate {
+        terms: AgreementTerms,
+    },
+    AgreementSubmit {
+        id: String,
+        version: u64,
+    },
+    AgreementDecide {
+        id: String,
+        version: u64,
+        approve: bool,
+        note: String,
+    },
+    TransactionAdd(Transaction),
+    TransactionsImport {
+        csv: String,
+    },
+    RebateAccrue {
+        id: String,
+        agreement_id: String,
+        version: u64,
+    },
+    GridCalculate {
+        id: String,
+        version: u64,
+        request: PriceRequest,
+    },
+    GridSubmit {
+        id: String,
+        version: u64,
+    },
+    GridDecide {
+        id: String,
+        version: u64,
+        approve: bool,
+        note: String,
+    },
     ProductPut(Product),
     CustomerPut(Customer),
     CostAdd(Cost),
@@ -86,6 +126,15 @@ impl Command {
     pub fn name(&self) -> &'static str {
         match self {
             Self::SeedDemo => "seed_demo",
+            Self::AgreementCreate { .. } => "agreement_create",
+            Self::AgreementSubmit { .. } => "agreement_submit",
+            Self::AgreementDecide { .. } => "agreement_decide",
+            Self::TransactionAdd(_) => "transaction_add",
+            Self::TransactionsImport { .. } => "transactions_import",
+            Self::RebateAccrue { .. } => "rebate_accrue",
+            Self::GridCalculate { .. } => "grid_calculate",
+            Self::GridSubmit { .. } => "grid_submit",
+            Self::GridDecide { .. } => "grid_decide",
             Self::ProductPut(_) => "product_put",
             Self::CustomerPut(_) => "customer_put",
             Self::CostAdd(_) => "cost_add",
@@ -108,7 +157,14 @@ impl Command {
     fn allowed(&self, role: Role) -> bool {
         match self {
             Self::SeedDemo | Self::PolicySet(_) => role == Role::Admin,
-            Self::ProductPut(_)
+            Self::AgreementCreate { .. }
+            | Self::AgreementSubmit { .. }
+            | Self::TransactionAdd(_)
+            | Self::TransactionsImport { .. }
+            | Self::RebateAccrue { .. }
+            | Self::GridCalculate { .. }
+            | Self::GridSubmit { .. }
+            | Self::ProductPut(_)
             | Self::CustomerPut(_)
             | Self::CostAdd(_)
             | Self::RuleAdd(_)
@@ -116,7 +172,10 @@ impl Command {
             | Self::ListCalculate { .. }
             | Self::ListSubmit { .. }
             | Self::ListPublish { .. } => matches!(role, Role::Analyst | Role::Admin),
-            Self::QuoteDecide { .. } | Self::ListDecide { .. } => {
+            Self::AgreementDecide { .. }
+            | Self::GridDecide { .. }
+            | Self::QuoteDecide { .. }
+            | Self::ListDecide { .. } => {
                 matches!(role, Role::Approver | Role::Admin)
             }
             _ => matches!(role, Role::Sales | Role::Admin),
@@ -265,6 +324,15 @@ fn quote_mut<'a>(s: &'a mut State, key: &str) -> Result<&'a mut Quote> {
 }
 fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
     match c {
+        Command::AgreementCreate { .. }
+        | Command::AgreementSubmit { .. }
+        | Command::AgreementDecide { .. }
+        | Command::TransactionAdd(_)
+        | Command::TransactionsImport { .. }
+        | Command::RebateAccrue { .. } => commercial::apply(s, actor, c),
+        Command::GridCalculate { .. } | Command::GridSubmit { .. } | Command::GridDecide { .. } => {
+            grid::apply(s, actor, c)
+        }
         Command::SeedDemo => {
             ensure(
                 s.products.is_empty() && s.customers.is_empty(),

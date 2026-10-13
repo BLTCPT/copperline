@@ -27,3 +27,12 @@ All products, customers and prices are synthetic. Use a new writable local direc
 ## Local toolchain used during development
 
 The build host initially had Rust 1.93.1. A task-isolated Rust 1.95.0 was downloaded under `/tmp/copperline-rustup`, and the direct toolchain bin directory was prepended to PATH. This is an ephemeral development detail; users should install a normal Rust 1.95+ toolchain. Do not depend on that /tmp path for distribution.
+
+## Live grid and rebate demo
+
+1. As Morgan / Pricing, open **Live price grid** and calculate the selected product. Submit the candidate, switch to Riley / Approval and approve/activate it.
+2. Change the underlying product price as Morgan and recalculate. The candidate changes while the last approved unit price remains intact. Submit and reject it as Riley: the active price still remains intact.
+3. In **Agreements & rebates**, create a retrospective agreement for Atlas, period 2026-10-13 to exclusive 2027-01-01, with 2% base rate and 5% once invoice revenue reaches USD 1,000. Submit and approve with Riley.
+4. In **Invoice analytics**, Morgan can record synthetic invoices from the current workbench calculation. Two USD 900 invoices give USD 1,800 eligible revenue. These records are labeled synthetic and do not post to any external system.
+5. Return to the approved agreement and calculate an accrual snapshot. At USD 1,800, the retrospective 5% tier produces USD 90 rebate. Add another invoice and calculate a new snapshot: the old snapshot remains unchanged. Do not add snapshots together; each covers the whole period.
+6. Invoice analytics shows recorded invoice revenue/cost and weighted invoice margin, excluding quote projections and accruals. This avoids presenting scenario projections as actuals or double counting rebates.

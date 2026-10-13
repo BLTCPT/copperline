@@ -66,6 +66,30 @@ with tempfile.TemporaryDirectory(prefix='copperline-e2e-') as directory:
     execute('list_submit', {'id': 'PL-E2E', 'version': 1})
     execute('list_decide', {'id': 'PL-E2E', 'version': 2, 'approve': True, 'note': 'Whole-list commercial review'}, 'Approver', 'approver')
     execute('list_publish', {'id': 'PL-E2E', 'version': 3})
+    execute('grid_calculate', {'id': 'G-E2E', 'version': 0, 'request': price})
+    execute('grid_submit', {'id': 'G-E2E', 'version': 1})
+    execute('grid_decide', {'id': 'G-E2E', 'version': 2, 'approve': True, 'note': 'Activate item'}, 'Approver', 'approver')
+    changed = dict(price, discount=1500)
+    execute('grid_calculate', {'id': 'G-E2E', 'version': 3, 'request': changed})
+    grid = call('state')['result']['grid']['G-E2E']
+    assert grid['candidate']['invoice_unit'] == 8500 and grid['last_approved']['evaluation']['invoice_unit'] == 9000
+    execute('grid_submit', {'id': 'G-E2E', 'version': 4})
+    execute('grid_decide', {'id': 'G-E2E', 'version': 5, 'approve': False, 'note': 'Preserve approved price'}, 'Approver', 'approver')
+    terms = {'id': 'A-E2E', 'name': 'Synthetic annual rebate', 'customer_id': 'C-ATLAS', 'currency': 'USD',
+             'start': '2026-01-01', 'end': '2027-01-01', 'tiers': [{'threshold': 0, 'rate': 200}, {'threshold': 100000, 'rate': 500}]}
+    execute('agreement_create', {'terms': terms})
+    execute('agreement_submit', {'id': 'A-E2E', 'version': 1})
+    execute('agreement_decide', {'id': 'A-E2E', 'version': 2, 'approve': True, 'note': 'Review retrospective tiers'}, 'Approver', 'approver')
+    header = 'id,source,product_id,customer_id,date,quantity,unit,currency,invoice_total,cost_total\n'
+    row1 = 'T-1,synthetic-e2e,VLV-100,C-ATLAS,2026-10-13,10,each,USD,900.00,600.00\n'
+    row2 = 'T-2,synthetic-e2e,VLV-100,C-ATLAS,2026-10-14,1,each,USD,100.00,50.00\n'
+    execute('transactions_import', {'csv': header + row1 + row2})
+    execute('transactions_import', {'csv': header + row1}, fail=True)
+    execute('rebate_accrue', {'id': 'R-E2E', 'agreement_id': 'A-E2E', 'version': 3})
+    accrual = call('state')['result']['accruals']['R-E2E']
+    assert accrual['eligible_invoice'] == 100000 and accrual['rebate'] == 5000
+    actuals = call('analytics')
+    assert actuals['ok'] and actuals['result'][0]['invoice_margin'] == 35000 and actuals['result'][0]['margin_bps'] == 3500, actuals
     state = call('state')['result']
     assert state['price_lists']['PL-E2E']['status'] == 'published'
     assert state['quotes']['Q-E2E']['status'] == 'approved'
@@ -86,4 +110,4 @@ with tempfile.TemporaryDirectory(prefix='copperline-e2e-') as directory:
     print(json.dumps({'result': 'PASS', 'api_requests': request_count + 1, 'committed_revisions': revision,
                       'golden_usd': {'invoice': '900.00', 'rebate': '45.00', 'pocket': '855.00', 'margin': '255.00'},
                       'verified': ['quote approval/export/revise', 'list approve/publish', 'idempotent retry', 'stale version',
-                                   'separate approver', 'atomic import', 'malformed input survival', 'process restart persistence']}, indent=2))
+                                   'separate approver', 'atomic import', 'malformed input survival', 'process restart persistence', 'grid candidate/active separation', 'tier agreement approval', 'atomic transaction import', 'frozen accrual', 'invoice analytics']}, indent=2))

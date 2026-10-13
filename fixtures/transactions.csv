@@ -1,0 +1,3 @@
+id,source,product_id,customer_id,date,quantity,unit,currency,invoice_total,cost_total
+INV-SYN-001,synthetic-fixture,VLV-100,C-ATLAS,2026-10-13,10,each,USD,900.00,600.00
+INV-SYN-002,synthetic-fixture,VLV-100,C-ATLAS,2026-10-14,1,each,USD,100.00,50.00

@@ -1,7 +1,7 @@
 use copperline_model::*;
 use copperline_money::Money;
 use std::collections::BTreeSet;
-fn rows(input: &str) -> Result<Vec<Vec<String>>> {
+pub(super) fn rows(input: &str) -> Result<Vec<Vec<String>>> {
     ensure(input.len() <= 1024 * 1024, "CSV import limit is 1 MiB")?;
     let mut rows = vec![];
     let mut row = vec![];

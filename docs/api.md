@@ -43,3 +43,23 @@ Mutation response contains committed revision, replayed flag and detail. expecte
 A future adapter must map external stable IDs into Product/Customer/Cost commands, preserve source dataset/version and ingestion audit, explicitly map currency/UOM, and stage a validated import before commit. An authenticated gateway must inject verified actor IDs/roles; it must never trust the client-supplied demo actor. Approved export should have an outbox acknowledgement/deduplication protocol, reconciliation and retry-safe external keys before any ERP write capability is enabled. There is no SAP/BW/Pricefx API compatibility claim, SDK dependency, live adapter or business write in this build.
 
 Import CSV schema: `id,name,family,unit,currency,list_price`. Price uses plain decimal currency (`100.00`), not cents. CSV exports include document version, source revision, selected rule, cost version, currency/unit and frozen totals. Text is quoted and formula-sensitive prefixes escaped.
+
+## M2 commercial workflows
+
+Additional commands:
+
+| Command | Payload |
+|---|---|
+| grid_calculate | id, version (0 for a new item), request (PriceRequest) |
+| grid_submit | id, version |
+| grid_decide | id, version, approve, note |
+| agreement_create | terms: id, name, customer_id, currency, start, end, tiers [{threshold cents, rate bps}] |
+| agreement_submit | id, version |
+| agreement_decide | id, version, approve, note |
+| transaction_add | Transaction: id, source, product_id, customer_id, date, quantity, unit, currency, invoice_total, cost_total |
+| transactions_import | csv string; duplicate external IDs reject the entire batch |
+| rebate_accrue | id (new snapshot), agreement_id, version (approved agreement version) |
+
+Read `analytics` returns recorded invoice aggregates per customer/currency. It excludes quote projections and all accrual snapshots. Agreement start is inclusive, end exclusive. Approved agreement terms never mutate. Accrual uses retrospective tiers on eligible invoice totals. Recalculate accruals under new IDs; do not sum old and new snapshots.
+
+Transaction CSV columns: `id,source,product_id,customer_id,date,quantity,unit,currency,invoice_total,cost_total`. CSV money is decimal major units and quantity decimal product units, while JSON money and quantity are scaled integers. See fixtures/transactions.csv. All fixture/source labels clearly identify synthetic data.

@@ -1,7 +1,7 @@
 {
   "result": "PASS",
-  "api_requests": 25,
-  "committed_revisions": 10,
+  "api_requests": 40,
+  "committed_revisions": 21,
   "golden_usd": {
     "invoice": "900.00",
     "rebate": "45.00",
@@ -16,6 +16,11 @@
     "separate approver",
     "atomic import",
     "malformed input survival",
-    "process restart persistence"
+    "process restart persistence",
+    "grid candidate/active separation",
+    "tier agreement approval",
+    "atomic transaction import",
+    "frozen accrual",
+    "invoice analytics"
   ]
 }
