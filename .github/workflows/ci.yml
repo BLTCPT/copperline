@@ -39,6 +39,9 @@ jobs:
       - name: Frozen quote booking and original-basis reversal workflow
         shell: bash
         run: python scripts/bookings_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
+      - name: Partial credits and nominal invoice-period close workflow
+        shell: bash
+        run: python scripts/credits_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}
       - name: Concurrent local API and recovery workflow
         shell: bash
         run: python scripts/transport_e2e.py --binary target/release/copperline-cli${{ runner.os == 'Windows' && '.exe' || '' }}

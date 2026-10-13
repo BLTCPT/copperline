@@ -16,3 +16,5 @@ Production gates include authenticated immutable actor IDs, document ownership p
 Conversion books are user-authored synthetic inputs; no market data provider is queried. Review does not establish rate accuracy or authenticated approval. Reporting snapshots record arithmetic and source evidence; they do not execute foreign exchange or post accounting entries.
 
 Quote booking is a local record derived from an approved synthetic quote, not proof of customer acceptance, delivery, external invoicing or payment. Booking provenance and rate knowledge cutoffs detect inconsistent local history; they do not authenticate actors or source rate accuracy. Existing role, file trust and corruption boundaries apply.
+
+Quantity credits and nominal invoice-period closes are local synthetic controls. Non-contributor Finance review uses caller-selected identities. A nominal close freezes invoice IDs/amounts only; it is not an authenticated accounting-period lock, legal credit note or GAAP/IFRS assertion. No reopen, carry-forward posting, tax treatment or inventory valuation is provided.

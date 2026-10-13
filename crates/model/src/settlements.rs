@@ -157,6 +157,13 @@ impl State {
                 .ok_or_else(|| error("Accrual correction missing"))?;
             names.insert(correction.owner.clone());
         }
+        for id in &accrual.credit_ids {
+            let credit = self
+                .credits
+                .get(id)
+                .ok_or_else(|| error("Accrual credit missing"))?;
+            names.insert(credit.owner.clone());
+        }
         Ok(names)
     }
     /// Reject changed provenance even if its totals happen to be identical.
@@ -169,6 +176,7 @@ impl State {
         ensure(
             position.basis.transaction_ids == accrual.transaction_ids
                 && position.basis.correction_ids == accrual.correction_ids
+                && position.basis.credit_ids == accrual.credit_ids
                 && position.basis.eligible_invoice == accrual.eligible_invoice
                 && position.rate == accrual.rate
                 && position.target_rebate == record.target_rebate,

@@ -17,3 +17,5 @@ All application artwork, styling, UI layouts and demo fixtures are original Copp
 | conversions.png | Copperline native application screenshot, synthetic fixture | MIT |
 | backup.png | Copperline native application screenshot, synthetic complete-history archive | MIT |
 | bookings.png | Copperline native application screenshot, synthetic approved quote booking | MIT |
+| credits.png | Copperline native application screenshot, synthetic quantity credit | MIT |
+| period-close.png | Copperline native application screenshot, synthetic nominal invoice close | MIT |

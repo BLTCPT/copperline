@@ -19,6 +19,14 @@ pub(super) fn target(c: &Command) -> Option<String> {
         return Some(quote_target(id));
     }
     match c {
+        Command::CreditCreate { proposal } => Some(credit_target(&proposal.id)),
+        Command::CreditSubmit { id, .. }
+        | Command::CreditDecide { id, .. }
+        | Command::CreditWithdraw { id, .. } => Some(credit_target(id)),
+        Command::PeriodCloseCreate { terms } => Some(period_close_target(&terms.id)),
+        Command::PeriodCloseSubmit { id, .. }
+        | Command::PeriodCloseDecide { id, .. }
+        | Command::PeriodCloseWithdraw { id, .. } => Some(period_close_target(id)),
         Command::QuoteBook { request } => Some(booking_target(&request.id)),
         Command::ConversionCreate { terms } => Some(conversion_target(&terms.id)),
         Command::ConversionImport { id, .. }

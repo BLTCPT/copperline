@@ -57,11 +57,17 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                 withdrawn_revision: None,
                 status: RecordStatus::Draft,
             };
+            s.ensure_correction_allowed_at(&record, s.revision)?;
             let detail = correction_created_detail(&record)?;
             s.corrections.insert(proposal.id.clone(), record);
             Ok(detail)
         }
         Command::CorrectionSubmit { id, version } => {
+            let record = s
+                .corrections
+                .get(id)
+                .ok_or_else(|| error("Correction not found"))?;
+            s.ensure_correction_allowed_at(record, s.revision)?;
             let revision = next_version(s.revision)?;
             let c = s
                 .corrections
@@ -101,6 +107,9 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                 actor.name != c.owner,
                 "The correction owner cannot review their own proposal",
             )?;
+            if *approve {
+                s.ensure_correction_allowed_at(c, s.revision)?;
+            }
             let replacement = if *approve {
                 c.proposal.replacement.clone()
             } else {

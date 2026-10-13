@@ -108,3 +108,16 @@ A failed restore names its preserved partial directory and blocking guard. Keep 
 6. Run `python3 scripts/bookings_e2e.py --binary target/release/copperline-cli` for converted multi-line cases, superseded contract/rate history, signed rounding, repeat/reopen/export, corrections/rebates and backup restoration.
 
 The ledger is synthetic and local. It does not issue or deliver invoices or make external postings.
+
+
+## M9 quantity credits and nominal close walkthrough
+
+Create a fresh fixture with `python3 scripts/demo_seed.py --credits --data data/m9-review`, using `--binary` for a release/Windows CLI. The flag includes the M8 EUR booking, approved quarter-quantity credits on a USD raw invoice and EUR booked invoice, a rebate true-up, a frozen credited report and approved October EUR nominal close. Existing workspaces remain untouched.
+
+1. Open `copperline-desktop --data data/m9-review --view credits`. Inspect CN-EUR-4001: 0.250 box returns exactly 3 native each; the original booked/native evidence remains visible. Select Morgan / Pricing to preview a new USD remaining-quantity credit under a new ID, submit, then use Jordan / Finance to review. Original authors cannot approve their own evidence.
+2. Inspect invoice analytics and frozen R-EUR-CREDITED. Credit totals reduce original-period nominal and reporting amounts; earlier R-EUR-BOOKED stays frozen. Rebate reconciliation includes credit IDs and the signed ST-CREDIT-TRUEUP. The earlier pending settlement may now be stale and can be rejected or withdrawn.
+3. Open `--view period-close`. CLOSE-EUR-OCT freezes October EUR original invoice/credit IDs and net amounts. Trying another credit on that original fails even with a later record date. It has no next-period carry-forward. USD remains a separate scope.
+4. A new close proposal refuses unresolved affected correction/credit proposals. Once proposed, any later invoice or credit change makes its exact basis stale; withdraw and recreate. Closing an empty interval is permitted. Adjacent intervals do not overlap.
+5. Export approved credit/close evidence into new CSV paths, close the app, reopen and compare. The local API and CLI use the same commands. Run `python3 scripts/credits_e2e.py --binary target/debug/copperline-cli` for a complete process drill with thirds rounding, exact exhaustion, close races and archive restoration.
+
+The close is explicitly a nominal invoice-basis control. Reporting FX and rebates remain separately evidenced calculations. No accounting compliance, external credit note, payment or ERP posting is implied.

@@ -83,7 +83,7 @@ impl Workbench {
                 .map(|(b, _)| (b.request.id.clone(), b.request.quote_id.clone()));
             if let Some((booking, quote)) = &booking {
                 self.correction_form.replace = false;
-                ui.colored_label(COPPER, format!("Booked invoice · {booking} / {quote}. Only a full reversal is allowed. A replacement requires a distinct independently approved quote and a new booking."));
+                ui.colored_label(COPPER, format!("Booked invoice · {booking} / {quote}. Replacement is unavailable here. Use a full reversal or Quantity credits; they cannot be combined on one invoice. A replacement requires a distinct independently approved quote and a new booking."));
             }
             ui.add_enabled_ui(booking.is_none(), |ui| {
                 ui.checkbox(
@@ -268,6 +268,6 @@ impl Workbench {
                 }
             });
         }
-        ui.small("The engine enforces ownership, reserved replacement IDs, one full reversal per invoice and independent Finance review. Partial credits are not supported.");
+        ui.small("The engine enforces ownership, reserved replacement IDs, one full reversal per invoice and independent Finance review. Use Quantity credits for partial returns. Full reversals and quantity credits cannot be combined on one invoice.");
     }
 }

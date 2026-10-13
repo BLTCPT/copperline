@@ -8,6 +8,10 @@ mod bookings;
 mod contracts;
 mod conversions;
 mod corrections;
+mod credits;
+#[cfg(test)]
+mod m9_tests;
+mod period_closes;
 mod settlements;
 const NAVY: Color32 = Color32::from_rgb(24, 62, 84);
 const COPPER: Color32 = Color32::from_rgb(172, 73, 35);
@@ -28,6 +32,8 @@ pub enum View {
     Agreements,
     Analytics,
     Corrections,
+    Credits,
+    PeriodCloses,
     Settlements,
     Scenarios,
     Governance,
@@ -50,6 +56,8 @@ impl View {
             Self::Agreements => "Agreements & rebates",
             Self::Analytics => "Invoice analytics",
             Self::Corrections => "Invoice corrections",
+            Self::Credits => "Quantity credits",
+            Self::PeriodCloses => "Invoice period close",
             Self::Settlements => "Rebate reconciliation",
             Self::Scenarios => "Scenarios",
             Self::Governance => "Approval policy",
@@ -64,6 +72,8 @@ pub struct Workbench {
     contract_form: contracts::ContractForm,
     conversion_form: conversions::ConversionForm,
     correction_form: corrections::CorrectionForm,
+    credit_form: credits::CreditForm,
+    period_close_form: period_closes::PeriodCloseForm,
     settlement_form: settlements::SettlementForm,
     backup_form: backup::BackupForm,
     booking_form: bookings::BookingForm,
@@ -150,6 +160,8 @@ impl Workbench {
             engine,
             view: View::Workbench,
             correction_form: Default::default(),
+            credit_form: Default::default(),
+            period_close_form: Default::default(),
             settlement_form: Default::default(),
             backup_form: Default::default(),
             booking_form: Default::default(),
@@ -335,6 +347,8 @@ impl Workbench {
                         View::Agreements,
                         View::Analytics,
                         View::Corrections,
+                        View::Credits,
+                        View::PeriodCloses,
                         View::Settlements,
                         View::Scenarios,
                         View::Governance,
@@ -403,8 +417,9 @@ impl Workbench {
             });
         egui::CentralPanel::default().frame(egui::Frame::new().fill(Color32::from_rgb(241,245,248)).inner_margin(24.0)).show(ui,|ui|{egui::ScrollArea::both().auto_shrink([false,false]).show(ui,|ui|{
    if self.view == View::Backup { self.backup_view(ui); return; }
+   if self.view == View::PeriodCloses { self.period_closes_view(ui); return; }
    if self.engine.state().products.is_empty(){ui.heading("Start a pricing workspace");ui.label("Load six synthetic industrial products, three customers, costs and a volume rule.");if ui.button("Load synthetic demo").clicked(){self.role=3;self.run(Command::SeedDemo);}return;}
-   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Contracts=>self.contracts_view(ui),View::Conversions=>self.conversions_view(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Bookings=>self.bookings_view(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Corrections=>self.corrections_view(ui),View::Settlements=>self.settlements_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui),View::Backup=>self.backup_view(ui)}
+   match self.view{View::Workbench=>self.workbench(ui),View::Catalog=>self.catalog(ui),View::Rules=>self.rules(ui),View::LiveGrid=>self.live_grid(ui),View::Contracts=>self.contracts_view(ui),View::Conversions=>self.conversions_view(ui),View::Lists=>self.lists(ui),View::Quotes=>self.quotes(ui),View::Bookings=>self.bookings_view(ui),View::Approvals=>self.approvals(ui),View::Agreements=>self.agreements(ui),View::Analytics=>self.analytics_view(ui),View::Corrections=>self.corrections_view(ui),View::Credits=>self.credits_view(ui),View::PeriodCloses=>self.period_closes_view(ui),View::Settlements=>self.settlements_view(ui),View::Scenarios=>self.scenarios(ui),View::Governance=>self.governance(ui),View::Audit=>self.audit(ui),View::Backup=>self.backup_view(ui)}
   });});
     }
     fn context(&mut self, ui: &mut egui::Ui) {
@@ -1786,6 +1801,8 @@ mod tests {
             View::Agreements,
             View::Analytics,
             View::Corrections,
+            View::Credits,
+            View::PeriodCloses,
             View::Settlements,
             View::Scenarios,
             View::Governance,
@@ -2075,7 +2092,7 @@ impl Workbench {
         }
         ui.add_space(18.0);
         ui.heading("Accrual snapshots");
-        ui.label("Each row recalculates the whole agreement period. Rows are alternatives at different data revisions; do not sum them.");
+        ui.label("Each row recalculates the whole agreement period. Rows are alternatives at different data revisions; do not sum them. Approved credits restate original invoice-period eligibility, including zero-cent credits; earlier snapshots remain unchanged.");
         egui::Grid::new("accruals")
             .striped(true)
             .spacing([20.0, 12.0])
@@ -2086,6 +2103,7 @@ impl Workbench {
                     "Source revision",
                     "Invoice records",
                     "Reversals",
+                    "Credit notes",
                     "Eligible revenue",
                     "Rebate",
                 ] {
@@ -2098,6 +2116,7 @@ impl Workbench {
                     ui.label(a.source_revision.to_string());
                     ui.label(a.transaction_ids.len().to_string());
                     ui.label(a.correction_ids.len().to_string());
+                    ui.label(a.credit_ids.len().to_string());
                     ui.label(format!("{} {}", a.currency, a.eligible_invoice));
                     ui.label(a.rebate.to_string());
                     ui.end_row();
@@ -2106,7 +2125,7 @@ impl Workbench {
     }
     fn analytics_view(&mut self, ui: &mut egui::Ui) {
         self.converted_reports_view(ui);
-        ui.label("Net invoice actuals after approved full reversals and replacements, separate from quote projections. Margin excludes rebate settlements, tax and freight. Original invoices remain in the audit ledger.");
+        ui.label("Net invoice actuals after approved full reversals, replacements and quantity credits, separate from quote projections. Margin excludes rebate settlements, tax and freight. Original invoices remain in the audit ledger.");
         match copperline_engine::analytics(self.engine.state()) {
             Ok(groups) => {
                 if groups.is_empty() {
@@ -2122,6 +2141,9 @@ impl Workbench {
                             "Active invoices",
                             "Gross revenue",
                             "Reversed",
+                            "Credit notes",
+                            "Fully credited invoices",
+                            "Credited invoice / cost",
                             "Net revenue",
                             "Cost",
                             "Invoice margin",
@@ -2136,6 +2158,9 @@ impl Workbench {
                             ui.label(g.transaction_count.to_string());
                             ui.label(g.gross_invoice.to_string());
                             ui.label(g.reversed_invoice.to_string());
+                            ui.label(g.credit_count.to_string());
+                            ui.label(g.fully_credited_count.to_string());
+                            ui.label(format!("{} / {}", g.credited_invoice, g.credited_cost));
                             ui.label(g.invoice.to_string());
                             ui.label(g.cost.to_string());
                             ui.label(g.invoice_margin.to_string());
@@ -2152,6 +2177,7 @@ impl Workbench {
                 ui.colored_label(Color32::DARK_RED, e.to_string());
             }
         }
+        ui.small("Active invoices exclude fully reversed and fully credited originals. Partially credited originals remain active; credit-note counts include zero-cent allocations.");
         ui.separator();
         if ui.button("Book an approved quote").clicked() {
             self.view = View::Bookings;
@@ -2189,6 +2215,7 @@ impl Workbench {
             }
         }
         ui.add_space(14.0);
+        let mut credit_invoice = None;
         egui::Grid::new("transactions")
             .striped(true)
             .spacing([20.0, 12.0])
@@ -2200,6 +2227,7 @@ impl Workbench {
                     "Product",
                     "Invoice",
                     "Ledger state",
+                    "Quantity credit",
                 ] {
                     ui.strong(h);
                 }
@@ -2214,14 +2242,43 @@ impl Workbench {
                         c.status == RecordStatus::Approved
                             && c.proposal.original_transaction_id == t.id
                     });
+                    let credit_ids: Vec<_> = self
+                        .engine
+                        .state()
+                        .credits
+                        .values()
+                        .filter(|c| {
+                            c.status == RecordStatus::Approved
+                                && c.proposal.original_transaction_id == t.id
+                        })
+                        .map(|c| c.proposal.id.as_str())
+                        .collect();
                     ui.label(
                         reversal
                             .map(|c| format!("Reversed by {}", c.proposal.id))
-                            .unwrap_or_else(|| "Active".into()),
+                            .unwrap_or_else(|| {
+                                if credit_ids.is_empty() {
+                                    "Active".into()
+                                } else {
+                                    format!("Credit notes: {}", credit_ids.join(", "))
+                                }
+                            }),
                     );
+                    if ui
+                        .add_enabled(
+                            reversal.is_none(),
+                            egui::Button::new(format!("Credit {}", t.id)),
+                        )
+                        .clicked()
+                    {
+                        credit_invoice = Some(t.id.clone());
+                    }
                     ui.end_row();
                 }
             });
+        if let Some(id) = credit_invoice {
+            self.open_quantity_credit(&id);
+        }
     }
 }
 

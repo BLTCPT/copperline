@@ -15,12 +15,22 @@ mod contracts;
 pub use contracts::*;
 mod pricing_source;
 pub use pricing_source::*;
+mod credits;
+pub use credits::*;
+mod periods;
+pub use periods::*;
 mod corrections;
 pub use corrections::*;
 mod record_evidence;
 pub use record_evidence::*;
 mod settlements;
 pub use settlements::*;
+pub fn money_is_zero(value: &Money) -> bool {
+    value.0 == 0
+}
+pub fn count_is_zero(value: &usize) -> bool {
+    *value == 0
+}
 pub fn error(s: impl Into<String>) -> Error {
     Error(s.into())
 }
@@ -338,6 +348,10 @@ pub struct State {
     pub conversion_reports: BTreeMap<String, ConversionReport>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub quote_bookings: BTreeMap<String, QuoteBooking>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub credits: BTreeMap<String, Credit>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub period_closes: BTreeMap<String, PeriodClose>,
     pub policy: Policy,
     pub audit: Vec<Audit>,
     pub receipts: Vec<Receipt>,
@@ -403,6 +417,8 @@ impl Default for State {
             conversion_books: BTreeMap::new(),
             conversion_reports: BTreeMap::new(),
             quote_bookings: BTreeMap::new(),
+            credits: BTreeMap::new(),
+            period_closes: BTreeMap::new(),
             policy: Policy::default(),
             audit: vec![],
             receipts: vec![],
@@ -531,6 +547,8 @@ impl State {
         self.validate_quote_governance()?;
         self.validate_quote_bookings()?;
         self.validate_grid()?;
+        self.validate_credits()?;
+        self.validate_period_closes()?;
         self.validate_commercial()?;
         self.validate_settlements()?;
         self.validate_conversion_reports()?;
@@ -1055,6 +1073,8 @@ pub struct Accrual {
     pub transaction_ids: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub correction_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub credit_ids: Vec<String>,
     pub eligible_invoice: Money,
     pub rate: Bps,
     pub rebate: Money,
@@ -1134,6 +1154,12 @@ impl State {
             g.1 = g.1.add(t.cost_total)?;
             ensure(key == &t.id, "Transaction key mismatch")?;
             self.validate_recorded_transaction(t)?;
+            self.ensure_invoice_open_at(
+                t,
+                source
+                    .checked_sub(1)
+                    .ok_or_else(|| error("Invoice ingestion revision invalid"))?,
+            )?;
         }
         for c in self
             .corrections
@@ -1151,6 +1177,24 @@ impl State {
             ensure(
                 g.0.0 >= 0 && g.1.0 >= 0,
                 "Reversal exceeds recorded invoice totals",
+            )?;
+        }
+        for c in self
+            .credits
+            .values()
+            .filter(|c| c.status == RecordStatus::Approved)
+        {
+            let g = groups
+                .get_mut(&(
+                    c.original.customer_id.clone(),
+                    c.original.currency.to_string(),
+                ))
+                .ok_or_else(|| error("Credit analytics group missing"))?;
+            g.0 = g.0.sub(c.invoice)?;
+            g.1 = g.1.sub(c.cost)?;
+            ensure(
+                g.0.0 >= 0 && g.1.0 >= 0,
+                "Credits exceed recorded invoice totals",
             )?;
         }
         for (invoice, cost) in groups.values() {
@@ -1274,7 +1318,8 @@ impl State {
             let basis = self.accrual_basis(&a.agreement_id, a.source_revision)?;
             ensure(
                 a.transaction_ids == basis.transaction_ids
-                    && a.correction_ids == basis.correction_ids,
+                    && a.correction_ids == basis.correction_ids
+                    && a.credit_ids == basis.credit_ids,
                 "Accrual must include every eligible invoice and approved original reversal known at its source revision",
             )?;
             let invoice = basis.eligible_invoice;

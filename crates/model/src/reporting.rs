@@ -16,10 +16,22 @@ pub struct ConvertedInvoice {
     pub native: Transaction,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub booking: Option<BookingReportEvidence>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub credits: Vec<ReportedCredit>,
     pub reversed_by: Option<String>,
     pub fx: Option<RateEvidence>,
     pub invoice: Money,
     pub cost: Money,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReportedCredit {
+    pub credit_id: String,
+    pub quantity: Quantity,
+    pub approved_revision: u64,
+    pub invoice: Money,
+    pub cost: Money,
+    pub rounding: CreditRounding,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -40,6 +52,15 @@ pub struct ReportingGroup {
     pub currency: Currency,
     pub gross_count: usize,
     pub reversal_count: usize,
+    #[serde(default, skip_serializing_if = "count_is_zero")]
+    pub credit_count: usize,
+    #[serde(default, skip_serializing_if = "count_is_zero")]
+    pub fully_credited_count: usize,
+    #[serde(default, skip_serializing_if = "money_is_zero")]
+    pub credited_invoice: Money,
+    #[serde(default, skip_serializing_if = "money_is_zero")]
+    pub credited_cost: Money,
+
     pub gross_invoice: Money,
     pub gross_cost: Money,
     pub reversed_invoice: Money,
@@ -164,6 +185,10 @@ impl State {
                     currency: request.currency,
                     gross_count: 0,
                     reversal_count: 0,
+                    credit_count: 0,
+                    fully_credited_count: 0,
+                    credited_invoice: Money(0),
+                    credited_cost: Money(0),
                     gross_invoice: Money(0),
                     gross_cost: Money(0),
                     reversed_invoice: Money(0),
@@ -181,9 +206,58 @@ impl State {
                 group.reversed_invoice = group.reversed_invoice.add(invoice)?;
                 group.reversed_cost = group.reversed_cost.add(cost)?;
             }
+            let mut credits = vec![];
+            let mut credited_quantity = Quantity(0);
+            for credit in self.approved_credits_for(&t.id, revision) {
+                ensure(
+                    reversed_by.is_none(),
+                    "Invoice cannot have credits and a full reversal",
+                )?;
+                let reduced_invoice = credit_allocation(
+                    invoice,
+                    t.quantity,
+                    credited_quantity,
+                    credit.proposal.quantity,
+                )?;
+                let reduced_cost = credit_allocation(
+                    cost,
+                    t.quantity,
+                    credited_quantity,
+                    credit.proposal.quantity,
+                )?;
+                credited_quantity = Quantity(
+                    credited_quantity
+                        .0
+                        .checked_add(credit.proposal.quantity.0)
+                        .ok_or_else(|| error("Reporting credit quantity overflow"))?,
+                );
+                group.credit_count = group
+                    .credit_count
+                    .checked_add(1)
+                    .ok_or_else(|| error("Reporting credit count overflow"))?;
+                group.credited_invoice = group.credited_invoice.add(reduced_invoice)?;
+                group.credited_cost = group.credited_cost.add(reduced_cost)?;
+                credits.push(ReportedCredit {
+                    credit_id: credit.proposal.id.clone(),
+                    quantity: credit.proposal.quantity,
+                    approved_revision: credit
+                        .approved_revision()
+                        .ok_or_else(|| error("Credit approval missing"))?,
+                    invoice: reduced_invoice,
+                    cost: reduced_cost,
+                    rounding: CreditRounding::CumulativeOriginalTotalsHalfAwayV1,
+                });
+            }
+            if credited_quantity == t.quantity {
+                group.fully_credited_count = group
+                    .fully_credited_count
+                    .checked_add(1)
+                    .ok_or_else(|| error("Reporting credited invoice count overflow"))?;
+            }
             rows.push(ConvertedInvoice {
                 native: t.clone(),
                 booking,
+                credits,
                 reversed_by,
                 fx,
                 invoice,
@@ -191,8 +265,11 @@ impl State {
             });
         }
         for g in groups.values_mut() {
-            g.invoice = g.gross_invoice.sub(g.reversed_invoice)?;
-            g.cost = g.gross_cost.sub(g.reversed_cost)?;
+            g.invoice = g
+                .gross_invoice
+                .sub(g.reversed_invoice)?
+                .sub(g.credited_invoice)?;
+            g.cost = g.gross_cost.sub(g.reversed_cost)?.sub(g.credited_cost)?;
             g.margin = g.invoice.sub(g.cost)?;
             g.margin_bps = if g.invoice.0 > 0 {
                 Some(

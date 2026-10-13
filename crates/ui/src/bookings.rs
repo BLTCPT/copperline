@@ -55,7 +55,7 @@ impl Workbench {
 
     pub(super) fn bookings_view(&mut self, ui: &mut egui::Ui) {
         ui.label("Book every line of an approved quote as immutable recorded invoice actuals. Exact approved amounts and conversion evidence are retained; no ERP posting or payment is performed.");
-        ui.colored_label(COPPER, "One full booking per quote, permanently. Reversing an invoice does not release the quote for another booking. Partial quantities are not supported.");
+        ui.colored_label(COPPER, "One full booking per quote, permanently. Reversing an invoice does not release the quote for another booking. Partial booking quantities are not supported.");
         let eligible: Vec<_> = self
             .engine
             .state()
@@ -168,24 +168,34 @@ impl Workbench {
             });
             ui.horizontal_wrapped(|ui| {
                 for line in &b.lines {
-                    let reversal = self.engine.state().corrections.values().find(|c| {
-                        c.proposal.original_transaction_id == line.booked.id
-                            && c.status == RecordStatus::Approved
-                    });
-                    if let Some(c) = reversal {
-                        ui.label(format!(
-                            "{} fully reversed by {}",
-                            line.booked.id, c.proposal.id
-                        ));
+                    let reversal = self
+                        .engine
+                        .state()
+                        .corrections
+                        .values()
+                        .find(|c| {
+                            c.proposal.original_transaction_id == line.booked.id
+                                && c.status == RecordStatus::Approved
+                        })
+                        .map(|c| c.proposal.id.clone());
+                    if let Some(id) = &reversal {
+                        ui.label(format!("{} fully reversed by {}", line.booked.id, id));
                     } else if ui
                         .button(format!("Full reversal · {}", line.booked.id))
                         .clicked()
                     {
                         self.open_booked_reversal(&line.booked.id);
                     }
+                    if reversal.is_none()
+                        && ui
+                            .button(format!("Quantity credit · {}", line.booked.id))
+                            .clicked()
+                    {
+                        self.open_quantity_credit(&line.booked.id);
+                    }
                 }
             });
-            ui.small("Correction review reverses a whole booked line. Any replacement requires a distinct approved quote and a new booking.");
+            ui.small("Correction review reverses a whole booked line. Quantity credits allocate partial returns; full reversals and credits cannot share one invoice. Any replacement requires a distinct approved quote and a new booking.");
             field(ui, "Booking CSV file", &mut self.booking_form.export_path);
             if ui.button("Export booking CSV").clicked() {
                 let result = conversions::write_export(
@@ -259,10 +269,16 @@ impl Workbench {
                 })();
                 ui.add_space(10.0);
                 match &preview {
-                    Ok((_, lines)) => {
+                    Ok((request, lines)) => {
                         ui.strong("Exact approved booking preview");
                         Self::booking_totals(ui, &quote.lines);
                         Self::booking_lines(ui, "booking-preview", lines);
+                        Self::booking_reporting_fx(
+                            ui,
+                            self.engine.state(),
+                            &request.invoice_date,
+                            lines,
+                        );
                     }
                     Err(e) => {
                         ui.colored_label(Color32::DARK_RED, format!("Booking unavailable: {e}"));
@@ -296,6 +312,79 @@ impl Workbench {
                 Self::line_conversion_evidence(ui, &quote.lines);
             }
         }
+    }
+
+    fn booking_reporting_fx(
+        ui: &mut egui::Ui,
+        state: &State,
+        invoice_date: &Date,
+        lines: &[BookedQuoteLine],
+    ) {
+        ui.add_space(8.0);
+        ui.strong("Reporting currency availability before booking");
+        ui.small(format!(
+            "Direct rates for invoice date {invoice_date}, approved by current source r{}.",
+            state.revision
+        ));
+        let mut unavailable = false;
+        for from in [Currency::USD, Currency::EUR, Currency::GBP] {
+            let affected: Vec<_> = lines
+                .iter()
+                .filter(|line| line.booked.currency == from)
+                .map(|line| line.booked.id.as_str())
+                .collect();
+            if affected.is_empty() {
+                continue;
+            }
+            ui.label(format!(
+                "Recorded {from} · invoice rows {}",
+                affected.join(", ")
+            ));
+            for to in [Currency::USD, Currency::EUR, Currency::GBP] {
+                if from == to {
+                    ui.colored_label(
+                        TEAL,
+                        format!("{from} → {to}: available; same currency requires no FX."),
+                    );
+                    continue;
+                }
+                match state.conversion_rate_at(
+                    &ConversionKind::Fx { from, to },
+                    invoice_date,
+                    state.revision,
+                ) {
+                    Ok(rate) => {
+                        ui.colored_label(
+                            TEAL,
+                            format!("{from} → {to}: direct reporting FX available."),
+                        );
+                        ui.small(format!(
+                            "{} / {} v{} · × {}/{} · approved r{} · [{} , {})",
+                            rate.book_id,
+                            rate.entry.id,
+                            rate.book_version,
+                            rate.entry.ratio.numerator,
+                            rate.entry.ratio.denominator,
+                            rate.approval_revision,
+                            rate.entry.start,
+                            rate.entry.end
+                        ));
+                    }
+                    Err(e) => {
+                        unavailable = true;
+                        ui.colored_label(
+                            COPPER,
+                            format!("{from} → {to}: direct reporting FX unavailable."),
+                        );
+                        ui.small(e.to_string());
+                    }
+                }
+            }
+        }
+        if unavailable {
+            ui.colored_label(COPPER, "If you book now, these invoice rows cannot be reported in the unavailable currencies. Approve the required direct invoice-date rates before booking if you need those reports.");
+        }
+        ui.small("The reporting rate cutoff is frozen when booked. Future rate approvals cannot repair this booking's reporting eligibility. This check is informational; it does not change approved quote amounts or prevent booking.");
     }
 
     fn booking_totals(ui: &mut egui::Ui, lines: &[Evaluation]) {

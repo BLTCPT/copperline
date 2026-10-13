@@ -355,7 +355,7 @@ impl Workbench {
     }
     pub(super) fn converted_reports_view(&mut self, ui: &mut egui::Ui) {
         egui::CollapsingHeader::new("Reporting currency · frozen actuals").default_open(true).show(ui,|ui|{
-            ui.label("Convert recorded invoice and cost totals at each original invoice date. Approved reversals cancel those exact converted amounts. Quantities retain each recorded invoice unit; no unit aggregation.");
+            ui.label("Convert recorded invoice and cost totals at each original invoice date. Approved reversals cancel those exact converted amounts. Quantity credits allocate from the converted whole original and restate its original invoice period. Quantities retain each recorded invoice unit; no unit aggregation.");
             ui.horizontal_wrapped(|ui|{field(ui,"Period from",&mut self.conversion_form.start);field(ui,"Until (exclusive)",&mut self.conversion_form.end);});
             ui.horizontal(|ui|{ui.label("Reporting currency");currency_picker(ui,"report-currency",&mut self.conversion_form.report_currency);field(ui,"New report ID",&mut self.conversion_form.report_id);});
             if primary(ui,"Freeze converted actuals") {
@@ -368,8 +368,8 @@ impl Workbench {
             if let Some(r)=self.engine.state().conversion_reports.get(&self.conversion_form.selected_report).cloned() {
                 let c=&r.calculation;ui.label(format!("{} · {} · [{} , {}) · source r{} · {} invoice rows",r.id,c.request.currency,c.request.start,c.request.end,c.source_revision,c.rows.len()));
                 egui::Grid::new("report-summary").striped(true).spacing([22.0,10.0]).show(ui,|ui|{
-                    for h in ["Customer","Gross invoices","Reversed","Net invoice","Net cost","Net margin"] {ui.strong(h);}ui.end_row();
-                    for g in &c.groups {ui.label(&g.customer_id);ui.label(g.gross_count.to_string());ui.label(g.reversal_count.to_string());ui.label(g.invoice.to_string());ui.label(g.cost.to_string());ui.label(g.margin.to_string());ui.end_row();}
+                    for h in ["Customer","Gross invoices","Reversed","Credit notes","Fully credited invoices","Credited invoice / cost","Net invoice","Net cost","Net margin"] {ui.strong(h);}ui.end_row();
+                    for g in &c.groups {ui.label(&g.customer_id);ui.label(g.gross_count.to_string());ui.label(g.reversal_count.to_string());ui.label(g.credit_count.to_string());ui.label(g.fully_credited_count.to_string());ui.label(format!("{} / {}",g.credited_invoice,g.credited_cost));ui.label(g.invoice.to_string());ui.label(g.cost.to_string());ui.label(g.margin.to_string());ui.end_row();}
                 });
                 egui::CollapsingHeader::new("Frozen invoice and rate evidence").show(ui, |ui| {
                     for row in &c.rows {
@@ -388,6 +388,11 @@ impl Workbench {
                                 b.native_basis.quantity, b.native_basis.unit,
                                 b.native_basis.currency, b.native_basis.invoice_total
                             ));
+                        }
+                        for credit in &row.credits {
+                            ui.small(format!("Credit {} · {} {} · {} {} invoice / {} cost · approved r{}",
+                                credit.credit_id, credit.quantity, row.native.unit, c.request.currency,
+                                credit.invoice, credit.cost, credit.approved_revision));
                         }
                         if let Some(fx) = &row.fx {
                             ui.small(format!(

@@ -1,0 +1,35 @@
+{
+  "result": "PASS",
+  "old_binary_sha256": "ab2ec603087374b07d82c69e29ac739ad61c42eee25565a3461ca607e27e2641",
+  "new_binary_sha256": "3e9ce7f78e0e540508b86b8b614fda087d27e3c6ce17535418a5a5359bad3484",
+  "legacy_revision": 51,
+  "preserved_snapshots": 52,
+  "preserved_snapshot_bytes": 1267874,
+  "unchanged_exports": 8,
+  "new_revision": 57,
+  "credited_eur_cents": 24300,
+  "native_credited_quantity_thousandths": 3000,
+  "backup": {
+    "committed_revision": 57,
+    "format_version": 1,
+    "head_hash": "f8bd6faac649904ee07fd9a3af23f08e1bedd509797c85de172bb3997b6af33f",
+    "pending_count": 0,
+    "recovery_directory_count": 0,
+    "recovery_file_count": 0,
+    "schema_version": 1,
+    "sha256": "656656d174cf395b38102628e1c0c61f05799b7467d0a6ece6fc028aa318dcff",
+    "snapshot_count": 58,
+    "total_bytes": 1620190,
+    "warnings": []
+  },
+  "checks": [
+    "genuine M8 binary unchanged",
+    "original M8 workspace unchanged",
+    "all 52 original snapshot bytes and entire state equal",
+    "eight prior quote/conversion/report/booking/settlement exports unchanged before and after credit/close",
+    "original seed receipt replay",
+    "original M8 booked invoice supports native quantity credit and nominal close",
+    "credit/close retry and CSV stable after reopen",
+    "all 58 snapshots exact after full archive restore"
+  ]
+}

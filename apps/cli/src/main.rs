@@ -36,7 +36,7 @@ fn run() -> Result<()> {
     let verb = args.get(i).map(String::as_str).unwrap_or("help");
     if verb == "help" {
         println!(
-            "Copperline pricing workbench\nUsage: copperline-cli [--data DIR] demo|state|execute JSON|api|serve PORT|export-quote ID FILE|export-settlement ID FILE|export-contract ID EDITION FILE|export-conversion ID FILE|export-report ID FILE|export-booking ID FILE|preview-booking JSON|commands\nRecovery: storage-inspect | quarantine-pending NAME SHA256\napi: bounded JSON lines over stdin/stdout. serve: opt-in loopback JSON lines, maximum 16 clients, no remote authentication.\nRecovery verifies committed history and preserves pending evidence; it never promotes an interrupted write.\nAll figures and identities in the demo are synthetic.\n--version prints the build version."
+            "Copperline pricing workbench\nUsage: copperline-cli [--data DIR] demo|state|execute JSON|api|serve PORT|export-quote ID FILE|export-settlement ID FILE|export-contract ID EDITION FILE|export-conversion ID FILE|export-report ID FILE|export-booking ID FILE|export-credit ID FILE|export-period-close ID FILE|preview-booking JSON|preview-credit JSON|preview-period-close JSON|commands\nRecovery: storage-inspect | quarantine-pending NAME SHA256\napi: bounded JSON lines over stdin/stdout. serve: opt-in loopback JSON lines, maximum 16 clients, no remote authentication.\nRecovery verifies committed history and preserves pending evidence; it never promotes an interrupted write.\nAll figures and identities in the demo are synthetic.\n--version prints the build version."
         );
         println!(
             "Backup: --data EXISTING_DIR backup NEW_ARCHIVE.clbak | backup-inspect ARCHIVE.clbak | restore ARCHIVE.clbak NEW_WORKSPACE_DIR\nRestore never replaces an existing directory. Backup and restore include pending/recovery evidence without promoting it."
@@ -115,6 +115,40 @@ fn run() -> Result<()> {
                 serde_json::to_string(&e.execute(request)?).map_err(|e| error(e.to_string()))?
             );
         }
+        "preview-credit" | "preview-period-close" => {
+            let input = args
+                .get(i + 1)
+                .ok_or_else(|| error("Preview requires JSON with owner and proposal/terms"))?;
+            let params: Value = serde_json::from_str(input).map_err(|e| error(e.to_string()))?;
+            let owner = params
+                .get("owner")
+                .and_then(Value::as_str)
+                .ok_or_else(|| error("Missing preview owner"))?;
+            let result = if verb == "preview-credit" {
+                let proposal = serde_json::from_value(
+                    params
+                        .get("proposal")
+                        .cloned()
+                        .ok_or_else(|| error("Missing proposal"))?,
+                )
+                .map_err(|e| error(e.to_string()))?;
+                serde_json::to_value(e.state().credit_preview(&proposal, owner)?)
+            } else {
+                let terms = serde_json::from_value(
+                    params
+                        .get("terms")
+                        .cloned()
+                        .ok_or_else(|| error("Missing terms"))?,
+                )
+                .map_err(|e| error(e.to_string()))?;
+                serde_json::to_value(e.state().period_close_preview(&terms, owner)?)
+            }
+            .map_err(|e| error(e.to_string()))?;
+            println!(
+                "{}",
+                serde_json::to_string(&result).map_err(|e| error(e.to_string()))?
+            );
+        }
         "preview-booking" => {
             let input = args
                 .get(i + 1)
@@ -149,7 +183,7 @@ fn run() -> Result<()> {
             println!("Exported approved contract evidence");
         }
         "commands" => println!(
-            "seed_demo quote_book conversion_create conversion_import conversion_submit conversion_decide conversion_withdraw report_convert quote_replace_lines contract_create contract_submit contract_decide contract_withdraw correction_create correction_submit correction_decide correction_withdraw settlement_create settlement_submit settlement_decide settlement_withdraw grid_calculate grid_submit grid_decide agreement_create agreement_submit agreement_decide transaction_add transactions_import rebate_accrue product_put customer_put cost_add rule_add policy_set quote_approval_policy_set products_import quote_create quote_add_line quote_replace_line quote_remove_line quote_reprice quote_submit quote_decide quote_revise list_calculate list_submit list_decide list_publish\nRead API: state evaluate compare preview_quote_booking export_booking converted_actuals export_conversion export_report export_quote export_contract export_settlement reconciliation analytics catalog"
+            "seed_demo credit_create credit_submit credit_decide credit_withdraw period_close_create period_close_submit period_close_decide period_close_withdraw quote_book conversion_create conversion_import conversion_submit conversion_decide conversion_withdraw report_convert quote_replace_lines contract_create contract_submit contract_decide contract_withdraw correction_create correction_submit correction_decide correction_withdraw settlement_create settlement_submit settlement_decide settlement_withdraw grid_calculate grid_submit grid_decide agreement_create agreement_submit agreement_decide transaction_add transactions_import rebate_accrue product_put customer_put cost_add rule_add policy_set quote_approval_policy_set products_import quote_create quote_add_line quote_replace_line quote_remove_line quote_reprice quote_submit quote_decide quote_revise list_calculate list_submit list_decide list_publish\nRead API: state evaluate compare preview_credit preview_period_close export_credit export_period_close preview_quote_booking export_booking converted_actuals export_conversion export_report export_quote export_contract export_settlement reconciliation analytics catalog"
         ),
         "api" => {
             let stdin = io::stdin();
@@ -213,13 +247,22 @@ fn run() -> Result<()> {
                 }
             }
         }
-        "export-quote" | "export-settlement" | "export-conversion" | "export-report"
-        | "export-booking" => {
+        "export-quote"
+        | "export-settlement"
+        | "export-conversion"
+        | "export-report"
+        | "export-booking"
+        | "export-credit"
+        | "export-period-close" => {
             let id = args.get(i + 1).ok_or_else(|| error("Missing quote ID"))?;
             let path = args
                 .get(i + 2)
                 .ok_or_else(|| error("Missing export path"))?;
-            let content = if verb == "export-booking" {
+            let content = if verb == "export-credit" {
+                copperline_engine::export_credit(e.state(), id)?
+            } else if verb == "export-period-close" {
+                copperline_engine::export_period_close(e.state(), id)?
+            } else if verb == "export-booking" {
                 copperline_engine::export_booking(e.state(), id)?
             } else if verb == "export-conversion" {
                 copperline_engine::export_conversion(e.state(), id)?
@@ -357,17 +400,52 @@ fn handle(e: &mut Engine, v: Value) -> Result<Value> {
             serde_json::to_value(e.state().converted_actuals(&request, e.state().revision)?)
                 .map_err(|e| error(e.to_string()))
         }
+        "preview_credit" | "preview_period_close" => {
+            let owner = params
+                .get("owner")
+                .and_then(Value::as_str)
+                .ok_or_else(|| error("Missing preview owner"))?;
+            if method == "preview_credit" {
+                let proposal = serde_json::from_value(
+                    params
+                        .get("proposal")
+                        .cloned()
+                        .ok_or_else(|| error("Missing proposal"))?,
+                )
+                .map_err(|e| error(e.to_string()))?;
+                serde_json::to_value(e.state().credit_preview(&proposal, owner)?)
+                    .map_err(|e| error(e.to_string()))
+            } else {
+                let terms = serde_json::from_value(
+                    params
+                        .get("terms")
+                        .cloned()
+                        .ok_or_else(|| error("Missing terms"))?,
+                )
+                .map_err(|e| error(e.to_string()))?;
+                serde_json::to_value(e.state().period_close_preview(&terms, owner)?)
+                    .map_err(|e| error(e.to_string()))
+            }
+        }
         "preview_quote_booking" => {
             let request = serde_json::from_value(params).map_err(|e| error(e.to_string()))?;
             serde_json::to_value(e.state().preview_quote_booking(&request)?)
                 .map_err(|e| error(e.to_string()))
         }
-        "export_conversion" | "export_report" | "export_booking" => {
+        "export_conversion"
+        | "export_report"
+        | "export_booking"
+        | "export_credit"
+        | "export_period_close" => {
             let id = params
                 .get("id")
                 .and_then(Value::as_str)
                 .ok_or_else(|| error("Missing document ID"))?;
-            let csv = if method == "export_booking" {
+            let csv = if method == "export_credit" {
+                copperline_engine::export_credit(e.state(), id)?
+            } else if method == "export_period_close" {
+                copperline_engine::export_period_close(e.state(), id)?
+            } else if method == "export_booking" {
                 copperline_engine::export_booking(e.state(), id)?
             } else if method == "export_conversion" {
                 copperline_engine::export_conversion(e.state(), id)?
@@ -405,7 +483,7 @@ fn handle(e: &mut Engine, v: Value) -> Result<Value> {
         "analytics" => serde_json::to_value(copperline_engine::analytics(e.state())?)
             .map_err(|e| error(e.to_string())),
         "catalog" => Ok(
-            json!({"api_version":1,"money":"integer cents","quantity":"integer thousandths","percent":"integer basis points","methods":["state","execute","evaluate","compare","preview_quote_booking","export_booking","converted_actuals","export_conversion","export_report","export_quote","export_contract","export_settlement","reconciliation","analytics","catalog"]}),
+            json!({"api_version":1,"money":"integer cents","quantity":"integer thousandths","percent":"integer basis points","methods":["state","execute","evaluate","compare","preview_credit","preview_period_close","export_credit","export_period_close","preview_quote_booking","export_booking","converted_actuals","export_conversion","export_report","export_quote","export_contract","export_settlement","reconciliation","analytics","catalog"]}),
         ),
         _ => Err(error("Unknown API method")),
     }

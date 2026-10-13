@@ -59,3 +59,7 @@ Acceptance: reproducible data split and baseline, out-of-sample evaluation, leak
 ## Shared release gate
 
 For every milestone: update exact command/model contracts, add meaningful unit/property/invariant and process regressions, request independent financial/persistence/authorization review, run layer/attribution/fmt/strict-Clippy/test gates, verify native builds and process/transport tests on Windows/macOS/Linux, inspect native UI screens and preserve Library handoff identity. Record source commit, CI run, downloadable artifact URL and checksum. Windows visual/accessibility validation and signed distribution remain explicit release work.
+
+## M9 — quantity credits and nominal close (implemented bounded subset)
+
+Cumulative original-total quantity credits, frozen booking/native evidence, original-rate reporting, rebate true-ups and conservative nominal invoice-period close are implemented. See [credits-periods.md](credits-periods.md). Value-only credits, credit amendments/reversals, partial booking and closed-period reopen/carry-forward remain unsupported.

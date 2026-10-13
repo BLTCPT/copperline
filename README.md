@@ -39,9 +39,11 @@ The desktop uses a native Rust egui window with no browser or Node runtime. Wind
 - One command engine behind native UI, CLI, stdio and a bounded concurrent loopback JSON API.
 - Interrupted-write inspection and checksum-verified quarantine preserve evidence before retry.
 - Full approved-quote booking preserves exact converted actuals, native non-posted basis and original-evidence full reversals.
+- Independently reviewed quantity credits use cumulative original-total rounding, native/FX provenance and rebate true-ups.
+- Finance-approved nominal invoice-period closes block backdated ingestion and original-period corrections without claiming accounting compliance.
 - Portable exact-history backups and validated restore into a new workspace preserve pending/recovery evidence without overwriting existing data.
 
-[Demo runbook](docs/demo.md) · [API contract](docs/api.md) · [Architecture](docs/architecture.md) · [Security boundaries](docs/security.md) · [Capability/parity matrix](docs/parity.md) · [Quote governance](docs/quote-governance.md) · [Approved pricing sources](docs/pricing-sources.md) · [Customer price agreements](docs/customer-price-agreements.md) · [FX and units](docs/conversions.md) · [Quote bookings](docs/bookings.md) · [Backup & restore](docs/backup.md) · [Measured workloads](docs/performance.md) · [Recovery](docs/recovery.md) · [Corrections and reconciliation](docs/corrections-reconciliation.md) · [Remaining gaps](docs/gaps.md) · [Next milestones](docs/roadmap.md) · [License](LICENSE)
+[Demo runbook](docs/demo.md) · [API contract](docs/api.md) · [Architecture](docs/architecture.md) · [Security boundaries](docs/security.md) · [Capability/parity matrix](docs/parity.md) · [Quote governance](docs/quote-governance.md) · [Approved pricing sources](docs/pricing-sources.md) · [Customer price agreements](docs/customer-price-agreements.md) · [FX and units](docs/conversions.md) · [Quote bookings](docs/bookings.md) · [Credits and nominal close](docs/credits-periods.md) · [Backup & restore](docs/backup.md) · [Measured workloads](docs/performance.md) · [Recovery](docs/recovery.md) · [Corrections and reconciliation](docs/corrections-reconciliation.md) · [Remaining gaps](docs/gaps.md) · [Next milestones](docs/roadmap.md) · [License](LICENSE)
 
 ## Development playbook
 

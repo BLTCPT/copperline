@@ -46,6 +46,15 @@ pub struct Correction {
     pub status: RecordStatus,
 }
 impl Correction {
+    /// Reservation as known at a historical revision; approved full reversals retain it.
+    pub fn live_at(&self, revision: u64) -> bool {
+        self.created_revision <= revision && self.released_revision().is_none_or(|r| r > revision)
+    }
+    pub fn pending_at(&self, revision: u64) -> bool {
+        self.created_revision <= revision
+            && self.review.as_ref().is_none_or(|r| r.revision > revision)
+            && self.withdrawn_revision.is_none_or(|r| r > revision)
+    }
     pub fn is_live(&self) -> bool {
         matches!(
             self.status,
@@ -59,7 +68,7 @@ impl Correction {
             None
         }
     }
-    fn released_revision(&self) -> Option<u64> {
+    pub fn released_revision(&self) -> Option<u64> {
         match self.status {
             RecordStatus::Rejected => self.review.as_ref().map(|r| r.revision),
             RecordStatus::Withdrawn => self.withdrawn_revision,
@@ -74,6 +83,10 @@ pub struct AccrualBasis {
     pub transaction_ids: Vec<String>,
     /// Approved full reversals of eligible originals, known at source_revision.
     pub correction_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub credit_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "money_is_zero")]
+    pub credited_invoice: Money,
     pub gross_invoice: Money,
     pub reversed_invoice: Money,
     pub eligible_invoice: Money,
@@ -100,6 +113,22 @@ pub fn correction_decision_detail(c: &Correction, review: &RecordReview) -> Resu
 }
 
 impl State {
+    /// Prevent mixing partial-credit capacity with a full reversal and honor prior closes.
+    pub fn ensure_correction_allowed_at(&self, c: &Correction, revision: u64) -> Result<()> {
+        self.ensure_invoice_open_at(&c.original, revision)?;
+        if let Some(t) = &c.proposal.replacement {
+            self.ensure_invoice_open_at(t, revision)?;
+        }
+        ensure(
+            !self.credits.values().any(|credit| {
+                credit.proposal.original_transaction_id == c.original.id
+                    && (credit.live_at(revision)
+                        || credit.approved_revision().is_some_and(|r| r <= revision))
+            }),
+            "Invoice has a live or approved quantity credit; use remaining-quantity credit instead of full reversal",
+        )
+    }
+
     pub fn validate_transaction(&self, t: &Transaction) -> Result<()> {
         id(&t.id)?;
         text(&t.source)?;
@@ -153,6 +182,8 @@ impl State {
         let mut basis = AccrualBasis {
             transaction_ids: vec![],
             correction_ids: vec![],
+            credit_ids: vec![],
+            credited_invoice: Money(0),
             gross_invoice: Money(0),
             reversed_invoice: Money(0),
             eligible_invoice: Money(0),
@@ -189,7 +220,17 @@ impl State {
                 basis.reversed_invoice = basis.reversed_invoice.add(original.invoice_total)?;
             }
         }
-        basis.eligible_invoice = basis.gross_invoice.sub(basis.reversed_invoice)?;
+        for c in self.credits.values().filter(|c| {
+            c.approved_revision().is_some_and(|r| r <= source_revision)
+                && eligible.contains(&c.proposal.original_transaction_id)
+        }) {
+            basis.credit_ids.push(c.proposal.id.clone());
+            basis.credited_invoice = basis.credited_invoice.add(c.invoice)?;
+        }
+        basis.eligible_invoice = basis
+            .gross_invoice
+            .sub(basis.reversed_invoice)?
+            .sub(basis.credited_invoice)?;
         ensure(
             basis.eligible_invoice.0 >= 0,
             "Reversed revenue exceeds eligible gross invoices",
@@ -253,6 +294,7 @@ impl State {
                 p.effective_date >= c.original.date,
                 "Correction record date precedes original invoice",
             )?;
+            self.ensure_correction_allowed_at(c, c.created_revision - 1)?;
             let created = self.correction_audit(
                 c,
                 c.created_revision,
@@ -270,6 +312,7 @@ impl State {
                     submitted > c.created_revision && submitted <= self.revision,
                     "Correction submission chronology invalid",
                 )?;
+                self.ensure_correction_allowed_at(c, submitted - 1)?;
                 let a = self.correction_audit(
                     c,
                     submitted,
@@ -294,6 +337,9 @@ impl State {
                     review.actor.role == Role::Finance && review.actor.name != c.owner,
                     "Correction requires independent Finance review",
                 )?;
+                if review.approved {
+                    self.ensure_correction_allowed_at(c, review.revision - 1)?;
+                }
                 let a = self.correction_audit(
                     c,
                     review.revision,

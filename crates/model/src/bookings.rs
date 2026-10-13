@@ -190,6 +190,7 @@ impl State {
             .map(|(index, line)| derived_line(request, line, index))
             .collect::<Result<_>>()?;
         for line in &lines {
+            self.ensure_invoice_open_at(&line.booked, self.revision)?;
             ensure(
                 self.transaction_id_available(&line.booked.id),
                 "Booking invoice ID exists or is reserved by a correction",

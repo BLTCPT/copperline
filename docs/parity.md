@@ -24,7 +24,7 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 | Analytics actuals, segmentation, dashboards, alerts | Partial | Gross/reversed/net invoice ledger, customer/currency weighted margin and explicit immutable reporting-currency snapshots; no warehouse, alerting or advanced segmentation |
 | Customer agreements / contract terms / renewals | Partial | Approved customer price-contract editions with periods, quantity bands and frozen origins; separate retrospective rebate terms; broader amendments/renewals remain |
 | Rebates, tier programs, accrual/settlement/reconciliation | Partial | Retrospective net accruals, signed local settlement recognition, exact baseline/source checks and independent Finance review; no payment or external accounting reconciliation |
-| Correctable invoice actuals and credit provenance | Implemented full-reversal subset | Immutable original, reviewed full reversal/atomic replacement, reserved IDs, historical basis and zero-net recalculation; partial credit allocation remains missing |
+| Correctable invoice actuals and credit provenance | Implemented bounded subset | Immutable full reversals or cumulative quantity credits, native/FX provenance, historical basis, rebate true-ups and conservative nominal invoice-period close; no accounting compliance or carry-forward |
 | Promotions and promotional effectiveness | Missing | No calendar, uplift/demand or budget model |
 | Channel management / distributor claims | Missing | No channel program or claims workflow |
 | CPQ configuration, bundles, templates, quote document delivery | Partial | Flat quote items and CSV export; no configurable BOM or document templates |
@@ -49,3 +49,5 @@ M5 adds a working local customer-contract subset: immutable editions, date/quant
 M6 adds explicit dated direct FX and product-UOM conversion, exact native quantity qualification, immutable reporting-currency actuals and atomic multi-line quote edits. All roundtrip, missing-rate, historical evidence and source-authoring boundaries are documented in [conversion semantics](conversions.md).
 
 M8 adds immutable approved quote booking and original-evidence reversals/reporting. [Booking semantics](bookings.md) define full-only capacity, native non-posted basis and historical FX cutoff; no accounting or invoice delivery integration is claimed.
+
+M9 adds quantity credits and nominal invoice-basis closes with explicit allocation, original-period rebate eligibility, historical evidence and non-contributor Finance review. See [credit/close scope](credits-periods.md).

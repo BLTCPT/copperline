@@ -43,6 +43,7 @@ impl Workbench {
                         for (label, value) in [
                             ("Gross eligible invoices", position.basis.gross_invoice),
                             ("Approved full reversals", position.basis.reversed_invoice),
+                            ("Approved quantity credits", position.basis.credited_invoice),
                             ("Net eligible invoices", position.basis.eligible_invoice),
                             ("Full-period rebate target", position.target_rebate),
                             ("Approved local adjustments", position.recognized_rebate),
@@ -52,7 +53,8 @@ impl Workbench {
                             ui.end_row();
                         }
                     });
-                ui.label(format!("Retrospective tier {}% · {} invoice records · {} approved reversals · source r{}",position.rate,position.basis.transaction_ids.len(),position.basis.correction_ids.len(),position.source_revision));
+                ui.label(format!("Retrospective tier {}% · {} invoice records · {} approved reversals · {} credit notes · source r{}",position.rate,position.basis.transaction_ids.len(),position.basis.correction_ids.len(),position.basis.credit_ids.len(),position.source_revision));
+                ui.small("Credits restate the original invoice/agreement period at approval. Prior accrual snapshots remain alternatives; a new snapshot captures every approved credit ID, including zero-cent allocations.");
                 if primary(ui, "Calculate corrected accrual")
                     && let Some(a) = self.engine.state().agreements.get(&self.selected_agreement)
                 {
@@ -123,7 +125,7 @@ impl Workbench {
                 self.settlement_form.selected = id;
             }
         }
-        ui.small("Select a current accrual. Matching totals alone are insufficient: changed invoice or correction provenance requires a new snapshot.");
+        ui.small("Select a current accrual. Matching totals alone are insufficient: changed invoice, correction or credit provenance requires a new snapshot.");
         ui.separator();
         ui.heading("Settlement records");
         let records: Vec<_> = self

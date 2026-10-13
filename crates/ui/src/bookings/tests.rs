@@ -469,3 +469,199 @@ fn native_converted_full_booking_rounding_reversal_and_report() -> TestResult {
     h.state().engine.state().validate()?;
     Ok(())
 }
+
+#[test]
+fn booking_reporting_fx_preview_requires_approved_direct_invoice_date_rate() -> TestResult {
+    let mut e = Engine::memory();
+    fixture(&mut e, true)?;
+    let mut app = Workbench::new(e);
+    app.view = View::Bookings;
+    app.role = 1;
+    app.booking_form.id = "BK-FX".into();
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1440.0, 1800.0))
+        .build_ui_state(|ui, app: &mut Workbench| app.ui(ui), app);
+    h.state_mut().booking_form.invoice_date = "2026-10-14".into();
+    let initial = h.state().engine.state().clone();
+    let request = BookingRequest {
+        id: "BK-FX".into(),
+        quote_id: "Q-BOOK".into(),
+        quote_version: quote(&h.state().engine)?.version,
+        invoice_date: Date::parse("2026-10-14")?,
+        source: "synthetic-quote-booking".into(),
+    };
+    let frozen_lines = initial.preview_quote_booking(&request)?;
+    h.try_run().map_err(|e| e.to_string())?;
+    assert!(
+        h.query_by_label("Recorded EUR · invoice rows BK-FX-L001, BK-FX-L002")
+            .is_some()
+    );
+    assert!(
+        h.query_by_label("EUR → EUR: available; same currency requires no FX.")
+            .is_some()
+    );
+    // The fixture's approved USD→EUR quote FX must not be treated as reciprocal reporting FX.
+    assert!(
+        h.query_by_label("EUR → USD: direct reporting FX unavailable.")
+            .is_some()
+    );
+    assert!(
+        h.query_by_label("EUR → GBP: direct reporting FX unavailable.")
+            .is_some()
+    );
+    assert!(
+        !h.get_by_label("Book entire approved quote")
+            .accesskit_node()
+            .is_disabled()
+    );
+    assert!(h.query_by_label("The reporting rate cutoff is frozen when booked. Future rate approvals cannot repair this booking's reporting eligibility. This check is informational; it does not change approved quote amounts or prevent booking.").is_some());
+    assert_eq!(h.state().engine.state(), &initial);
+
+    h.state_mut().engine.run(
+        actor("report-rate-owner", Role::Analyst),
+        Command::ConversionCreate {
+            terms: ConversionTerms {
+                id: "REPORT-RATES".into(),
+                name: "Synthetic reporting rates".into(),
+                entries: vec![ConversionEntry {
+                    id: "EUR-USD".into(),
+                    conversion: ConversionKind::Fx {
+                        from: Currency::EUR,
+                        to: Currency::USD,
+                    },
+                    start: Date::parse("2026-10-14")?,
+                    end: Date::parse("2026-10-16")?,
+                    ratio: Rational {
+                        numerator: 3,
+                        denominator: 2,
+                    },
+                }],
+            },
+        },
+    )?;
+    h.state_mut().engine.run(
+        actor("report-rate-owner", Role::Analyst),
+        Command::ConversionSubmit {
+            id: "REPORT-RATES".into(),
+            version: 1,
+        },
+    )?;
+    let pending = h.state().engine.state().clone();
+    h.try_run().map_err(|e| e.to_string())?;
+    assert!(
+        h.query_by_label("EUR → USD: direct reporting FX unavailable.")
+            .is_some()
+    );
+    assert_eq!(h.state().engine.state(), &pending);
+
+    h.state_mut().engine.run(
+        actor("report-rate-reviewer", Role::Approver),
+        Command::ConversionDecide {
+            id: "REPORT-RATES".into(),
+            version: 2,
+            approve: true,
+            note: "Independent direct reporting rate review".into(),
+        },
+    )?;
+    let approved = h.state().engine.state().clone();
+    h.try_run().map_err(|e| e.to_string())?;
+    assert!(
+        h.query_by_label("EUR → USD: direct reporting FX available.")
+            .is_some()
+    );
+    assert!(
+        h.query_by_label("EUR → USD: direct reporting FX unavailable.")
+            .is_none()
+    );
+    assert!(
+        h.query_by_label("EUR → GBP: direct reporting FX unavailable.")
+            .is_some()
+    );
+    assert!(
+        !h.get_by_label("Book entire approved quote")
+            .accesskit_node()
+            .is_disabled()
+    );
+    assert_eq!(h.state().engine.state(), &approved);
+    assert_eq!(approved.preview_quote_booking(&request)?, frozen_lines);
+
+    // Coverage follows invoice date, not the quote's earlier pricing date, and ends exclusively.
+    h.state_mut().booking_form.invoice_date = "2026-10-16".into();
+    h.try_run().map_err(|e| e.to_string())?;
+    assert!(
+        h.query_by_label("EUR → USD: direct reporting FX unavailable.")
+            .is_some()
+    );
+    assert_eq!(h.state().engine.state(), &approved);
+    assert!(h.state().engine.state().quote_bookings.is_empty());
+    assert!(h.state().engine.state().transactions.is_empty());
+    Ok(())
+}
+
+#[test]
+fn booked_quantity_credit_ui_rejects_native_precision_loss_then_freezes_evidence() -> TestResult {
+    let mut e = Engine::memory();
+    fixture(&mut e, true)?;
+    let mut app = Workbench::new(e);
+    app.view = View::Bookings;
+    app.role = 1;
+    app.booking_form.id = "BK-RETURN".into();
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1440.0, 1800.0))
+        .build_ui_state(|ui, app: &mut Workbench| app.ui(ui), app);
+    h.get_by_label("Book entire approved quote").click();
+    h.try_run().map_err(|e| e.to_string())?;
+    assert!(!h.state().failed, "{}", h.state().status);
+    h.get_by_label("Quantity credit · BK-RETURN-L001").click();
+    h.try_run().map_err(|e| e.to_string())?;
+    assert!(h.state().view == View::Credits);
+    h.state_mut().credit_form.id = "CN-RETURN".into();
+    h.state_mut().credit_form.quantity = "0.001".into();
+    let before = h.state().engine.state().clone();
+    h.try_run().map_err(|e| e.to_string())?;
+    assert!(
+        h.get_by_label("Create credit proposal")
+            .accesskit_node()
+            .is_disabled()
+    );
+    h.get_by_label("Create credit proposal").click();
+    h.try_run().map_err(|e| e.to_string())?;
+    assert_eq!(h.state().engine.state(), &before);
+    h.state_mut().credit_form.quantity = "0.5".into();
+    h.try_run().map_err(|e| e.to_string())?;
+    h.get_by_label("Create credit proposal").click();
+    h.try_run().map_err(|e| e.to_string())?;
+    assert!(!h.state().failed, "{}", h.state().status);
+    h.get_by_label("Submit credit").click();
+    h.try_run().map_err(|e| e.to_string())?;
+    h.state_mut().role = 4;
+    h.try_run().map_err(|e| e.to_string())?;
+    h.get_by_label("Approve credit").click();
+    h.try_run().map_err(|e| e.to_string())?;
+    assert!(!h.state().failed, "{}", h.state().status);
+    let c = h
+        .state()
+        .engine
+        .state()
+        .credits
+        .get("CN-RETURN")
+        .ok_or_else(|| error("Booked credit missing"))?;
+    assert_eq!(c.status, RecordStatus::Approved);
+    assert_eq!((c.invoice, c.cost), (Money(1), Money(1)));
+    let native = c
+        .booking
+        .as_ref()
+        .ok_or_else(|| error("Native credit evidence missing"))?;
+    assert_eq!(native.native_quantity, Quantity(250));
+    assert_eq!(native.native_basis.currency, Currency::USD);
+    assert_eq!(
+        (native.native_invoice, native.native_cost),
+        (Money(1), Money(1))
+    );
+    assert_eq!(
+        h.state().engine.state().quote_bookings,
+        before.quote_bookings
+    );
+    h.state().engine.state().validate()?;
+    Ok(())
+}

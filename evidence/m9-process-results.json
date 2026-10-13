@@ -1,0 +1,44 @@
+[
+  {
+    "flow": "e2e",
+    "exit_code": 0,
+    "output": "{\n  \"result\": \"PASS\",\n  \"api_requests\": 65,\n  \"committed_revisions\": 32,\n  \"golden_usd\": {\n    \"invoice\": \"900.00\",\n    \"rebate\": \"45.00\",\n    \"pocket\": \"855.00\",\n    \"margin\": \"255.00\"\n  },\n  \"verified\": [\n    \"quote approval/export/revise\",\n    \"list approve/publish\",\n    \"idempotent retry\",\n    \"stale version\",\n    \"separate approver\",\n    \"atomic import\",\n    \"malformed input survival\",\n    \"process restart persistence\",\n    \"grid candidate/active separation\",\n    \"tier agreement approval\",\n    \"atomic transaction import\",\n    \"frozen accrual\",\n    \"invoice analytics\",\n    \"owner-only quote editing\",\n    \"conditional sequential Finance review\",\n    \"frozen route policy\",\n    \"decision retry after completion\",\n    \"approved grid/list pricing\",\n    \"source replacement preserves quote export\",\n    \"repeated accrual snapshots do not change actuals\"\n  ]\n}",
+    "error": ""
+  },
+  {
+    "flow": "reconciliation_e2e",
+    "exit_code": 0,
+    "output": "{\n  \"result\": \"PASS\",\n  \"api_requests\": 72,\n  \"committed_revisions\": 34,\n  \"settlement_adjustments_usd\": [\n    \"150.00\",\n    \"-140.00\",\n    \"-2.00\",\n    \"-8.00\"\n  ],\n  \"final_recognized_rebate\": \"0.00\",\n  \"verified\": [\n    \"independent Finance review\",\n    \"atomic full reversal and replacement\",\n    \"reserved replacement IDs\",\n    \"original period restatement\",\n    \"retrospective tier true-up\",\n    \"competing baseline rejection\",\n    \"zero entitlement refund\",\n    \"non-additive accrual snapshots\",\n    \"exact retry after restart\",\n    \"frozen CSV exports\",\n    \"numeric negative adjustments and formula-safe text\",\n    \"no overwrite export\"\n  ]\n}",
+    "error": ""
+  },
+  {
+    "flow": "contracts_e2e",
+    "exit_code": 0,
+    "output": "{\n  \"result\": \"PASS\",\n  \"api_requests\": 75,\n  \"committed_revisions\": 30,\n  \"verified\": [\n    \"half-open date and quantity boundaries\",\n    \"independent source-contributor review\",\n    \"frozen grid origins\",\n    \"edition supersession without resurrection\",\n    \"explicit priority and overlap rejection\",\n    \"no implicit currency/UOM conversion\",\n    \"automatic versus exact source selection\",\n    \"atomic quote-line replacement\",\n    \"immutable approval cycles\",\n    \"restart and exact retry\",\n    \"byte-stable historical exports\",\n    \"UTF-8 and formula-safe contract CSV\",\n    \"no-overwrite CLI export\"\n  ]\n}",
+    "error": ""
+  },
+  {
+    "flow": "conversions_e2e",
+    "exit_code": 0,
+    "output": "{\n  \"result\": \"PASS\",\n  \"api_requests\": 62,\n  \"committed_revisions\": 26,\n  \"verified\": [\n    \"independent immutable conversion approval\",\n    \"native quantity bands\",\n    \"half-open dated direct rates\",\n    \"missing/identity/chained conversion rejection\",\n    \"atomic whole-quote currency transition\",\n    \"frozen direction/rational/version/date/rounding export\",\n    \"original-date reversal cancellation\",\n    \"frozen historical reports\",\n    \"overlap rejection and adjacent schedules\",\n    \"restart and idempotent retry\",\n    \"UTF-8 byte-stable and no-overwrite CLI exports\"\n  ]\n}",
+    "error": ""
+  },
+  {
+    "flow": "bookings_e2e",
+    "exit_code": 0,
+    "output": "{\n  \"result\": \"PASS\",\n  \"process_and_api_calls\": 116,\n  \"committed_revisions\": 41,\n  \"booked_rows\": 2,\n  \"booked_invoice_cents\": 288684,\n  \"reporting_gross_usd_cents\": 360855,\n  \"booking_csv_sha256\": \"2246f7af7cafb7d5bd9977e36b131bb7e27c91aaa1e8fa40fda685a1076e8860\",\n  \"original_quote_csv_sha256\": \"efec89121e5b2eb4f0e370aa71ea0a798c78891c509dbe1d7f37a94d0907ab6d\",\n  \"verified\": [\n    \"full converted quote atomic booking\",\n    \"CLI/API exact preview and shared command\",\n    \"draft/pending/stale/role/partial-input rejection preserves state and disk\",\n    \"reserved invoice ID and duplicate booking protection\",\n    \"strict raw native ingestion\",\n    \"superseded contract and dated FX do not reprice the frozen quote\",\n    \"booked ledger versus non-posted native basis\",\n    \"booking-time direct reporting rates; no later backfill\",\n    \"post-booking quote revision preserves frozen evidence\",\n    \"full reversals and original reporting cancellation\",\n    \"independent actual rebates and quote-contributor settlement exclusion\",\n    \"immutable report/export and no-overwrite CLI export\",\n    \"receipt replay, reopen and complete archive restoration\"\n  ]\n}",
+    "error": ""
+  },
+  {
+    "flow": "credits_e2e",
+    "exit_code": 0,
+    "output": "{\"calls\": 110, \"ok\": true, \"revision\": 44, \"verified\": \"quantity allocation, original-rate/native evidence, rebates, close races, rollback, exports, reopen and exact archive\"}",
+    "error": ""
+  },
+  {
+    "flow": "backup_e2e",
+    "exit_code": 0,
+    "output": "{\n  \"result\": \"PASS\",\n  \"process_and_api_calls\": 39,\n  \"archived_revision\": 8,\n  \"archive_bytes\": 48219,\n  \"archive_sha256\": \"ac20e743fa3e333f6d0f71855aa6b9306dc9bfc2e4ce1d58f2b70511cc0aeed2\",\n  \"verified\": [\n    \"source lock prevents an inconsistent competing backup\",\n    \"deterministic exact-byte archive preserves snapshots, pending and nested recovery evidence\",\n    \"existing archives, missing sources and unsupported source evidence fail without replacement or bootstrap\",\n    \"corrupt, truncated and trailing archive bytes reject before destination creation\",\n    \"restore refuses existing empty directories and files\",\n    \"restored approvals, conversion exports and original receipts reopen unchanged; pending still blocks next write\",\n    \"preserved pending quarantine then exact retry commits once and survives another complete backup/restore\"\n  ]\n}",
+    "error": ""
+  }
+]

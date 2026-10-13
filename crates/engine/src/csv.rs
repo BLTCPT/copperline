@@ -265,7 +265,7 @@ pub fn export_settlement(state: &State, id: &str) -> Result<String> {
         .accruals
         .get(&record.accrual_id)
         .ok_or_else(|| error("Settlement accrual missing"))?;
-    let fields = [
+    let mut fields = vec![
         record.id.clone(),
         record.version.to_string(),
         record.agreement_id.clone(),
@@ -285,7 +285,14 @@ pub fn export_settlement(state: &State, id: &str) -> Result<String> {
         record.reason.clone(),
         "Local recognition only; no payment or posting".into(),
     ];
-    let header = "settlement_id,version,agreement_id,agreement_version,accrual_id,accrual_source_revision,currency,target_rebate,previously_recognized,adjustment,prior_settlement_ids,invoice_ids,correction_ids,owner,finance_reviewer,approval_revision,reason,boundary\n";
+    let mut header = String::from(
+        "settlement_id,version,agreement_id,agreement_version,accrual_id,accrual_source_revision,currency,target_rebate,previously_recognized,adjustment,prior_settlement_ids,invoice_ids,correction_ids,owner,finance_reviewer,approval_revision,reason,boundary\n",
+    );
+    if !accrual.credit_ids.is_empty() {
+        header = header.trim_end().to_owned();
+        header.push_str(",credit_ids\n");
+        fields.push(accrual.credit_ids.join("|"));
+    }
     Ok(format!(
         "{header}{}\n",
         fields
@@ -504,6 +511,7 @@ pub fn export_report(state: &State, id: &str) -> Result<String> {
         .ok_or_else(|| error("Frozen report not found"))?;
     let c = &report.calculation;
     let has_bookings = c.rows.iter().any(|r| r.booking.is_some());
+    let has_credits = c.rows.iter().any(|r| !r.credits.is_empty());
     let mut output = String::from(
         "report_id,source_revision,start,end_exclusive,reporting_currency,invoice_id,customer_id,product_id,invoice_date,native_quantity,native_unit,native_currency,native_invoice,native_cost,converted_invoice,converted_cost,reversed_by,net_invoice,net_cost,net_margin,rounding,fx_evidence_json\r\n",
     );
@@ -511,11 +519,31 @@ pub fn export_report(state: &State, id: &str) -> Result<String> {
         output = output.replace("native_", "recorded_").trim_end().to_owned();
         output.push_str(",booking_evidence_json\r\n");
     }
+    if has_credits {
+        output = output.trim_end().to_owned();
+        output.push_str(",credit_evidence_json\r\n");
+    }
     for row in &c.rows {
         let t = &row.native;
         let reversed = row.reversed_by.is_some();
-        let invoice = if reversed { Money(0) } else { row.invoice };
-        let cost = if reversed { Money(0) } else { row.cost };
+        let credited_invoice = row
+            .credits
+            .iter()
+            .try_fold(Money(0), |total, c| total.add(c.invoice))?;
+        let credited_cost = row
+            .credits
+            .iter()
+            .try_fold(Money(0), |total, c| total.add(c.cost))?;
+        let invoice = if reversed {
+            Money(0)
+        } else {
+            row.invoice.sub(credited_invoice)?
+        };
+        let cost = if reversed {
+            Money(0)
+        } else {
+            row.cost.sub(credited_cost)?
+        };
         let mut fields = vec![
             id.into(),
             c.source_revision.to_string(),
@@ -542,6 +570,9 @@ pub fn export_report(state: &State, id: &str) -> Result<String> {
         ];
         if has_bookings {
             fields.push(json_cell(&row.booking)?);
+        }
+        if has_credits {
+            fields.push(json_cell(&row.credits)?);
         }
         csv_row(&mut output, &fields);
     }
@@ -603,6 +634,49 @@ pub fn export_booking(state: &State, id: &str) -> Result<String> {
             ],
         );
     }
+    Ok(output)
+}
+
+/// Approved quantity credit; complete original/native/baseline evidence is embedded.
+pub fn export_credit(state: &State, id: &str) -> Result<String> {
+    let c = state
+        .credits
+        .get(id)
+        .ok_or_else(|| error("Credit not found"))?;
+    ensure(
+        c.status == RecordStatus::Approved,
+        "Only approved credits may export",
+    )?;
+    let review = c
+        .review
+        .as_ref()
+        .ok_or_else(|| error("Credit approval missing"))?;
+    let mut output = String::from(
+        "credit_id,version,original_invoice_id,original_invoice_date,record_date,recorded_currency,recorded_unit,quantity,prior_quantity,credited_invoice,credited_cost,owner,finance_reviewer,approval_revision,rounding,evidence_json,boundary\r\n",
+    );
+    csv_row(&mut output, &[c.proposal.id.clone(),c.version.to_string(),c.original.id.clone(),c.original.date.to_string(),c.proposal.effective_date.to_string(),c.original.currency.to_string(),c.original.unit.clone(),c.proposal.quantity.to_string(),c.prior_quantity.to_string(),c.invoice.to_string(),c.cost.to_string(),c.owner.clone(),review.actor.name.clone(),review.revision.to_string(),json_cell(&c.rounding)?,json_cell(c)?,"Commercial quantity credit; original-period eligibility; no accounting posting or payment".into()]);
+    Ok(output)
+}
+
+/// Approved nominal invoice basis; reporting FX and rebates remain separate.
+pub fn export_period_close(state: &State, id: &str) -> Result<String> {
+    let c = state
+        .period_closes
+        .get(id)
+        .ok_or_else(|| error("Period close not found"))?;
+    ensure(
+        c.status == RecordStatus::Approved,
+        "Only approved period closes may export",
+    )?;
+    let review = c
+        .review
+        .as_ref()
+        .ok_or_else(|| error("Period close approval missing"))?;
+    let b = &c.basis;
+    let mut output = String::from(
+        "close_id,version,start,end_exclusive,currency,source_revision,gross_invoice,gross_cost,reversed_invoice,reversed_cost,credited_invoice,credited_cost,net_invoice,net_cost,owner,finance_reviewer,approval_revision,evidence_json,boundary\r\n",
+    );
+    csv_row(&mut output, &[c.terms.id.clone(),c.version.to_string(),c.terms.start.to_string(),c.terms.end.to_string(),c.terms.currency.to_string(),c.source_revision.to_string(),b.gross_invoice.to_string(),b.gross_cost.to_string(),b.reversed_invoice.to_string(),b.reversed_cost.to_string(),b.credited_invoice.to_string(),b.credited_cost.to_string(),b.invoice.to_string(),b.cost.to_string(),c.owner.clone(),review.actor.name.clone(),review.revision.to_string(),json_cell(c)?,"Nominal invoice-basis freeze only; excludes FX/rebates; no accounting-period compliance assertion".into()]);
     Ok(output)
 }
 

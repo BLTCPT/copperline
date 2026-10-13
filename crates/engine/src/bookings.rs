@@ -2,6 +2,9 @@ use super::*;
 
 pub(super) fn apply(state: &mut State, actor: &Actor, request: &BookingRequest) -> Result<String> {
     let lines = state.preview_quote_booking(request)?;
+    for line in &lines {
+        state.ensure_invoice_open_at(&line.booked, state.revision)?;
+    }
     let quote = state
         .quotes
         .get(&request.quote_id)

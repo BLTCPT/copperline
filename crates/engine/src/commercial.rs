@@ -7,6 +7,15 @@ pub struct RevenueGroup {
     pub transaction_count: usize,
     pub gross_transaction_count: usize,
     pub reversal_count: usize,
+    #[serde(default, skip_serializing_if = "count_is_zero")]
+    pub credit_count: usize,
+    #[serde(default, skip_serializing_if = "count_is_zero")]
+    pub fully_credited_count: usize,
+    #[serde(default, skip_serializing_if = "money_is_zero")]
+    pub credited_invoice: Money,
+    #[serde(default, skip_serializing_if = "money_is_zero")]
+    pub credited_cost: Money,
+
     pub gross_invoice: Money,
     pub gross_cost: Money,
     pub reversed_invoice: Money,
@@ -28,6 +37,10 @@ pub fn analytics(state: &State) -> Result<Vec<RevenueGroup>> {
                 transaction_count: 0,
                 gross_transaction_count: 0,
                 reversal_count: 0,
+                credit_count: 0,
+                fully_credited_count: 0,
+                credited_invoice: Money(0),
+                credited_cost: Money(0),
                 gross_invoice: Money(0),
                 gross_cost: Money(0),
                 reversed_invoice: Money(0),
@@ -68,13 +81,41 @@ pub fn analytics(state: &State) -> Result<Vec<RevenueGroup>> {
         g.reversed_invoice = g.reversed_invoice.add(t.invoice_total)?;
         g.reversed_cost = g.reversed_cost.add(t.cost_total)?;
     }
+    for t in state.transactions.values() {
+        let credits = state.approved_credits_for(&t.id, state.revision);
+        let mut quantity = 0i64;
+        let g = groups
+            .get_mut(&(t.customer_id.clone(), t.currency.to_string()))
+            .ok_or_else(|| error("Credit analytics group missing"))?;
+        for c in credits {
+            quantity = quantity
+                .checked_add(c.proposal.quantity.0)
+                .ok_or_else(|| error("Credited quantity overflow"))?;
+            g.credit_count = g
+                .credit_count
+                .checked_add(1)
+                .ok_or_else(|| error("Credit count overflow"))?;
+            g.credited_invoice = g.credited_invoice.add(c.invoice)?;
+            g.credited_cost = g.credited_cost.add(c.cost)?;
+        }
+        if quantity == t.quantity.0 {
+            g.fully_credited_count = g
+                .fully_credited_count
+                .checked_add(1)
+                .ok_or_else(|| error("Credited invoice count overflow"))?;
+        }
+    }
     for g in groups.values_mut() {
         g.transaction_count = g
             .gross_transaction_count
             .checked_sub(g.reversal_count)
+            .and_then(|count| count.checked_sub(g.fully_credited_count))
             .ok_or_else(|| error("Reversal count exceeds invoice count"))?;
-        g.invoice = g.gross_invoice.sub(g.reversed_invoice)?;
-        g.cost = g.gross_cost.sub(g.reversed_cost)?;
+        g.invoice = g
+            .gross_invoice
+            .sub(g.reversed_invoice)?
+            .sub(g.credited_invoice)?;
+        g.cost = g.gross_cost.sub(g.reversed_cost)?.sub(g.credited_cost)?;
         ensure(
             g.invoice.0 >= 0 && g.cost.0 >= 0,
             "Reversal exceeds gross invoices",
@@ -167,6 +208,7 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
         }
         Command::TransactionAdd(t) => {
             s.validate_transaction(t)?;
+            s.ensure_invoice_open_at(t, s.revision)?;
             ensure(
                 s.transaction_id_available(&t.id),
                 "External transaction ID already exists or is reserved by a correction",
@@ -225,6 +267,7 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                     "Duplicate or reserved external transaction ID; no rows imported",
                 )?;
                 s.validate_transaction(&t)?;
+                s.ensure_invoice_open_at(&t, s.revision)?;
                 s.transaction_revisions.insert(t.id.clone(), s.revision + 1);
                 s.transactions.insert(t.id.clone(), t);
             }
@@ -271,6 +314,7 @@ pub(super) fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String>
                     currency: a.terms.currency,
                     transaction_ids: basis.transaction_ids,
                     correction_ids: basis.correction_ids,
+                    credit_ids: basis.credit_ids,
                     eligible_invoice: invoice,
                     rate,
                     rebate,

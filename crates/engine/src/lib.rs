@@ -11,15 +11,17 @@ mod commercial;
 mod contracts;
 mod conversions;
 mod corrections;
+mod credits;
 mod csv;
 mod governance;
 mod grid;
+mod periods;
 mod settlements;
 pub use commercial::analytics;
 pub use copperline_storage::backup::{BackupSummary, RestoreSummary};
 pub use csv::{
-    export_booking, export_contract, export_conversion, export_quote, export_report,
-    export_settlement, import_conversions, import_products,
+    export_booking, export_contract, export_conversion, export_credit, export_period_close,
+    export_quote, export_report, export_settlement, import_conversions, import_products,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,6 +32,41 @@ pub use csv::{
     deny_unknown_fields
 )]
 pub enum Command {
+    CreditCreate {
+        proposal: CreditProposal,
+    },
+    CreditSubmit {
+        id: String,
+        version: u64,
+    },
+    CreditDecide {
+        id: String,
+        version: u64,
+        approve: bool,
+        note: String,
+    },
+    CreditWithdraw {
+        id: String,
+        version: u64,
+    },
+    PeriodCloseCreate {
+        terms: PeriodCloseTerms,
+    },
+    PeriodCloseSubmit {
+        id: String,
+        version: u64,
+    },
+    PeriodCloseDecide {
+        id: String,
+        version: u64,
+        approve: bool,
+        note: String,
+    },
+    PeriodCloseWithdraw {
+        id: String,
+        version: u64,
+    },
+
     QuoteBook {
         request: BookingRequest,
     },
@@ -242,6 +279,14 @@ pub struct QuoteLineReplacement {
 impl Command {
     pub fn name(&self) -> &'static str {
         match self {
+            Self::CreditCreate { .. } => "credit_create",
+            Self::CreditSubmit { .. } => "credit_submit",
+            Self::CreditDecide { .. } => "credit_decide",
+            Self::CreditWithdraw { .. } => "credit_withdraw",
+            Self::PeriodCloseCreate { .. } => "period_close_create",
+            Self::PeriodCloseSubmit { .. } => "period_close_submit",
+            Self::PeriodCloseDecide { .. } => "period_close_decide",
+            Self::PeriodCloseWithdraw { .. } => "period_close_withdraw",
             Self::QuoteBook { .. } => "quote_book",
             Self::ConversionCreate { .. } => "conversion_create",
             Self::ConversionImport { .. } => "conversion_import",
@@ -298,7 +343,13 @@ impl Command {
             Self::SeedDemo | Self::PolicySet(_) | Self::QuoteApprovalPolicySet { .. } => {
                 role == Role::Admin
             }
-            Self::QuoteBook { .. }
+            Self::CreditCreate { .. }
+            | Self::CreditSubmit { .. }
+            | Self::CreditWithdraw { .. }
+            | Self::PeriodCloseCreate { .. }
+            | Self::PeriodCloseSubmit { .. }
+            | Self::PeriodCloseWithdraw { .. }
+            | Self::QuoteBook { .. }
             | Self::ConversionCreate { .. }
             | Self::ConversionImport { .. }
             | Self::ConversionSubmit { .. }
@@ -329,7 +380,10 @@ impl Command {
             | Self::ListSubmit { .. }
             | Self::ListPublish { .. } => matches!(role, Role::Analyst | Role::Admin),
             Self::ConversionDecide { .. } | Self::ContractDecide { .. } => role == Role::Approver,
-            Self::CorrectionDecide { .. } | Self::SettlementDecide { .. } => role == Role::Finance,
+            Self::CreditDecide { .. }
+            | Self::PeriodCloseDecide { .. }
+            | Self::CorrectionDecide { .. }
+            | Self::SettlementDecide { .. } => role == Role::Finance,
             Self::AgreementDecide { .. } | Self::GridDecide { .. } | Self::ListDecide { .. } => {
                 matches!(role, Role::Approver | Role::Admin)
             }
@@ -506,6 +560,14 @@ fn quote_mut<'a>(s: &'a mut State, key: &str) -> Result<&'a mut Quote> {
 }
 fn apply(s: &mut State, actor: &Actor, c: &Command) -> Result<String> {
     match c {
+        Command::CreditCreate { .. }
+        | Command::CreditSubmit { .. }
+        | Command::CreditDecide { .. }
+        | Command::CreditWithdraw { .. } => credits::apply(s, actor, c),
+        Command::PeriodCloseCreate { .. }
+        | Command::PeriodCloseSubmit { .. }
+        | Command::PeriodCloseDecide { .. }
+        | Command::PeriodCloseWithdraw { .. } => periods::apply(s, actor, c),
         Command::QuoteBook { request } => bookings::apply(s, actor, request),
         Command::ConversionCreate { .. }
         | Command::ConversionImport { .. }
