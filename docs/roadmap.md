@@ -12,7 +12,7 @@ Remaining agreement lifecycle work includes prospective amendments, partial cred
 
 Immutable approved customer contract editions, half-open date/quantity intervals, priority/conflict checks, frozen grid/list origins and historical source reconstruction are implemented. Atomic quote-line replacement recalculates all retained Draft lines and preserves prior approval cycles. See [contract semantics](customer-price-agreements.md).
 
-Multi-customer/segment terms, bulk contract imports and larger-scale matching remain open. Validated backup/restore remains a useful bounded operational follow-up.
+Multi-customer/segment terms, bulk contract imports and larger-scale matching remain open. Validated backup/restore is delivered in M7.
 
 ## M6 — explicit dated conversions (implemented local subset)
 
@@ -20,7 +20,7 @@ Approved immutable direct FX/product-UOM books, exact native quantity qualificat
 
 ## M7 — reliable backup and measured recoverability
 
-Portable exact-history archives, safe restore into a new workspace, fault/corruption regressions and matched synthetic workload measurements take priority. See [acceptance plan](m7-plan.md) and [backup contract](backup.md). Final results are recorded in milestone status and evidence; no migration, retention deletion or enterprise scale is implied.
+M7 implements portable exact-history archives, safe restore into a new workspace, fault/corruption regressions and matched synthetic workload measurements. See [acceptance plan](m7-plan.md) and [backup contract](backup.md). Final results are recorded in milestone status and evidence; no migration, retention deletion or enterprise scale is implied.
 
 ## Next — converted quote-to-actual provenance
 

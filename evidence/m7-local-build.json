@@ -1,0 +1,52 @@
+{
+  "source_commit": "66257371a8bef527ffe6722ad9e36db5912991ce",
+  "binaries": [
+    {
+      "name": "copperline-cli",
+      "size_bytes": 4311136,
+      "sha256": "074720a755feabd71353d64f884362c2b18e535dfaaecbbdd330ae16f46eed60",
+      "platform": "macOS arm64",
+      "origin": "local Rust 1.95 release build"
+    },
+    {
+      "name": "copperline-desktop",
+      "size_bytes": 11904256,
+      "sha256": "baddb196741641684f54b4a21cb3ed88874b33c516ad85638f550d2e35a66e69",
+      "platform": "macOS arm64",
+      "origin": "local Rust 1.95 release build"
+    }
+  ],
+  "quality": {
+    "runtime_tests": 201,
+    "native_ui_tests_included": 10,
+    "compile_fail_doctests": 3,
+    "cargo_xtask_ci": "PASS",
+    "python_workload_path_tests": 5
+  },
+  "process_flows": [
+    "quote-source",
+    "reconciliation",
+    "contracts",
+    "conversions",
+    "backup",
+    "transport"
+  ],
+  "workloads": {
+    "profiles": [
+      "small",
+      "medium"
+    ],
+    "baseline": "M6 genuine release artifact",
+    "same_corpus_state_exports_receipts_history": true,
+    "archive_roundtrips": "PASS"
+  },
+  "interactive_windows_ui_verified": false,
+  "measured_production_source_commit": "470b12b7a73cc91e022c5817fc3f5549e5f79a96",
+  "post_measurement_change": "Platform-portable Rust/Python path assertions, canonical workload-output guards and five regressions, CI invocation, and documentation/logs only. Corpus, timing boundaries, production Rust source and measured release binaries remain unchanged.",
+  "production_rust_source_unchanged_from_measured_build": true,
+  "tested_source_trees": {
+    "apps": "69514a7ab359d1f321f6e5c0e804138ba4674a1f",
+    "crates": "6559d993a8af1794ec6a994db75ba68f8f1fd646",
+    "scripts": "3c980f335d2a830e53c162e72fa9cd2d4ec4219e"
+  }
+}
