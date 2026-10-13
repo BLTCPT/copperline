@@ -1,0 +1,65 @@
+{
+  "fixture_revision": 65,
+  "completed_demo_revision": 67,
+  "api_calls": 24,
+  "fresh_seed": true,
+  "complete_state_and_snapshot_restore_equal": true,
+  "original_fixture_unchanged": true,
+  "frozen_export_count": 9,
+  "export_sha256": {
+    "export_quote:Q-4001": "702db42b71b7446577b9365fc2358a20400473f912b2648e7405cdbf3c9c1cd8",
+    "export_quote:Q-2001": "0166a68a551b9c4d5ec08aae417bcc80ff0763364389cbbca79286d9dc0454b0",
+    "export_contract:CP-ATLAS": "569ad7ca45f94a36b1e17786d70a53012b50fc7cd9563567d3dbd96c45ecddd5",
+    "export_conversion:FX-UOM-OCT": "89f35fca552b7cd79aa37caea202db3112965b3949d32c6005f61eb36c7b6d19",
+    "export_booking:BK-EUR-4001": "740dd7a062a2a291d6a96b20451e9f0920fc9ef398855bc25668969780924712",
+    "export_credit:CN-EUR-4001": "2e880b1d1e56769e834b4c4ee514543a94dd0c49009a3da587c20c48d74fab40",
+    "export_period_close:CLOSE-EUR-OCT": "5b376e95bc6a56f59889d1d013604c030e3bb062e842adfb127c9b26e96658d1",
+    "export_settlement:ST-CREDIT-TRUEUP": "671a95362351180c58ba89af3478c0e0e65417d3252ebf3a8995b6fcabc1699a",
+    "export_report:R-EUR-CREDITED": "28ec121912b31b4cf3f0b4b0b3bfa959c3fb94332259f373f001f67123ee3789"
+  },
+  "rejected_mutations_preserve_memory_and_history": {
+    "wrong_role": "Role is not allowed to perform this command",
+    "stale_settlement": "Settlement source is stale; calculate a new accrual and create a new proposal",
+    "closed_credit": "Invoice date/currency belongs to closed period CLOSE-EUR-OCT; no carry-forward or reopening is supported"
+  },
+  "amounts_cents": {
+    "booked_eur": 97200,
+    "credit_eur": 24300,
+    "closed_nominal_eur": 72900,
+    "converted_actuals_eur": 133650,
+    "converted_cost_eur": 89100,
+    "rebate_target_usd": 1350,
+    "signed_trueup_usd": -3650
+  },
+  "baseline_archive_sha256": "f72638604421e70e085b9501d64d3364cc55f1f468c616865b3786f375c497ed",
+  "completed_backup": {
+    "committed_revision": 67,
+    "format_version": 1,
+    "head_hash": "dcea830d83194c803af260cfd715bd12ece3699be1d406c5fc3196e4b0e6171f",
+    "pending_count": 0,
+    "recovery_directory_count": 0,
+    "recovery_file_count": 0,
+    "schema_version": 1,
+    "sha256": "bff1e345f98563744d743ba0854e576f9fd9b52d6b75d44ebb86a688c3dae319",
+    "snapshot_count": 68,
+    "total_bytes": 2257277,
+    "warnings": []
+  },
+  "completed_restore": {
+    "backup": {
+      "committed_revision": 67,
+      "format_version": 1,
+      "head_hash": "dcea830d83194c803af260cfd715bd12ece3699be1d406c5fc3196e4b0e6171f",
+      "pending_count": 0,
+      "recovery_directory_count": 0,
+      "recovery_file_count": 0,
+      "schema_version": 1,
+      "sha256": "bff1e345f98563744d743ba0854e576f9fd9b52d6b75d44ebb86a688c3dae319",
+      "snapshot_count": 68,
+      "total_bytes": 2257277,
+      "warnings": []
+    },
+    "warnings": [],
+    "workspace": "<workspace>/data/morning-completed-restored"
+  }
+}

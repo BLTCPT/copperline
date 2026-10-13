@@ -79,6 +79,8 @@ Atomic multi-line replacement reevaluates the complete candidate before one pers
 `model::bookings` derives exact booked rows from a frozen approved cycle and validates native non-posted basis, rounding, ordered line membership, unique quote capacity, historical current approval and audit bindings. `engine::bookings` inserts all rows and provenance atomically through ordinary candidate validation and persistence. Raw invoice commands still validate catalog-native currency/unit before insertion. Corrections recognize exact booking membership and permit full reversal only. Reporting pins direct FX knowledge to the booking's original revision; settlement review incorporates the frozen quote contributors. CLI/API/CSV and the independent native booking view use these same interfaces. No additional dependency or IO entered the deterministic layers. See [bookings](bookings.md).
 
 
+See the M9 quantity-credit extension below for the alternative to full reversal; booked raw replacement remains disallowed.
+
 ## M9 quantity credits and nominal close
 
 `model::credits` derives cumulative original-total allocations with exact immutable provenance, booked native evidence, historical capacity and contributor review. `model::periods` reconstructs nominal invoice-date/currency bases and prior close approvals without clocks or recursive state validation. Every ingestion, booking and correction path checks the same historical close boundary. The two engine modules provide immutable lifecycle commands; reporting, analytics, accruals and settlements include credit provenance and reductions. Native views and CLI/API/export remain replaceable consumers. Absent maps/fields preserve older bytes. See [semantics and limits](credits-periods.md).

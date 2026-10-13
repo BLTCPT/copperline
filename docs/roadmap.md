@@ -1,65 +1,65 @@
-# Functional parity roadmap
+# Roadmap after M9
 
-This sequences the remaining gaps in [the capability map](parity.md). Milestones are proposed implementation units, not completed features or a promised parity percentage. Every milestone must leave a runnable native/CLI/API workflow and preserve existing financial, audit and recovery invariants.
+Reviewed 2026-10-13. This is a proposed order for further work, not a delivery commitment or a claim of full Pricefx parity. The [capability map](parity.md) provides current public-source comparisons and executable evidence; [gaps](gaps.md) records operating limits. Keep each increment runnable through the engine, CLI/API and independent native UI.
 
-## M4 — correctable actuals and reconciliation (implemented local subset)
+## Delivered baseline
 
-M4 delivers independently reviewed full invoice reversals/atomic replacements, original-period net accrual recalculation and signed local settlement adjustments with exact source/prior-record checks. See [workflow semantics](corrections-reconciliation.md) and [verification](../evidence/verification.md).
+M1–M3 established deterministic pricing, reviewed lists/grids, explicit approved sources, frozen quote approval routes and local recovery. M4 added immutable invoice correction and local rebate reconciliation. M5 added customer price-contract editions; M6 added explicit dated FX/UOM and reporting; M7 added exact-history archives and measured local workloads. M8 added full approved-quote booking. M9 added cumulative quantity credits and nominal invoice-period close. Quantity credits and nominal close are therefore delivered subsets, while partial booking, value-only credits and accounting close/reopen remain gaps.
 
-Remaining agreement lifecycle work includes prospective amendments, partial credit allocations, credit-note delivery and accounting-period closure. No bank/payment/ERP posting is part of the local milestone. All older invoices, accruals and recognition records remain immutable.
+The baseline is runtime source `a36d4877228b14732aff84d77d32776e9c8260ae`, evidence commit `64dd073`, and [three-OS CI run 38390734565](https://github.com/BLTCPT/copperline/actions/runs/38390734565). [M9 verification](../evidence/m9-verification.md) records 255 Rust checks, eight process flows, historical compatibility and artifact identities. Historical M7 timing results remain [separately scoped](performance.md).
 
-## M5 — customer contracts and transactional replacement (implemented local subset)
+## Recommended next local build: usable commercial documents
 
-Immutable approved customer contract editions, half-open date/quantity intervals, priority/conflict checks, frozen grid/list origins and historical source reconstruction are implemented. Atomic quote-line replacement recalculates all retained Draft lines and preserves prior approval cycles. See [contract semantics](customer-price-agreements.md).
+Make the existing approved pricing workflow useful for a human handoff before adding another financial subsystem. Add original, versioned quote templates and a readable local document export with customer context, validity, quantities, currency/unit and approved price totals. Provide an internal evidence appendix showing the exact source/approval/conversion versions; keep internal cost/margin information explicitly separate from the intended customer-facing content. Add a compact review queue and links from a booking or credit to its frozen source evidence.
 
-Multi-customer/segment terms, bulk contract imports and larger-scale matching remain open. Validated backup/restore is delivered in M7.
+This builds directly on the existing quote/booking models and needs no company data or external connection. Initial scope should remain flat quoted products; bundles, optional products and BOM configuration are later work, each with explicit quantity and pricing semantics. Local generation does not send a document, issue a legal invoice or apply an electronic signature.
 
-## M6 — explicit dated conversions (implemented local subset)
+Acceptance: generate from an approved quote, preserve totals and frozen version after later catalog changes, reject an ineligible draft, escape text safely, retain provenance through reopen, and inspect representative Windows/macOS exports and native screens. Test that internal-only fields cannot enter the customer-facing template by default. Reuse [quote process](../scripts/e2e.py), [booking process](../scripts/bookings_e2e.py) and [native tests](../crates/ui/src/bookings/tests.rs) as regression baselines.
 
-Approved immutable direct FX/product-UOM books, exact native quantity qualification, frozen converted quotes, atomic multi-line replacement and historical reporting-currency snapshots are implemented. See [conversions](conversions.md). Overlapping approved amendments, live rates, indirect conversion and common-UOM analytics remain open.
+## Next: repeatable data handoff and reconciliation
 
-## M7 — reliable backup and measured recoverability
+Build a local import-staging and outbound-delivery simulator around explicit, versioned schemas. Show mapping/validation errors before committing a batch; freeze file/source keys and provenance. An outbox should carry an approved price or quote version with a stable delivery ID, acknowledgement and reconciliation status. This is the shortest path from a self-contained demo toward an ERP/BW pricing workflow without pretending a connector already exists.
 
-M7 implements portable exact-history archives, safe restore into a new workspace, fault/corruption regressions and matched synthetic workload measurements. See [acceptance plan](m7-plan.md) and [backup contract](backup.md). Final results are recorded in milestone status and evidence; no migration, retention deletion or enterprise scale is implied.
+Acceptance: deterministic synthetic round trip, atomic invalid import, duplicate and out-of-order input, delivery retry, partial failure, stale approval, acknowledgement mismatch and exact reconciliation. No real SAP/BW compatibility or external posting is implied. A real adapter follows only after the target interface, authoritative identifiers and access/write scope are known. Preserve the current [API boundary](api.md) and [transport regressions](../scripts/transport_e2e.py).
 
-## M8 — converted quote-to-actual provenance (implemented full-booking subset)
+## Required before a shared pilot: identity and measured storage
 
-M8 preserves exact booked amounts, non-posted native basis, approved cycle, quote contributors and frozen conversion evidence. It supports one entire-quote booking per quote ID lifetime, original-evidence full reversals, reporting at booking-time known rates and exact receipt replay. Ordinary native ingestion remains strict. See [booking semantics](bookings.md). Partial booking, partial credits, customer invoice delivery and period-close remain open.
+Introduce trusted immutable actor IDs, authenticated role assignment and organization scope before sharing real data or allowing remote clients. Preserve historical contributor exclusions across renamed/disabled users. Define deployment and threat boundaries, then test denied impersonation and cross-organization access. Delegation must have explicit authority, dates and audit evidence; local role labels cannot substitute for authentication.
 
-## Later — richer quoting and document delivery
+Measure the intended dataset and history before selecting a transactional storage adapter. Require schema migrations, full restore drills, crash/failure tests and retained history/receipt equivalence. Benchmark M9 workflows as well as imports and quotes with stated hardware, cache conditions, sample counts and concurrent users. Do not increase caps or claim capacity from the existing [small/medium workload](performance.md). This work is a gate for a shared pilot, even if it starts before the preceding local enhancements finish.
 
-Build typed quote sections, explicit optional lines, reusable versioned quote templates and deterministic package quantities. Keep individual pricing and cost evidence visible; do not introduce an opaque bundle total. Freeze template/configuration versions in quote submissions and exports.
+## Then: agreement lifecycle and operational analytics
 
-Acceptance: choose a template, resolve required/optional products and allowed quantity relationships, reject an invalid configuration atomically, price the resolved lines, route review, export a readable quote document and reopen it unchanged. Test rounding, aggregate margins, missing products, stale template versions, mixed currencies and revision conflicts. Generated documents must identify synthetic demo identities and cannot imply an electronic signature or customer delivery.
+Extend the existing contract-edition mechanism one coherent policy at a time: formula/index clauses, explicit amendment comparisons, renewal review, and invoice-versus-agreement exceptions are useful candidates. Build source-linked reports that distinguish invoice date, approval revision, recorded versus reporting currency, and actual versus projection. Any later partial booking needs an explicit remaining-quantity model; any close reopening/carry-forward needs new, independently reviewed records rather than edits to frozen evidence.
 
-## Later — promotion and channel workflows
+Acceptance: old quotes/accruals/reports remain reproducible, new terms apply only to the intended intervals, no expired-edition resurrection, exact credit/settlement baselines and deterministic exception explanations. Retain [contract regressions](../crates/engine/tests/contracts_m5_review.rs), [credit invariants](../crates/engine/tests/m9_credits.rs) and [close regressions](../crates/engine/tests/m9_periods.rs). Progressive or growth rebates require an agreed calculation policy before implementation; do not infer it from the existing retrospective tiers.
 
-Model effective periods, eligibility, budgets and explicit precedence/stacking decisions for promotion plans. Channel claims require a source invoice or other declared evidence, duplicate detection and independent review. Every plan must explain its impact on invoice and pocket values.
+## Later, as separate workflows: promotions and channel claims
 
-Acceptance: plan approval, eligible/ineligible calculation, deterministic explanation, claim validation and audit. Historical projections must remain separate from recorded actuals. Do not claim uplift or causal effectiveness from synthetic scenarios.
+Promotions need approved dates, eligibility, budgets and explicit precedence/stacking, then actual-versus-plan reporting. Channel claims need distributor/POS evidence, agreement matching, quantity capacity, duplicate detection, disputes and independent review. Build these as separate milestones because a campaign and a reimbursement claim have different evidence and financial lifecycles.
 
-## Later — governed data and enterprise boundaries
+Acceptance: explain eligible/ineligible decisions, prevent duplicate consumption, preserve prior approvals, and reconcile exact invoice/pocket effects in synthetic fixtures. Settlement remains local until an external posting contract is authorized. Do not label synthetic scenario differences as causal promotional uplift. The public workflow expectations are linked in [the matrix](parity.md).
 
-Introduce an adapter boundary for authenticated immutable actor IDs, organization scope, delegated review rules and trusted role assignment. Replace caller-selected identities only after a concrete local or enterprise authentication design is reviewed. Add a storage adapter with explicit schema migrations, backups, restore drills and transaction-boundary tests before raising dataset limits.
+## Last: optimization and AI research
 
-Acceptance: actor/tenant isolation, denied impersonation, contributor exclusions across identity changes, migration rollback/recovery, retention behavior and load tests. Real identity providers, credentials and external integrations require separately authorized setup; prototype role labels never count as enterprise access control.
+Start from a named business decision, objective, constraints and authorized data provenance. First establish deterministic benchmark policies and clear actual-outcome measures. Demand, elasticity or win-rate estimation needs chronological holdouts, leakage checks, uncertainty and failure analysis. Recommendations must retain explanation, guardrails, overrides and approval provenance.
 
-## Later — integration delivery and operational analytics
+Acceptance requires a working model evaluated against the benchmark on unseen data, with reproducible splits and documented limitations. Synthetic data can test mechanics but cannot demonstrate commercial benefit. Monitoring rules can ship independently as transparent alerts; they must not be called trained AI or optimization.
 
-Implement synthetic adapter fixtures before any live system. Imports stage validation and record source provenance. Outbound approved-price or quote delivery uses an outbox, stable external keys, acknowledgements and reconciliation. Analytics require explicit grain, currency partitioning, source revision and actual/projection distinction.
+## Decisions for Mark versus implementation work
 
-Acceptance: retries, partial failures, duplicate deliveries, out-of-order events, dead-letter inspection and exact reconciliation in a local simulator. A simulator does not establish SAP/BW/ERP API compatibility. Live read/write connections are separate deployment decisions.
+| Mark's decision, when relevant | Why it changes scope |
+|---|---|
+| First real workflow and users: price maintenance, sales quoting, or rebate/claims operations | Selects which later business slice and interface deserve priority. The next local document/handoff increment can proceed with synthetic defaults. |
+| Local single-user tool or shared organizational pilot; intended data sensitivity | Determines the identity, deployment, storage and distribution requirements before real-data use. |
+| Target ERP/BW/CRM interface, authoritative data owner and approved read/write scope | A real connector needs actual schemas and explicit access; no endpoint, identity or compatibility should be guessed. |
+| Business policies for partial fulfillment, renewals, tier method, closed-period corrections, promotions or claims | These are commercial/accounting choices, not routine coding defaults. Only request the policy needed by the selected slice. |
+| Optimization decision/objective and suitable historical data | Determines whether research can be evaluated meaningfully at all. |
 
-## Later — optimization research
-
-Optimization starts with a stated decision, objective, constraints and data provenance. Demand/elasticity estimates need chronological validation and uncertainty measures. Compare against deterministic baselines and preserve guardrails, explanation, overrides and review provenance.
-
-Acceptance: reproducible data split and baseline, out-of-sample evaluation, leakage checks and documented failure modes. No AI or optimization label until a working model and defensible evidence exist. Synthetic demo data cannot validate commercial benefit.
+Crate layout, neutral UI presentation, synthetic fixtures, error messages, deterministic algorithms, migration mechanics and test organization are implementation decisions within an agreed slice. Continue those without repeated permission requests. Real-data access, deployment, external delivery and business writes are separate authorization boundaries; a roadmap item does not authorize them.
 
 ## Shared release gate
 
-For every milestone: update exact command/model contracts, add meaningful unit/property/invariant and process regressions, request independent financial/persistence/authorization review, run layer/attribution/fmt/strict-Clippy/test gates, verify native builds and process/transport tests on Windows/macOS/Linux, inspect native UI screens and preserve Library handoff identity. Record source commit, CI run, downloadable artifact URL and checksum. Windows visual/accessibility validation and signed distribution remain explicit release work.
+Preserve engine-first layering and exact money/history invariants. Update command/model contracts and scope limits, add financial/authorization/persistence and process regressions, obtain independent review, and run `cargo xtask ci`. Verify release builds and process/transport workflows on Windows/macOS/Linux; inspect the native UI and new documents on their target platforms. Record source commit, CI run, exact artifact hashes and handoff identity. Treat Windows visual/accessibility testing, signed distribution and measured scale as explicit work until evidence closes each gap.
 
-## M9 — quantity credits and nominal close (implemented bounded subset)
-
-Cumulative original-total quantity credits, frozen booking/native evidence, original-rate reporting, rebate true-ups and conservative nominal invoice-period close are implemented. See [credits-periods.md](credits-periods.md). Value-only credits, credit amendments/reversals, partial booking and closed-period reopen/carry-forward remain unsupported.
+Morning usability/package stabilization is recorded separately in [current verification](../evidence/verification.md); the M9 financial capability scope above remains unchanged.

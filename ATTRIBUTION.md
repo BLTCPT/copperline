@@ -19,3 +19,9 @@ All application artwork, styling, UI layouts and demo fixtures are original Copp
 | bookings.png | Copperline native application screenshot, synthetic approved quote booking | MIT |
 | credits.png | Copperline native application screenshot, synthetic quantity credit | MIT |
 | period-close.png | Copperline native application screenshot, synthetic nominal invoice close | MIT |
+| morning-bookings.png | Copperline native application screenshot, synthetic morning workflow | MIT |
+| morning-analytics.png | Copperline native application screenshot, synthetic morning workflow | MIT |
+| morning-settlements.png | Copperline native application screenshot, synthetic morning workflow | MIT |
+| morning-credits.png | Copperline native application screenshot, synthetic morning workflow | MIT |
+| morning-period-close.png | Copperline native application screenshot, synthetic morning workflow | MIT |
+| morning-backup.png | Copperline native application screenshot, synthetic morning workflow | MIT |

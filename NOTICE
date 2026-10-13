@@ -12,3 +12,6 @@ All fixture companies, products, prices and identities are synthetic.
 
 Third-party Rust dependencies retain their own licenses. See
 legal/THIRD_PARTY_NOTICES.txt and docs/dependency-license-inventory.tsv.
+Exact notice provenance and documented upstream limitations appear in
+legal/README.md and legal/notice-coverage.json; completeness/legal clearance
+is not asserted.

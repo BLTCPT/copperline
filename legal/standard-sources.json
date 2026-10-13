@@ -1,0 +1,12 @@
+{
+  "format_version": 1,
+  "licenses": [
+    {
+      "spdx": "MIT",
+      "source_url": "https://spdx.org/licenses/MIT.txt",
+      "path": "standard/MIT.txt",
+      "sha256": "c3b1b78bc8bd3ea13aa4bc9778442d16560270afa235006d816e5e88cef24db4",
+      "note": "Unchanged standard license text, including its unfilled template attribution line. Package declarations and original authors/copyright notices remain separate; no copyright holder is invented."
+    }
+  ]
+}

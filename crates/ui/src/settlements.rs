@@ -17,6 +17,13 @@ impl Workbench {
             .filter(|a| a.status == Status::Approved)
             .map(|a| a.terms.id.clone())
             .collect();
+        if agreements.is_empty() {
+            ui.label("No approved rebate agreement yet. Create and independently approve an agreement before calculating a rebate adjustment.");
+            if ui.button("Open agreements & rebates").clicked() {
+                self.view = View::Agreements;
+            }
+            return;
+        }
         if !agreements.contains(&self.selected_agreement) {
             self.selected_agreement = agreements.first().cloned().unwrap_or_default();
         }
@@ -27,11 +34,11 @@ impl Workbench {
                     ui.selectable_value(&mut self.selected_agreement, id.clone(), id);
                 }
             });
-        match self
+        let position = self
             .engine
             .state()
-            .rebate_position(&self.selected_agreement, self.engine.state().revision)
-        {
+            .rebate_position(&self.selected_agreement, self.engine.state().revision);
+        match &position {
             Ok(position) => {
                 ui.heading(format!(
                     "{} {} remaining adjustment",
@@ -55,7 +62,12 @@ impl Workbench {
                     });
                 ui.label(format!("Retrospective tier {}% · {} invoice records · {} approved reversals · {} credit notes · source r{}",position.rate,position.basis.transaction_ids.len(),position.basis.correction_ids.len(),position.basis.credit_ids.len(),position.source_revision));
                 ui.small("Credits restate the original invoice/agreement period at approval. Prior accrual snapshots remain alternatives; a new snapshot captures every approved credit ID, including zero-cent allocations.");
-                if primary(ui, "Calculate corrected accrual")
+                if ui
+                    .add_enabled(
+                        matches!(self.actor().role, Role::Analyst | Role::Admin),
+                        egui::Button::new("Calculate corrected accrual"),
+                    )
+                    .clicked()
                     && let Some(a) = self.engine.state().agreements.get(&self.selected_agreement)
                 {
                     let id = format!("R-{:04}", self.engine.state().revision + 1);
@@ -114,7 +126,20 @@ impl Workbench {
             "Reconciliation reason",
             &mut self.settlement_form.reason,
         );
-        if primary(ui, "Create settlement proposal") {
+        let adjustment_due = position
+            .as_ref()
+            .is_ok_and(|p| p.remaining_adjustment != Money(0));
+        let can_create = matches!(self.actor().role, Role::Analyst | Role::Admin)
+            && adjustment_due
+            && self
+                .engine
+                .state()
+                .accruals
+                .contains_key(&self.settlement_form.accrual);
+        if ui
+            .add_enabled(can_create, egui::Button::new("Create settlement proposal"))
+            .clicked()
+        {
             let id = format!("ST-{:04}", self.engine.state().revision + 1);
             self.run(Command::SettlementCreate {
                 id: id.clone(),
@@ -124,6 +149,14 @@ impl Workbench {
             if !self.failed {
                 self.settlement_form.selected = id;
             }
+        }
+        if position
+            .as_ref()
+            .is_ok_and(|p| p.remaining_adjustment == Money(0))
+        {
+            ui.small("Current entitlement is fully recognized; no new adjustment is due.");
+        } else if !matches!(self.actor().role, Role::Analyst | Role::Admin) {
+            ui.small("Select Pricing or Admin to calculate an accrual and propose an adjustment.");
         }
         ui.small("Select a current accrual. Matching totals alone are insufficient: changed invoice, correction or credit provenance requires a new snapshot.");
         ui.separator();
@@ -203,19 +236,28 @@ impl Workbench {
                     review.note
                 ));
             }
+            let current = self
+                .engine
+                .state()
+                .ensure_settlement_current(record, self.engine.state().revision);
+            let actor = self.actor();
+            let owner =
+                actor.name == record.owner && matches!(actor.role, Role::Analyst | Role::Admin);
+            let reviewer =
+                actor.role == Role::Finance && !record.contributors.contains(&actor.name);
             if matches!(record.status, RecordStatus::Draft | RecordStatus::Pending)
-                && let Err(e) = self
-                    .engine
-                    .state()
-                    .ensure_settlement_current(record, self.engine.state().revision)
+                && let Err(e) = &current
             {
                 ui.colored_label(COPPER, e.to_string());
+                ui.small("This proposal cannot be approved. Its owner can withdraw it; eligible Finance can reject a pending proposal. Calculate a new accrual only if an adjustment remains due.");
+            } else if matches!(record.status, RecordStatus::Draft | RecordStatus::Pending) {
+                ui.small("Only the owner submits or withdraws; independent Finance outside the source contributors approves or rejects.");
             }
             field(ui, "Decision note", &mut self.note);
             ui.horizontal_wrapped(|ui| {
                 if ui
                     .add_enabled(
-                        record.status == RecordStatus::Draft,
+                        record.status == RecordStatus::Draft && owner && current.is_ok(),
                         egui::Button::new("Submit settlement"),
                     )
                     .clicked()
@@ -227,7 +269,7 @@ impl Workbench {
                 }
                 if ui
                     .add_enabled(
-                        record.status == RecordStatus::Pending,
+                        record.status == RecordStatus::Pending && reviewer && current.is_ok(),
                         egui::Button::new("Approve settlement"),
                     )
                     .clicked()
@@ -241,7 +283,7 @@ impl Workbench {
                 }
                 if ui
                     .add_enabled(
-                        record.status == RecordStatus::Pending,
+                        record.status == RecordStatus::Pending && reviewer,
                         egui::Button::new("Reject settlement"),
                     )
                     .clicked()
@@ -255,7 +297,8 @@ impl Workbench {
                 }
                 if ui
                     .add_enabled(
-                        matches!(record.status, RecordStatus::Draft | RecordStatus::Pending),
+                        matches!(record.status, RecordStatus::Draft | RecordStatus::Pending)
+                            && owner,
                         egui::Button::new("Withdraw settlement"),
                     )
                     .clicked()
@@ -296,5 +339,213 @@ impl Workbench {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use egui_kittest::{
+        Harness,
+        kittest::{NodeT, Queryable},
+    };
+    type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
+
+    fn actor(name: &str, role: Role) -> Actor {
+        Actor {
+            name: name.into(),
+            role,
+        }
+    }
+    fn render(h: &mut Harness<'_, Workbench>) -> TestResult {
+        h.try_run().map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    fn seeded() -> Result<Engine> {
+        let mut e = Engine::memory();
+        e.run(actor("seed", Role::Admin), Command::SeedDemo)?;
+        Ok(e)
+    }
+    fn raw(e: &mut Engine, id: &str) -> Result<()> {
+        e.run(
+            actor("invoice-author", Role::Analyst),
+            Command::TransactionAdd(Transaction {
+                id: id.into(),
+                source: "synthetic-ui-review".into(),
+                product_id: "VLV-100".into(),
+                customer_id: "C-ATLAS".into(),
+                date: Date::parse("2026-10-13")?,
+                quantity: Quantity(1000),
+                unit: "each".into(),
+                currency: Currency::USD,
+                invoice_total: Money(100),
+                cost_total: Money(60),
+            }),
+        )?;
+        Ok(())
+    }
+    fn snapshot_proposal(e: &mut Engine, accrual: &str, settlement: &str) -> Result<()> {
+        let owner = actor("Morgan / Pricing", Role::Analyst);
+        e.run(
+            owner.clone(),
+            Command::RebateAccrue {
+                id: accrual.into(),
+                agreement_id: "AG".into(),
+                version: 3,
+            },
+        )?;
+        e.run(
+            owner.clone(),
+            Command::SettlementCreate {
+                id: settlement.into(),
+                accrual_id: accrual.into(),
+                reason: "Synthetic source snapshot".into(),
+            },
+        )?;
+        e.run(
+            owner,
+            Command::SettlementSubmit {
+                id: settlement.into(),
+                version: 1,
+            },
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn stale_settlement_disables_approval_keeps_rejection_and_zero_adjustment_guidance()
+    -> TestResult {
+        let mut e = seeded()?;
+        e.run(
+            actor("agreement-author", Role::Analyst),
+            Command::AgreementCreate {
+                terms: AgreementTerms {
+                    id: "AG".into(),
+                    name: "Synthetic review agreement".into(),
+                    customer_id: "C-ATLAS".into(),
+                    currency: Currency::USD,
+                    start: Date::parse("2026-01-01")?,
+                    end: Date::parse("2027-01-01")?,
+                    tiers: vec![RebateTier {
+                        threshold: Money(0),
+                        rate: Bps(1000),
+                    }],
+                },
+            },
+        )?;
+        e.run(
+            actor("agreement-author", Role::Analyst),
+            Command::AgreementSubmit {
+                id: "AG".into(),
+                version: 1,
+            },
+        )?;
+        e.run(
+            actor("Riley / Approval", Role::Approver),
+            Command::AgreementDecide {
+                id: "AG".into(),
+                version: 2,
+                approve: true,
+                note: "Independent agreement review".into(),
+            },
+        )?;
+        raw(&mut e, "FIRST")?;
+        snapshot_proposal(&mut e, "BEFORE", "ST-2001")?;
+        raw(&mut e, "SECOND")?;
+        snapshot_proposal(&mut e, "AFTER", "ST-CURRENT")?;
+        e.run(
+            actor("Jordan / Finance", Role::Finance),
+            Command::SettlementDecide {
+                id: "ST-CURRENT".into(),
+                version: 2,
+                approve: true,
+                note: "Current exact evidence".into(),
+            },
+        )?;
+        let mut app = Workbench::new(e);
+        app.view = View::Settlements;
+        app.role = 1;
+        app.settlement_form.selected = "ST-2001".into();
+        let mut h = Harness::builder()
+            .with_size(egui::vec2(1600.0, 1800.0))
+            .build_ui_state(|ui, app: &mut Workbench| app.ui(ui), app);
+        assert!(
+            h.get_by_label("Approve settlement")
+                .accesskit_node()
+                .is_disabled()
+        );
+        assert!(
+            h.get_by_label("Reject settlement")
+                .accesskit_node()
+                .is_disabled()
+        );
+        assert!(
+            !h.get_by_label("Withdraw settlement")
+                .accesskit_node()
+                .is_disabled()
+        );
+        assert!(
+            h.get_by_label("Create settlement proposal")
+                .accesskit_node()
+                .is_disabled()
+        );
+        assert!(
+            h.query_by_label("Current entitlement is fully recognized; no new adjustment is due.")
+                .is_some()
+        );
+        assert!(h.query_by_label("This proposal cannot be approved. Its owner can withdraw it; eligible Finance can reject a pending proposal. Calculate a new accrual only if an adjustment remains due.").is_some());
+        h.state_mut().role = 3;
+        render(&mut h)?;
+        assert!(
+            h.get_by_label("Withdraw settlement")
+                .accesskit_node()
+                .is_disabled()
+        );
+        h.state_mut().role = 4;
+        render(&mut h)?;
+        assert!(
+            h.get_by_label("Approve settlement")
+                .accesskit_node()
+                .is_disabled()
+        );
+        assert!(
+            !h.get_by_label("Reject settlement")
+                .accesskit_node()
+                .is_disabled()
+        );
+        let before = h.state().engine.state().clone();
+        h.get_by_label("Approve settlement").click();
+        render(&mut h)?;
+        assert_eq!(h.state().engine.state(), &before);
+        assert!(!h.state().failed);
+        h.get_by_label("Reject settlement").click();
+        render(&mut h)?;
+        assert_eq!(
+            h.state()
+                .engine
+                .state()
+                .settlements
+                .get("ST-2001")
+                .map(|s| s.status),
+            Some(RecordStatus::Rejected)
+        );
+        assert!(!h.state().failed, "{}", h.state().status);
+        Ok(())
+    }
+
+    #[test]
+    fn empty_reconciliation_offers_approved_agreement_next_step() -> TestResult {
+        let mut app = Workbench::new(seeded()?);
+        app.view = View::Settlements;
+        let mut h = Harness::builder()
+            .with_size(egui::vec2(1200.0, 900.0))
+            .build_ui_state(|ui, app: &mut Workbench| app.ui(ui), app);
+        assert!(h.query_by_label("Create settlement proposal").is_none());
+        assert!(h.query_by_label("Agreement not found").is_none());
+        h.get_by_label("Open agreements & rebates").click();
+        render(&mut h)?;
+        assert!(h.state().view == View::Agreements);
+        assert!(!h.state().failed);
+        Ok(())
     }
 }

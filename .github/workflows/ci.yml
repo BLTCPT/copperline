@@ -22,6 +22,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libx11-dev libxi-dev libgl1-mesa-dev libxkbcommon-dev libwayland-dev
       - name: Quality gates
         run: cargo xtask ci
+      - name: Verify locked dependency notices
+        run: python scripts/dependency_notices.py --check
       - name: Build native binaries
         run: cargo build --locked --release -p copperline-cli -p copperline-desktop
       - name: End-to-end process workflow

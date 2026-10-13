@@ -1,4 +1,8 @@
-# Ten-minute demo
+# Demo reference
+
+Start with the [current ten-minute morning walkthrough](morning-demo.md) for the complete prepared workflow. The sections below retain milestone-specific drills and error exercises.
+
+## Basic catalog and quote demo
 
 All products, customers and prices are synthetic. Use a new writable local directory. Native desktop requires Rust 1.95+ to build; `cargo run -p copperline-desktop -- --demo --data data/demo` opens the workbench. Windows portable packages contain the desktop and CLI binaries plus this guide. No installation or administrator rights are needed.
 

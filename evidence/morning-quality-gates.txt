@@ -1,0 +1,516 @@
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.03s
+     Running `target/debug/xtask ci`
+Layer gate passed: exact money → model → pricing/storage → engine → UI → apps
+Asset attribution gate passed
+    Checking copperline-ui v0.1.0 (<workspace>/crates/ui)
+    Checking copperline-desktop v0.1.0 (<workspace>/apps/desktop)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.59s
+   Compiling copperline-ui v0.1.0 (<workspace>/crates/ui)
+   Compiling copperline-desktop v0.1.0 (<workspace>/apps/desktop)
+    Finished `test` profile [optimized + debuginfo] target(s) in 3.23s
+     Running unittests src/main.rs (target/debug/deps/copperline_cli-c00fbd7da31b9be3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/copperline_desktop-abe5403d873eb1ab)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_engine-5a5ff093b022be52)
+
+running 8 tests
+test csv::tests::csv_quoted_and_errors ... ok
+test tests::atomic_import_and_invalid_input_rollback ... ok
+test tests::role_conflict_and_idempotency ... ok
+test tests::whole_list_approval_and_publish ... ok
+test grid::tests::recalculation_and_rejection_preserve_active_price ... ok
+test tests::approval_lifecycle_and_snapshot_immutability ... ok
+test commercial::tests::retrospective_tier_accrual_is_frozen_and_approved ... ok
+test tests::persistence_e2e ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/approval_m3_review.rs (target/debug/deps/approval_m3_review-0b6176ea77a3854f)
+
+running 13 tests
+test externally_claimed_local_request_id_does_not_block_run ... ok
+test margin_route_weights_line_revenue_instead_of_averaging_percentages ... ok
+test approval_policy_updates_require_admin_and_valid_bounded_thresholds ... ok
+test rejected_review_cannot_be_reinterpreted_as_an_unfinished_approval ... ok
+test ownership_has_no_admin_edit_submit_or_revise_bypass ... ok
+test cross_quote_review_cannot_supply_another_quotes_approval ... ok
+test approval_provenance_cannot_be_erased_or_redirected ... ok
+test rejection_finishes_a_cycle_and_revision_keeps_its_history ... ok
+test sequential_route_is_frozen_role_separated_and_not_exportable_midway ... ok
+test routing_compares_exact_effective_discount_and_weighted_margin ... ok
+test routing_value_threshold_uses_pocket_and_correct_currency ... ok
+test genuine_m2_snapshot_reopens_replays_and_retains_legacy_contributors ... ok
+test stale_versions_and_exact_review_retries_survive_reopen ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/bookings_m8.rs (target/debug/deps/bookings_m8-f4bab4b74b950167)
+
+running 14 tests
+test booking_invoice_aggregate_overflow_preserves_every_row_and_receipt ... ok
+test forged_booking_of_a_historical_cycle_after_revision_is_rejected_even_with_new_fingerprint ... ok
+test malformed_booking_revision_returns_reporting_error_without_panicking ... ok
+test booking_uses_frozen_booked_cents_and_keeps_native_basis_nonposted ... ok
+test generated_ids_respect_raw_and_correction_reservations_without_partial_rows ... ok
+test later_reporting_rate_cannot_backfill_a_booking_or_loosen_raw_native_ingestion ... ok
+test booking_requires_current_complete_approval_version_date_and_actuals_role ... ok
+test booked_rebate_basis_uses_invoice_currency_and_excludes_quote_authors_from_settlement ... ok
+test approved_reporting_cents_reverse_exactly_and_booking_capacity_never_reopens ... ok
+test maximum_booking_and_quote_ids_fit_audits_and_oversized_ids_roll_back ... ok
+test same_currency_uom_rounding_uses_booked_actuals_instead_of_native_basis ... ok
+test small_converted_totals_do_not_hide_native_basis_aggregate_overflow ... ok
+test snapshot_cannot_erase_retarget_or_rewrite_booking_evidence ... ok
+test failed_booking_commit_retries_once_and_frozen_export_survives_quote_revision ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/commercial_review.rs (target/debug/deps/commercial_review-82c87582c6a02465)
+
+running 12 tests
+test invoice_aggregate_overflow_is_atomic_and_add_is_idempotent ... ok
+test invoice_snapshot_validation_rejects_aggregate_overflow ... ok
+test agreement_requires_independent_approval_and_valid_tiers ... ok
+test grid_hard_block_and_stale_version_preserve_last_approved ... ok
+test accrual_snapshot_contains_all_and_only_invoices_known_at_source_revision ... ok
+test grid_snapshot_cannot_lose_active_price_or_reference_missing_customer ... ok
+test transaction_csv_late_failures_leave_no_partial_import_or_audit ... ok
+test agreement_overlap_is_atomic_but_adjacent_period_is_approvable ... ok
+test accrual_is_frozen_and_cannot_predate_agreement_approval ... ok
+test grid_reauthoring_retains_history_and_requires_fresh_independent_approval ... ok
+test accrual_eligibility_and_analytics_exclude_projections_and_other_currencies ... ok
+test m1_workspace_hash_survives_first_m2_mutation_and_reopen ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/contracts_m5_persistence.rs (target/debug/deps/contracts_m5_persistence-2a833dacf850b3b6)
+
+running 9 tests
+test maximum_contract_id_and_names_fit_fingerprinted_audit_limits ... ok
+test editions_and_records_cannot_be_erased_retargeted_or_reviewed_out_of_order ... ok
+test owner_and_origin_author_cannot_review_and_wrong_roles_cannot_substitute ... ok
+test replacing_grid_origin_preserves_contract_price_authorship_and_future_quotes ... ok
+test automatic_source_cannot_be_substituted_with_a_valid_lower_priority_contract ... ok
+test fixed_and_origin_terms_remain_bound_to_exact_creation_and_review_audits ... ok
+test automatic_quote_and_export_remain_frozen_after_successors_and_higher_priorities ... ok
+test failed_commit_leaves_contract_receipts_and_memory_unchanged_then_exact_retry_commits_once ... ok
+test old_m4_source_snapshot_bytes_and_retry_fingerprints_survive_first_contract_and_reopen ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/contracts_m5_review.rs (target/debug/deps/contracts_m5_review-13c792365d6c9c87)
+
+running 11 tests
+test fingerprints_reject_consistent_price_edits_review_changes_and_frozen_selector_tampering ... ok
+test future_edition_quantity_gap_and_expiry_do_not_restore_older_coverage ... ok
+test obsolete_edition_raw_end_does_not_block_new_family_after_effective_cutoff ... ok
+test priority_is_explicit_equal_priority_overlap_rejected_and_adjacent_bands_allowed ... ok
+test contract_scope_band_and_money_validation_rejects_ambiguous_or_changed_identity ... ok
+test contract_dates_and_quantity_bands_are_half_open_and_opt_in ... ok
+test replacing_stale_quote_source_is_atomic_and_revalidates_other_retained_lines ... ok
+test published_list_origin_freezes_price_and_rejects_underqualified_or_chained_origins ... ok
+test older_pending_and_backward_start_approvals_fail_but_can_be_rejected_or_withdrawn ... ok
+test frozen_grid_origin_survives_replacement_before_contract_review_and_excludes_origin_author ... ok
+test same_start_replacement_removes_products_without_resurrection_and_preserves_approved_quote ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/conversion_m6_batch.rs (target/debug/deps/conversion_m6_batch-07e2c1e4941e7896)
+
+running 8 tests
+test converted_aggregate_overflow_cannot_partially_change_a_batch ... ok
+test batch_combines_fx_and_uom_once_and_qualifies_tiers_using_native_quantity ... ok
+test single_currency_change_fails_then_batch_converts_whole_quote_with_frozen_rates ... ok
+test combined_conversion_rounds_once_and_nonintegral_native_quantity_rolls_back ... ok
+test subset_batch_reprices_untouched_lines_and_retains_approval_cycles_and_contributors ... ok
+test multiple_stale_sources_are_repaired_together_in_one_revision_and_audit ... ok
+test malformed_batch_never_changes_memory_or_any_committed_snapshot ... ok
+test failed_batch_commit_can_retry_once_and_replay_exactly_after_reopen ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/conversion_m6_financial.rs (target/debug/deps/conversion_m6_financial-31052ecf758a6283)
+
+running 13 tests
+test historical_reporting_requires_rates_approved_at_its_source_revision ... ok
+test mixed_currency_totals_and_scenarios_require_explicit_common_output ... ok
+test converted_values_cannot_become_native_grid_or_contract_origins ... ok
+test both_conversion_legs_round_once_before_discount_extension_and_rebate ... ok
+test inverse_multihop_other_product_and_unapproved_rates_are_never_inferred ... ok
+test rates_have_half_open_dates_and_identity_legs_do_not_need_records ... ok
+test independent_direct_rates_need_not_be_reciprocal_and_money_is_not_reversible ... ok
+test exact_quantity_and_amount_failures_preserve_the_entire_quote_state ... ok
+test reporting_reversal_uses_original_date_rate_and_replacement_keeps_independent_context ... ok
+test reporting_rounds_each_native_invoice_total_and_reverses_exact_rounded_pair ... ok
+test rules_and_contract_bands_use_exact_native_quantity_not_requested_quantity ... ok
+test source_discounts_are_already_in_native_price_and_rebates_are_not_replayed ... ok
+test converted_waterfall_conserves_totals_across_quantities_and_discounts ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/conversion_m6_persistence.rs (target/debug/deps/conversion_m6_persistence-985386b46df464de)
+
+running 12 tests
+test quantity_precision_and_overflow_reject_without_partial_quote_mutation ... ok
+test detached_or_deleted_conversion_and_report_records_fail_closed ... ok
+test book_terms_owner_review_and_lifecycle_remain_bound_to_exact_audits ... ok
+test converted_quote_rejects_direction_factor_version_and_native_basis_tampering ... ok
+test overlapping_pending_books_recheck_at_approval_and_preserve_owner_and_role_boundaries ... ok
+test conversion_csv_is_atomic_for_invalid_factors_duplicates_overlap_and_bounds ... ok
+test report_native_rows_rates_totals_owner_and_source_revision_are_immutable ... ok
+test reporting_never_infers_inverse_or_uses_rates_approved_after_capture ... ok
+test maximum_ids_fit_fingerprinted_audit_and_report_count_is_bounded ... ok
+test book_and_report_failed_commits_preserve_memory_evidence_and_exact_retry ... ok
+test m5_shaped_contract_quote_bytes_and_retry_fingerprints_survive_m6_and_reopen ... ok
+test frozen_quotes_and_reports_survive_future_schedules_and_historical_reversals ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests/corrections_m4.rs (target/debug/deps/corrections_m4-b8ee52d7e821df0e)
+
+running 10 tests
+test immutable_correction_payload_and_review_note_are_bound_to_audit_evidence ... ok
+test invalid_proposal_context_dates_and_existing_ids_fail_atomically ... ok
+test correction_roles_ownership_versions_and_terminal_states_are_enforced ... ok
+test rejected_and_draft_withdrawn_proposals_release_the_original_without_erasing_history ... ok
+test approval_overflow_leaves_original_and_proposal_untouched ... ok
+test snapshots_bind_original_review_outcome_and_replacement_ingestion ... ok
+test reserved_replacement_ids_block_add_and_atomic_csv_then_release_on_withdrawal ... ok
+test full_reversal_is_effective_only_on_finance_approval_and_old_accrual_is_frozen ... ok
+test replacement_chains_are_chronological_and_cannot_reverse_an_original_twice ... ok
+test reversal_and_replacement_approval_is_atomic_persistent_and_replayable ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/m4_independent_review.rs (target/debug/deps/m4_independent_review-8ca141772089210e)
+
+running 7 tests
+test accrual_identity_and_creation_event_cannot_be_replaced_with_an_unrelated_audit ... ok
+test competing_proposals_cannot_recognize_same_rebate_twice ... ok
+test correction_and_settlement_snapshot_authority_and_chronology_are_not_editable ... ok
+test equal_amount_replacement_stales_provenance_but_pending_record_can_be_rejected ... ok
+test stale_draft_can_withdraw_and_unrelated_catalog_write_does_not_stale_current_source ... ok
+test correction_record_date_does_not_move_reversal_period_or_convert_replacement_context ... ok
+test tier_drop_refunds_whole_period_difference_and_offsetting_prior_ids_cannot_disappear ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/m9_credits.rs (target/debug/deps/m9_credits-a77b09eb3df9db53)
+
+running 14 tests
+test cumulative_allocation_is_nonnegative_partition_invariant_and_clears_remainder ... ok
+test later_withdrawal_cannot_conceal_overlapping_credit_reservations ... ok
+test hostile_proposal_inputs_fail_without_record_or_receipt ... ok
+test closed_original_period_blocks_later_record_date_credit_and_maximum_ids_fit ... ok
+test replacement_proposer_and_ingestion_reviewer_are_both_excluded ... ok
+test recomputed_audit_hashes_cannot_change_generated_amounts_baseline_or_contributors ... ok
+test owners_roles_reservations_and_terminal_release_are_enforced ... ok
+test booked_credit_native_evidence_and_frozen_authors_cannot_be_retargeted ... ok
+test booked_native_quantity_is_exact_and_authors_remain_frozen_after_quote_revision ... ok
+test thirds_use_approval_order_and_zero_cent_credit_finishes_exactly ... ok
+test reporting_allocates_whole_converted_invoice_and_preserves_earlier_snapshot ... ok
+test zero_cent_credit_stales_settlement_by_ids_without_changing_rebate_amount ... ok
+test failed_credit_approval_commit_retries_once_and_reopens_with_original_rows ... ok
+test closed_period_multiline_booking_rolls_back_disk_and_capacity_then_adjacent_date_succeeds ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/m9_integration_review.rs (target/debug/deps/m9_integration_review-7311f2cf55e5efc4)
+
+running 1 test
+test mixed_booking_credit_csv_preserves_whole_fx_zero_fields_and_safe_text ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/m9_periods.rs (target/debug/deps/m9_periods-2f0fbfbcb7b249c1)
+
+running 10 tests
+test closed_period_rejects_mixed_import_atomically_and_later_record_dates_do_not_bypass_it ... ok
+test competing_close_approval_is_rechecked_and_stale_loser_can_be_rejected ... ok
+test zero_value_ingestion_stales_exact_basis_but_rejection_and_withdrawal_remain_available ... ok
+test close_has_half_open_recorded_currency_boundaries_and_preserves_earlier_ingestion ... ok
+test later_release_cannot_hide_credit_or_replacement_proposal_at_an_earlier_close_check ... ok
+test owner_and_source_authors_cannot_close_and_empty_adjacent_scopes_can_close ... ok
+test frozen_basis_includes_approved_credits_and_both_legs_of_full_corrections ... ok
+test period_evidence_review_and_audit_cannot_be_erased_or_detached ... ok
+test close_failed_commit_exact_retry_and_reopen_preserve_original_receipt ... ok
+test combined_frozen_basis_limit_rejects_new_close_without_mutating_existing_proposals ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.04s
+
+     Running tests/persistence_m3_review.rs (target/debug/deps/persistence_m3_review-1779c5c273c093a0)
+
+running 1 test
+test local_commands_skip_reserved_keys_and_external_retries_survive_reopen ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/pricing_sources.rs (target/debug/deps/pricing_sources-9cda5e8eec95ffcc)
+
+running 11 tests
+test legacy_requests_omit_source_and_legacy_grid_approval_remains_selectable ... ok
+test grid_is_explicit_and_current_candidate_never_overrides_active_price ... ok
+test derived_grid_cannot_chain_source_discounts ... ok
+test source_date_customer_product_quantity_and_units_are_enforced ... ok
+test published_list_pins_exact_unique_item_and_publication_revision ... ok
+test frozen_source_cannot_predate_approval_or_omit_price_evidence ... ok
+test published_list_flows_through_quote_approval_and_commercial_export ... ok
+test stale_source_reprice_fails_atomically_and_history_cannot_be_forged ... ok
+test grid_reapproval_archives_price_without_mutating_approved_quote_or_export ... ok
+test unpublished_list_and_unapproved_grid_never_fall_back_to_live_rules ... ok
+test approved_source_history_survives_persistence_and_reopen ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/quote_replace_m5.rs (target/debug/deps/quote_replace_m5-1097d69b122ce93f)
+
+running 9 tests
+test invalid_customer_date_product_amounts_and_sources_leave_all_state_unchanged ... ok
+test replacement_requires_owner_current_draft_version_and_existing_index ... ok
+test replacement_cannot_modify_pending_or_approved_cycles_and_revision_preserves_history ... ok
+test replacement_refreshes_every_line_cost_policy_and_source_capture_at_one_revision ... ok
+test stale_selected_source_can_be_replaced_by_current_source_or_explicit_live_rules ... ok
+test stale_retained_source_rolls_back_even_when_replacement_itself_is_valid ... ok
+test refreshing_retained_lines_cannot_overflow_the_document_atomically ... ok
+test replacing_legacy_contents_retains_every_historical_contributor ... ok
+test failed_disk_commit_does_not_replace_and_json_retry_is_exact_after_reopen ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/review_regressions.rs (target/debug/deps/review_regressions-34922749df4fc8fc)
+
+running 10 tests
+test frozen_list_policy_and_arithmetic_are_validated ... ok
+test supported_max_cost_with_markup_can_be_saved_as_quote ... ok
+test decision_chronology_and_audit_identity_cannot_be_rewritten ... ok
+test frozen_lines_match_immutable_product_currency_unit_and_cost ... ok
+test owner_and_distinct_submitter_cannot_approve ... ok
+test frozen_document_validation_rejects_independent_corruptions ... ok
+test mixed_catalog_produces_separate_publishable_lists ... ok
+test document_aggregate_overflow_is_rejected_by_command_and_snapshot_validation ... ok
+test historical_decision_survives_repricing_but_new_approval_is_required ... ok
+test failed_durable_commit_preserves_memory_and_request_can_retry ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/settlement_m4_review.rs (target/debug/deps/settlement_m4_review-f3378273f60f67c8)
+
+running 12 tests
+test settlement_accrual_author_cannot_be_rebound_to_an_unrelated_audit_event ... ok
+test longest_valid_settlement_id_and_reason_fit_audit_evidence_limits ... ok
+test same_total_new_invoice_makes_pending_and_draft_sources_stale_but_releasable ... ok
+test persisted_settlement_arithmetic_status_history_and_actor_tampering_are_rejected ... ok
+test owner_and_all_source_authors_cannot_substitute_for_independent_finance ... ok
+test replacement_author_is_excluded_but_correction_reviewer_can_review_settlement ... ok
+test same_total_new_correction_invalidates_approval_and_approved_baseline_cannot_double_count ... ok
+test recognition_is_signed_delta_and_corrections_do_not_rewrite_prior_approvals ... ok
+test settlement_cannot_switch_to_a_different_authors_equivalent_accrual ... ok
+test settlement_target_audit_cannot_outlive_a_deleted_record_even_if_command_is_corrupt ... ok
+test m3_shaped_accrual_chain_opens_and_supports_first_settlement_without_rewriting_history ... ok
+test settlement_adjustments_and_historical_accruals_survive_reopen ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/source_governance_review.rs (target/debug/deps/source_governance_review-67e2b226230f9a43)
+
+running 2 tests
+test corrupted_submission_version_returns_error_instead_of_panicking ... ok
+test embedded_source_discount_requires_finance_and_survives_source_replacement ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/validated_commit_m7.rs (target/debug/deps/validated_commit_m7-5a169e1f58dfca88)
+
+running 1 test
+test memory_and_disk_agree_after_failed_commit_retry_and_reopen ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_model-4da56c4d6b66996f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_money-35fe79a9dc2f4661)
+
+running 6 tests
+test m6_tests::checked_extremes_allow_exact_cancellation_and_reject_out_of_range_ratios ... ok
+test m6_tests::conversion_rounds_once_and_does_not_promise_reversible_money ... ok
+test tests::hostile_input ... ok
+test m6_tests::quantity_conversion_is_exact_and_validates_both_sides ... ok
+test m6_tests::combined_conversion_matches_exact_rational_oracle_and_sign_symmetry ... ok
+test tests::exact_roundtrip_and_invariants ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_pricing-47714b8ab6396332)
+
+running 4 tests
+test tests::missing_cost_and_zero_revenue ... ok
+test tests::rule_precedence_and_effectivity ... ok
+test tests::golden_waterfall ... ok
+test tests::conservation_over_quantities_discounts ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_storage-39305f770248f540)
+
+running 8 tests
+test tests::reopen_lock_corruption ... ok
+test backup::fault_tests::destination_created_after_preflight_is_never_owned_or_overwritten ... ok
+test backup::fault_tests::canonical_parent_and_workspace_aliases_cannot_bypass_a_partial_restore_guard ... ok
+test backup::fault_tests::changed_guard_is_never_silently_deleted ... ok
+test backup::fault_tests::active_guard_blocks_normal_open_before_and_after_target_creation ... ok
+test backup::fault_tests::interrupted_backup_preserves_partial_archive_and_never_changes_source ... ok
+test backup::fault_tests::changed_archive_or_copied_bytes_cannot_remove_the_guard ... ok
+test backup::fault_tests::all_precommit_restore_faults_preserve_source_and_block_owned_partial_targets ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+     Running tests/backup_m7.rs (target/debug/deps/backup_m7-885b95e919a94530)
+
+running 8 tests
+test cached_store_does_not_backup_later_corrupted_committed_history ... ok
+test uninitialized_source_existing_outputs_and_nested_output_are_rejected ... ok
+test all_outer_hashes_and_valid_tip_cannot_hide_semantically_corrupt_middle_revision ... ok
+test symlinks_dangling_targets_and_aliased_nested_backup_destinations_are_rejected ... ok
+test existing_targets_and_unknown_source_entries_are_preserved_without_overwrite ... ok
+test framing_corruption_truncation_and_trailing_bytes_fail_before_restore_creation ... ok
+test full_original_bytes_empty_recovery_directories_and_pending_evidence_roundtrip ... ok
+test strict_manifest_rejects_paths_duplicates_case_aliases_file_parents_and_caps ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+     Running tests/bookings_m8.rs (target/debug/deps/bookings_m8-3406d3ded3bf2843)
+
+running 3 tests
+test checked_commit_rejects_changed_booking_and_preserves_original_snapshots ... ok
+test revised_quote_booking_reopens_and_archives_original_full_history ... ok
+test rehashed_corrupt_booking_middle_rejects_reopen_and_backup_without_erasing_evidence ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/credits_periods_m9.rs (target/debug/deps/credits_periods_m9-91b42ee3e6007dd2)
+
+running 3 tests
+test genuine_m8_seed_bytes_keep_hashes_and_skip_empty_m9_fields ... ok
+test booked_credits_close_and_frozen_reports_reopen_and_restore_exact_history ... ok
+test rehashed_middle_credit_close_corruption_is_rejected_before_backup_or_reopen ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s
+
+     Running tests/recovery_m3.rs (target/debug/deps/recovery_m3-ee7f41f5af9ff0ea)
+
+running 5 tests
+test corrupt_committed_history_prevents_recovery_and_preserves_all_files ... ok
+test unknown_future_and_oversized_pending_files_remain_untouched ... ok
+test symlinked_evidence_and_recovery_directory_are_rejected ... ok
+test interrupted_write_is_quarantined_then_retry_reopens_without_losing_evidence ... ok
+test complete_candidate_is_preserved_without_promotion_and_recovery_never_overwrites ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/review_regressions.rs (target/debug/deps/review_regressions-d87e69f02ed72e17)
+
+running 5 tests
+test directory_with_committed_filename_is_rejected ... ok
+test pending_symlink_does_not_overwrite_target ... ok
+test invalid_approved_quote_is_rejected_on_commit_and_valid_checksum_reopen ... ok
+test pending_file_is_preserved_and_explicit_removal_allows_retry ... ok
+test symlinked_lock_and_committed_snapshot_are_rejected ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/validated_commit_m7.rs (target/debug/deps/validated_commit_m7-7e50ff2db1ad2092)
+
+running 6 tests
+test validated_commit_preserves_pending_symlink_and_its_target ... ok
+test invalid_state_cannot_obtain_token_or_enter_public_checked_commit ... ok
+test valid_tip_and_recomputed_chain_do_not_hide_invalid_middle_revision ... ok
+test validated_commit_keeps_revision_and_pending_failure_atomicity ... ok
+test borrowed_and_checked_commits_match_original_envelope_bytes ... ok
+test validation_evidence_does_not_bypass_snapshot_size_limit ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running unittests src/lib.rs (target/debug/deps/copperline_ui-c9935363558ab059)
+
+running 20 tests
+test bookings::tests::booking_reporting_fx_preview_requires_approved_direct_invoice_date_rate ... ok
+test grid_ui_tests::grid_buttons_activate_independent_candidate ... ok
+test conversions::tests::newest_frozen_report_and_fresh_ids_show_partial_and_full_credit_states ... ok
+test conversions::tests::native_conversion_review_quote_and_report_controls ... ok
+test bookings::tests::booked_quantity_credit_ui_rejects_native_precision_loss_then_freezes_evidence ... ok
+test bookings::tests::native_converted_full_booking_rounding_reversal_and_report ... ok
+test settlements::tests::empty_reconciliation_offers_approved_agreement_next_step ... ok
+test settlements::tests::stale_settlement_disables_approval_keeps_rejection_and_zero_adjustment_guidance ... ok
+test backup::tests::empty_workspace_can_use_backup_without_seeding_demo ... ok
+test m9_tests::native_close_staleness_credit_withdrawal_rejection_and_empty_period ... ok
+test tests::narrow_analytics_totals_and_lower_navigation_remain_reachable ... ok
+test tests::native_correction_and_negative_settlement_complete_review ... ok
+test tests::every_workspace_view_renders_at_minimum_size ... ok
+test tests::native_contract_approval_and_atomic_line_replacement ... ok
+test tests::native_quote_buttons_complete_approval_flow ... ok
+test tests::unauthorized_ui_action_shows_error_without_mutation ... ok
+test tests::native_two_stage_quote_waits_for_finance ... ok
+test backup::tests::native_backup_restore_and_open_preserve_state_and_existing_target ... ok
+test bookings::tests::native_booking_role_date_export_and_durable_reopen ... ok
+test m9_tests::native_credits_exhaust_thirds_then_close_export_and_reopen ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+     Running unittests src/main.rs (target/debug/deps/xtask-5c5b14e55f3c0919)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_model
+
+running 3 tests
+test crates/model/src/lib.rs - ValidatedState (line 371) - compile fail ... ok
+test crates/model/src/lib.rs - ValidatedState (line 365) - compile fail ... ok
+test crates/model/src/lib.rs - ValidatedState (line 383) - compile fail ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+   Doc-tests copperline_money
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_pricing
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_storage
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests copperline_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+All quality gates passed

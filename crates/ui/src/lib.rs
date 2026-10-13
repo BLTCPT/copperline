@@ -379,7 +379,7 @@ impl Workbench {
                             .color(Color32::from_rgb(182, 210, 222)),
                     );
                     ui.label(
-                        RichText::new("USD · each\nNo enterprise connection")
+                        RichText::new("Explicit currency & units\nNo enterprise connection")
                             .size(12.0)
                             .color(Color32::from_rgb(182, 210, 222)),
                     );
@@ -1182,7 +1182,7 @@ impl Workbench {
             .cloned()
             .collect();
         if quotes.is_empty() && lists.is_empty() {
-            ui.label("No documents awaiting approval. Submit a draft quote or price list first.");
+            ui.label("No quotes or price lists awaiting approval. Other reviews stay in their own workspace views.");
         }
         for q in quotes {
             ui.separator();
@@ -1783,6 +1783,39 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn narrow_analytics_totals_and_lower_navigation_remain_reachable()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut h = harness()?;
+        h.set_size(egui::vec2(1050.0, 720.0));
+        h.state_mut().view = View::Analytics;
+        h.try_run().map_err(|e| e.to_string())?;
+        h.get_by_label("Reporting currency · frozen actuals")
+            .click();
+        h.try_run().map_err(|e| e.to_string())?;
+        h.get_by_label("Margin %").scroll_to_me();
+        h.try_run().map_err(|e| e.to_string())?;
+        let margin = h.get_by_label("Margin %").rect();
+        assert!(
+            margin.left() >= 204.0 && margin.right() <= 1050.0,
+            "{margin:?}"
+        );
+        // Scrolling the totals does not shift the page's form controls horizontally.
+        let record = h.get_by_label("Record synthetic invoice").rect();
+        assert!(
+            record.left() >= 204.0 && record.right() <= 1050.0,
+            "{record:?}"
+        );
+        h.get_by_label("Backup & restore").scroll_to_me();
+        h.try_run().map_err(|e| e.to_string())?;
+        let backup = h.get_by_label("Backup & restore").rect();
+        assert!(backup.top() >= 0.0 && backup.bottom() < 720.0, "{backup:?}");
+        h.get_by_label("Backup & restore").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        assert!(h.state().view == View::Backup);
+        Ok(())
+    }
+
+    #[test]
     fn every_workspace_view_renders_at_minimum_size()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut h = harness()?;
@@ -2131,47 +2164,62 @@ impl Workbench {
                 if groups.is_empty() {
                     ui.label("No recorded invoices. Add a synthetic invoice below or import transaction CSV through the command API.");
                 }
-                egui::Grid::new("invoice-analytics")
-                    .striped(true)
-                    .spacing([24.0, 14.0])
-                    .show(ui, |ui| {
-                        for h in [
-                            "Customer",
-                            "Currency",
-                            "Active invoices",
-                            "Gross revenue",
-                            "Reversed",
-                            "Credit notes",
-                            "Fully credited invoices",
-                            "Credited invoice / cost",
-                            "Net revenue",
-                            "Cost",
-                            "Invoice margin",
-                            "Margin %",
-                        ] {
-                            ui.strong(h);
-                        }
-                        ui.end_row();
-                        for g in groups {
-                            ui.label(g.customer_id);
-                            ui.label(g.currency.to_string());
-                            ui.label(g.transaction_count.to_string());
-                            ui.label(g.gross_invoice.to_string());
-                            ui.label(g.reversed_invoice.to_string());
-                            ui.label(g.credit_count.to_string());
-                            ui.label(g.fully_credited_count.to_string());
-                            ui.label(format!("{} / {}", g.credited_invoice, g.credited_cost));
-                            ui.label(g.invoice.to_string());
-                            ui.label(g.cost.to_string());
-                            ui.label(g.invoice_margin.to_string());
-                            ui.label(
-                                g.margin_bps
-                                    .map(|b| Bps(b).to_string())
-                                    .unwrap_or_else(|| "Undefined".into()),
-                            );
-                            ui.end_row();
-                        }
-                    });
+                ui.small("Scroll the totals table horizontally for invoice margin and margin percentage.");
+                ui.scope(|ui| {
+                    ui.spacing_mut().scroll = egui::style::ScrollStyle::solid();
+                    egui::ScrollArea::horizontal()
+                        .id_salt("invoice-analytics-scroll")
+                        .max_width(ui.available_width().min(ui.clip_rect().width()))
+                        .scroll_bar_visibility(
+                            egui::scroll_area::ScrollBarVisibility::AlwaysVisible,
+                        )
+                        .show(ui, |ui| {
+                            egui::Grid::new("invoice-analytics")
+                                .striped(true)
+                                .spacing([24.0, 14.0])
+                                .show(ui, |ui| {
+                                    for h in [
+                                        "Customer",
+                                        "Currency",
+                                        "Active invoices",
+                                        "Gross revenue",
+                                        "Reversed",
+                                        "Credit notes",
+                                        "Fully credited invoices",
+                                        "Credited invoice / cost",
+                                        "Net revenue",
+                                        "Cost",
+                                        "Invoice margin",
+                                        "Margin %",
+                                    ] {
+                                        ui.strong(h);
+                                    }
+                                    ui.end_row();
+                                    for g in groups {
+                                        ui.label(g.customer_id);
+                                        ui.label(g.currency.to_string());
+                                        ui.label(g.transaction_count.to_string());
+                                        ui.label(g.gross_invoice.to_string());
+                                        ui.label(g.reversed_invoice.to_string());
+                                        ui.label(g.credit_count.to_string());
+                                        ui.label(g.fully_credited_count.to_string());
+                                        ui.label(format!(
+                                            "{} / {}",
+                                            g.credited_invoice, g.credited_cost
+                                        ));
+                                        ui.label(g.invoice.to_string());
+                                        ui.label(g.cost.to_string());
+                                        ui.label(g.invoice_margin.to_string());
+                                        ui.label(
+                                            g.margin_bps
+                                                .map(|b| Bps(b).to_string())
+                                                .unwrap_or_else(|| "Undefined".into()),
+                                        );
+                                        ui.end_row();
+                                    }
+                                });
+                        });
+                });
             }
             Err(e) => {
                 ui.colored_label(Color32::DARK_RED, e.to_string());

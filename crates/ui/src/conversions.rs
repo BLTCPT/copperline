@@ -13,6 +13,7 @@ pub(super) struct ConversionForm {
     report_id: String,
     report_currency: Currency,
     selected_report: String,
+    report_export_path: String,
     batch_quote: String,
     batch_version: u64,
     batch: Vec<QuoteLineReplacement>,
@@ -20,7 +21,7 @@ pub(super) struct ConversionForm {
 impl Default for ConversionForm {
     fn default() -> Self {
         Self {enabled:false,currency:Currency::EUR,unit:"box".into(),id:"FX-UOM-OCT".into(),name:"Synthetic October conversion schedule".into(),
-        csv:"id,kind,product_id,from,to,start,end,numerator,denominator\nUSD-EUR,fx,,USD,EUR,2026-10-01,2026-11-01,9,10\nVLV-BOX,uom,VLV-100,box,each,2026-10-01,2026-11-01,12,1\n".into(),selected:String::new(),start:"2026-10-01".into(),end:"2026-11-01".into(),report_id:"R-EUR-OCT".into(),report_currency:Currency::EUR,selected_report:String::new(),batch_quote:String::new(),batch_version:0,batch:vec![]}
+        csv:"id,kind,product_id,from,to,start,end,numerator,denominator\nUSD-EUR,fx,,USD,EUR,2026-10-01,2026-11-01,9,10\nVLV-BOX,uom,VLV-100,box,each,2026-10-01,2026-11-01,12,1\n".into(),selected:String::new(),start:"2026-10-01".into(),end:"2026-11-01".into(),report_id:"R-EUR-OCT".into(),report_currency:Currency::EUR,selected_report:String::new(),report_export_path:"frozen-actuals-report.csv".into(),batch_quote:String::new(),batch_version:0,batch:vec![]}
     }
 }
 fn currency_picker(ui: &mut egui::Ui, key: &str, currency: &mut Currency) {
@@ -354,16 +355,34 @@ impl Workbench {
         }
     }
     pub(super) fn converted_reports_view(&mut self, ui: &mut egui::Ui) {
+        if self.conversion_form.selected_report.is_empty() {
+            self.conversion_form.selected_report = self
+                .engine
+                .state()
+                .conversion_reports
+                .values()
+                .max_by_key(|r| r.created_revision)
+                .map(|r| r.id.clone())
+                .unwrap_or_default();
+            if self
+                .engine
+                .state()
+                .conversion_reports
+                .contains_key(&self.conversion_form.report_id)
+            {
+                self.conversion_form.report_id = next_report_id(self.engine.state());
+            }
+        }
         egui::CollapsingHeader::new("Reporting currency · frozen actuals").default_open(true).show(ui,|ui|{
             ui.label("Convert recorded invoice and cost totals at each original invoice date. Approved reversals cancel those exact converted amounts. Quantity credits allocate from the converted whole original and restate its original invoice period. Quantities retain each recorded invoice unit; no unit aggregation.");
+            ui.small("Booked invoices use direct invoice-date reporting FX approved before booking. Later rates cannot fill a missing historical rate. Raw invoices use the report's source revision.");
             ui.horizontal_wrapped(|ui|{field(ui,"Period from",&mut self.conversion_form.start);field(ui,"Until (exclusive)",&mut self.conversion_form.end);});
             ui.horizontal(|ui|{ui.label("Reporting currency");currency_picker(ui,"report-currency",&mut self.conversion_form.report_currency);field(ui,"New report ID",&mut self.conversion_form.report_id);});
             if primary(ui,"Freeze converted actuals") {
                 let result=(||->Result<Command>{Ok(Command::ReportConvert{id:self.conversion_form.report_id.clone(),request:ReportingRequest{start:Date::parse(&self.conversion_form.start)?,end:Date::parse(&self.conversion_form.end)?,currency:self.conversion_form.report_currency}})})();
-                match result {Ok(c)=>{self.run(c);if !self.failed{self.conversion_form.selected_report=self.conversion_form.report_id.clone();}},Err(e)=>self.result::<()>(Err(e),"")}
+                match result {Ok(c)=>{self.run(c);if !self.failed{self.conversion_form.selected_report=self.conversion_form.report_id.clone();self.conversion_form.report_id=next_report_id(self.engine.state());}},Err(e)=>self.result::<()>(Err(e),"")}
             }
             let reports:Vec<_>=self.engine.state().conversion_reports.values().cloned().collect();
-            if self.conversion_form.selected_report.is_empty(){self.conversion_form.selected_report=reports.last().map(|r|r.id.clone()).unwrap_or_default();}
             egui::ComboBox::from_id_salt("frozen-report").selected_text(&self.conversion_form.selected_report).show_ui(ui,|ui|{for r in &reports{ui.selectable_value(&mut self.conversion_form.selected_report,r.id.clone(),&r.id);}});
             if let Some(r)=self.engine.state().conversion_reports.get(&self.conversion_form.selected_report).cloned() {
                 let c=&r.calculation;ui.label(format!("{} · {} · [{} , {}) · source r{} · {} invoice rows",r.id,c.request.currency,c.request.start,c.request.end,c.source_revision,c.rows.len()));
@@ -378,7 +397,7 @@ impl Workbench {
                             row.native.id, row.native.quantity, row.native.unit,
                             row.native.currency, row.native.invoice_total, row.native.date,
                             c.request.currency, row.invoice,
-                            row.reversed_by.as_deref().unwrap_or("active")
+                            report_invoice_status(row)
                         ));
                         if let Some(b) = &row.booking {
                             ui.small(format!(
@@ -404,12 +423,40 @@ impl Workbench {
                         }
                     }
                 });
-                field(ui,"Export file",&mut self.export_path);
-                if ui.button("Export frozen report").clicked(){let result=write_export(&self.export_path,copperline_engine::export_report(self.engine.state(),&r.id));self.result(result,"Frozen reporting-currency actuals exported.");}
+                field(ui,"Report CSV file",&mut self.conversion_form.report_export_path);
+                if ui.button("Export frozen report").clicked(){let result=write_export(&self.conversion_form.report_export_path,copperline_engine::export_report(self.engine.state(),&r.id));self.result(result,"Frozen reporting-currency actuals exported.");}
             }
             ui.small("Each recorded total rounds once, half away from zero; margin is converted invoice less converted cost. Reports do not post or settle money.");
         });
         ui.separator();
+    }
+}
+
+fn next_report_id(state: &State) -> String {
+    for offset in 1..=state.conversion_reports.len().saturating_add(1) {
+        if let Ok(offset) = u64::try_from(offset)
+            && let Some(revision) = state.revision.checked_add(offset)
+        {
+            let candidate = format!("R-{revision:04}");
+            if !state.conversion_reports.contains_key(&candidate) {
+                return candidate;
+            }
+        }
+    }
+    "R-NEW".into()
+}
+
+fn report_invoice_status(row: &ConvertedInvoice) -> String {
+    if let Some(id) = &row.reversed_by {
+        return format!("Fully reversed by {id}");
+    }
+    let credited: i128 = row.credits.iter().map(|c| i128::from(c.quantity.0)).sum();
+    if credited == i128::from(row.native.quantity.0) {
+        "Fully quantity credited".into()
+    } else if credited > 0 {
+        "Partially credited · remaining quantity active".into()
+    } else {
+        "Active".into()
     }
 }
 
@@ -477,6 +524,177 @@ mod tests {
         h.try_run().map_err(|e| e.to_string())?;
         assert!(!h.state().failed, "{}", h.state().status);
         assert_eq!(h.state().engine.state().conversion_reports.len(), 1);
+        h.state().engine.state().validate()?;
+        Ok(())
+    }
+
+    #[test]
+    fn newest_frozen_report_and_fresh_ids_show_partial_and_full_credit_states()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        fn actor(name: &str, role: Role) -> Actor {
+            Actor {
+                name: name.into(),
+                role,
+            }
+        }
+        let mut e = Engine::memory();
+        e.run(actor("seed", Role::Admin), Command::SeedDemo)?;
+        e.run(
+            actor("rate-author", Role::Analyst),
+            Command::ConversionCreate {
+                terms: ConversionTerms {
+                    id: "FX".into(),
+                    name: "Synthetic two-thirds FX".into(),
+                    entries: vec![ConversionEntry {
+                        id: "USD-EUR".into(),
+                        conversion: ConversionKind::Fx {
+                            from: Currency::USD,
+                            to: Currency::EUR,
+                        },
+                        start: Date::parse("2026-10-01")?,
+                        end: Date::parse("2026-11-01")?,
+                        ratio: copperline_money::Rational {
+                            numerator: 2,
+                            denominator: 3,
+                        },
+                    }],
+                },
+            },
+        )?;
+        e.run(
+            actor("rate-author", Role::Analyst),
+            Command::ConversionSubmit {
+                id: "FX".into(),
+                version: 1,
+            },
+        )?;
+        e.run(
+            actor("rate-reviewer", Role::Approver),
+            Command::ConversionDecide {
+                id: "FX".into(),
+                version: 2,
+                approve: true,
+                note: "Synthetic rate review".into(),
+            },
+        )?;
+        e.run(
+            actor("invoice-author", Role::Analyst),
+            Command::TransactionAdd(Transaction {
+                id: "I".into(),
+                source: "synthetic-report-review".into(),
+                product_id: "VLV-100".into(),
+                customer_id: "C-ATLAS".into(),
+                date: Date::parse("2026-10-13")?,
+                quantity: Quantity(3000),
+                unit: "each".into(),
+                currency: Currency::USD,
+                invoice_total: Money(2),
+                cost_total: Money(1),
+            }),
+        )?;
+        let request = ReportingRequest {
+            start: Date::parse("2026-10-01")?,
+            end: Date::parse("2026-11-01")?,
+            currency: Currency::EUR,
+        };
+        e.run(
+            actor("reporter", Role::Analyst),
+            Command::ReportConvert {
+                id: "R-EUR-OCT".into(),
+                request: request.clone(),
+            },
+        )?;
+        for (id, quantity, report_id) in [
+            ("FIRST", 1000, "R-EUR-PARTIAL"),
+            ("REST", 2000, "R-EUR-CREDITED"),
+        ] {
+            e.run(
+                actor("credit-author", Role::Analyst),
+                Command::CreditCreate {
+                    proposal: CreditProposal {
+                        id: id.into(),
+                        original_transaction_id: "I".into(),
+                        effective_date: Date::parse("2027-02-01")?,
+                        reason: "Synthetic cumulative return".into(),
+                        quantity: Quantity(quantity),
+                    },
+                },
+            )?;
+            e.run(
+                actor("credit-author", Role::Analyst),
+                Command::CreditSubmit {
+                    id: id.into(),
+                    version: 1,
+                },
+            )?;
+            e.run(
+                actor("finance", Role::Finance),
+                Command::CreditDecide {
+                    id: id.into(),
+                    version: 2,
+                    approve: true,
+                    note: "Independent quantity review".into(),
+                },
+            )?;
+            e.run(
+                actor("reporter", Role::Analyst),
+                Command::ReportConvert {
+                    id: report_id.into(),
+                    request: request.clone(),
+                },
+            )?;
+        }
+        let before = e.state().conversion_reports.clone();
+        let mut app = Workbench::new(e);
+        app.view = View::Analytics;
+        app.role = 1;
+        assert_eq!(
+            app.conversion_form.report_export_path,
+            "frozen-actuals-report.csv"
+        );
+        app.export_path = "quote-only.csv".into();
+        assert_eq!(
+            app.conversion_form.report_export_path,
+            "frozen-actuals-report.csv"
+        );
+        let mut h = Harness::builder()
+            .with_size(egui::vec2(1900.0, 2200.0))
+            .build_ui_state(|ui, app: &mut Workbench| app.ui(ui), app);
+        assert_eq!(h.state().conversion_form.selected_report, "R-EUR-CREDITED");
+        let next_id = h.state().conversion_form.report_id.clone();
+        assert!(!before.contains_key(&next_id));
+        h.get_by_label("Frozen invoice and rate evidence").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        assert!(h.query_by_label("Recorded I · 3.000 each / USD 0.02 · 2026-10-13 invoice → EUR 0.01 · Fully quantity credited").is_some());
+        h.state_mut().conversion_form.selected_report = "R-EUR-PARTIAL".into();
+        h.try_run().map_err(|e| e.to_string())?;
+        assert!(h.query_by_label("Recorded I · 3.000 each / USD 0.02 · 2026-10-13 invoice → EUR 0.01 · Partially credited · remaining quantity active").is_some());
+        h.state_mut().conversion_form.selected_report = "R-EUR-OCT".into();
+        h.try_run().map_err(|e| e.to_string())?;
+        assert!(
+            h.query_by_label(
+                "Recorded I · 3.000 each / USD 0.02 · 2026-10-13 invoice → EUR 0.01 · Active"
+            )
+            .is_some()
+        );
+        h.get_by_label("Freeze converted actuals").click();
+        h.try_run().map_err(|e| e.to_string())?;
+        assert!(!h.state().failed, "{}", h.state().status);
+        assert_eq!(h.state().conversion_form.selected_report, next_id);
+        assert_ne!(h.state().conversion_form.report_id, next_id);
+        assert!(
+            !h.state()
+                .engine
+                .state()
+                .conversion_reports
+                .contains_key(&h.state().conversion_form.report_id)
+        );
+        for (id, frozen) in before {
+            assert_eq!(
+                h.state().engine.state().conversion_reports.get(&id),
+                Some(&frozen)
+            );
+        }
         h.state().engine.state().validate()?;
         Ok(())
     }

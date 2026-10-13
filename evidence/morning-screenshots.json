@@ -1,0 +1,50 @@
+[
+  {
+    "path": "evidence/morning-analytics.png",
+    "size_bytes": 867093,
+    "sha256": "fe561dbe5794d2052e4ed4c27fd8a3cb574948c0a2c40babea9ca392fe004f10",
+    "visually_inspected": true,
+    "native_platform": "macOS arm64",
+    "fixture_revision": 65
+  },
+  {
+    "path": "evidence/morning-backup.png",
+    "size_bytes": 592466,
+    "sha256": "108d4af13788382dc59e0146f20874a2e2ad3111b384c7be1e9b550c1367df64",
+    "visually_inspected": true,
+    "native_platform": "macOS arm64",
+    "fixture_revision": 65
+  },
+  {
+    "path": "evidence/morning-bookings.png",
+    "size_bytes": 653118,
+    "sha256": "e63857c3b60c5b8b4dd04ece42e504ead961abe1fbd484fc89c1df2995180a8f",
+    "visually_inspected": true,
+    "native_platform": "macOS arm64",
+    "fixture_revision": 65
+  },
+  {
+    "path": "evidence/morning-credits.png",
+    "size_bytes": 646671,
+    "sha256": "108d3eeee46ef065e0e52b08d171a2d6885311f8e1dc9efb4c751d781a70675e",
+    "visually_inspected": true,
+    "native_platform": "macOS arm64",
+    "fixture_revision": 65
+  },
+  {
+    "path": "evidence/morning-period-close.png",
+    "size_bytes": 763453,
+    "sha256": "76ce8cddc894d93371fa0925261fbf02b39908a3fc69ffcd55f79e96417066e9",
+    "visually_inspected": true,
+    "native_platform": "macOS arm64",
+    "fixture_revision": 65
+  },
+  {
+    "path": "evidence/morning-settlements.png",
+    "size_bytes": 732053,
+    "sha256": "fd639305e8a351bafab50f0a7671719a376fcd9595f2423ffe97d2252ca77b56",
+    "visually_inspected": true,
+    "native_platform": "macOS arm64",
+    "fixture_revision": 65
+  }
+]

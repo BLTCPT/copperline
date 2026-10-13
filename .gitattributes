@@ -1,0 +1,4 @@
+* text=auto eol=lf
+# Preserve upstream notice text byte-for-byte, including original line endings.
+legal/** -text
+packaging/windows/*.cmd text eol=crlf

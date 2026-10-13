@@ -1,0 +1,64 @@
+{
+  "source_commit": "a36d4877228b14732aff84d77d32776e9c8260ae",
+  "ci_url": "https://github.com/BLTCPT/copperline/actions/runs/38390734565",
+  "ci_conclusion": "success",
+  "platforms": [
+    "Windows x64",
+    "macOS arm64",
+    "Linux"
+  ],
+  "interactive_windows_ui_verified": false,
+  "artifacts": [
+    {
+      "path": "dist/m9-windows/copperline-0.1.0-windows-x64-portable.zip",
+      "size_bytes": 7475533,
+      "sha256": "72815f53bdae7aca2087355bc648a428a4fb845d361a77e97e59fcb9658239e3",
+      "github_artifact_id": 11809286931,
+      "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38390734565/artifacts/11809286931",
+      "zip_entry_count": 33
+    },
+    {
+      "path": "dist/m9-macos/copperline-cli",
+      "size_bytes": 5134912,
+      "sha256": "ea9baa3612c47016f12df6d3e8566746863ec6eab1e1571a0d2812bd1d27b3d2",
+      "github_artifact_id": 11808524629,
+      "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38390734565/artifacts/11808524629"
+    },
+    {
+      "path": "dist/m9-macos/copperline-desktop",
+      "size_bytes": 12861664,
+      "sha256": "63d65a510786946308c1bb998e7a4a214132264e390883fb873c8b6bd8b18352",
+      "github_artifact_id": 11808524629,
+      "download_url": "https://github.com/BLTCPT/copperline/actions/runs/38390734565/artifacts/11808524629"
+    }
+  ],
+  "windows_binaries": [
+    {
+      "name": "copperline-cli.exe",
+      "size_bytes": 5499392,
+      "sha256": "42672baaeccdd55fa37e4275200d3a4c8cfeef828556b63e570752cf4f3cb5fe"
+    },
+    {
+      "name": "copperline-desktop.exe",
+      "size_bytes": 13243392,
+      "sha256": "e60e37a18d52dcd3153cfc2288e5dbe7812dca4d9c4afd753b1ae4b94d262d74"
+    }
+  ],
+  "ci_jobs": [
+    {
+      "name": "native (ubuntu-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/BLTCPT/copperline/actions/runs/38390734565/job/115273593034"
+    },
+    {
+      "name": "native (macos-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/BLTCPT/copperline/actions/runs/38390734565/job/115273593374"
+    },
+    {
+      "name": "native (windows-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/BLTCPT/copperline/actions/runs/38390734565/job/115273593433"
+    }
+  ]
+}

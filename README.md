@@ -6,7 +6,21 @@ An independent Rust pricing workbench for synthetic industrial data. Calculate a
 
 ## Run
 
-Install Rust **1.95.0 or newer**. From the project directory:
+Install Rust **1.95.0 or newer** with `rustfmt` and `clippy`, plus Git. Native builds need the platform toolchain: Windows MSVC Build Tools with the Desktop development with C++ workload and Windows SDK; macOS Xcode Command Line Tools; or a Linux C/C++ toolchain and display development libraries. On Ubuntu, CI uses `libx11-dev libxi-dev libgl1-mesa-dev libxkbcommon-dev libwayland-dev`. The desktop also needs a graphical session; the CLI does not.
+
+Python **3.11+** runs the standard-library-only demo and process checks. It is not needed to run the portable Windows binaries or their prepared morning demo. Use `python` instead of `python3` on Windows if that is how Python is installed.
+
+From a fresh checkout:
+
+```sh
+git clone https://github.com/BLTCPT/copperline.git
+cd copperline
+cargo build --locked --release -p copperline-cli -p copperline-desktop
+python3 scripts/demo_seed.py --binary target/release/copperline-cli --credits --data data/morning-demo
+cargo run --locked --release -p copperline-desktop -- --data data/morning-demo --view bookings
+```
+
+The populated fixture is synthetic and contains deliberate pending/stale review examples. Follow the [current ten-minute walkthrough](docs/morning-demo.md). `--demo` below creates only the small catalog fixture, not that full workflow. Replace binary names with `.exe` when invoking built Windows binaries. Further commands:
 
 ```sh
 cargo run -p copperline-desktop -- --demo --data data/demo
