@@ -29,7 +29,7 @@ Reviewed 2026-10-13. Target: broad functional parity with publicly documented Pr
 | Integrations / ERP / CRM / external market data | Partial | Documented command boundary and CSV; no live adapters or write-back |
 | Enterprise identity, tenant isolation, scalable data pipelines | Missing | Explicit security boundary; local single-writer snapshots |
 | Audit, revision conflict detection, retry safety | Implemented local subset | Durable snapshots, receipts, tests; no external immutable audit service |
-| Native Windows desktop | Build and CLI verified at M3 | Native release, process/transport E2E and portable ZIP passed Windows CI; interactive desktop visual test remains |
+| Native Windows desktop | Build and CLI verified at M4 | Native release, process/reconciliation/transport E2E and portable ZIP passed Windows CI; interactive desktop visual test remains |
 
 ## Public workflow references
 

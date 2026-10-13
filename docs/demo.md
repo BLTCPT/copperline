@@ -52,12 +52,12 @@ Recovery uses the CLI's checksum-confirmed inspect/quarantine flow in [recovery.
 
 ## M4 correction and reconciliation walkthrough
 
-Create a fresh populated workspace with `python3 scripts/demo_seed.py --data data/m4-review`, then open it with the native desktop. The fixture has an initial USD50 approved local rebate record, an independently approved reversal of the USD100 invoice, a corrected USD18 full-period target, and a pending −USD32 adjustment. Both source invoices remain stored.
+Create a fresh populated workspace with `python3 scripts/demo_seed.py --data data/m4-review`, then open it with the native desktop. The fixture has an initial USD 50 approved local rebate record, an independently approved reversal of the USD 100 invoice, a corrected USD 18 full-period target, and a pending −USD 32 adjustment. Both source invoices remain stored.
 
 1. In **Invoice corrections**, inspect CR-1001: original INV-SYN-002, record date, full reversal, creator and Finance approval. To test replacement, select an active original and enable the replacement option; use a new external ID. Morgan / Pricing creates/submits, Jordan / Finance reviews.
 2. In **Invoice analytics**, compare gross and reversed revenue with net actuals. The original record shows its reversal link.
-3. In **Rebate reconciliation**, inspect A-2026: gross1000 minus reversal100 = net900; the retrospective tier falls from5% to2%, so target18 minus prior recognized50 gives −32.
-4. As Jordan / Finance, approve ST-2001. Recognized rebate becomes18 and remaining adjustment zero. No payment occurs. Export the approved evidence to a new CSV path.
+3. In **Rebate reconciliation**, inspect A-2026: gross USD 1,000 minus reversal USD 100 = net USD 900; the retrospective tier falls from 5% to 2%, so target USD 18 minus prior recognized USD 50 gives −USD 32.
+4. As Jordan / Finance, approve ST-2001. Recognized rebate becomes USD 18 and remaining adjustment zero. No payment occurs. Export the approved evidence to a new CSV path.
 5. As Morgan, calculate another accrual. Creating another settlement for the same unchanged target fails because no adjustment is due. Earlier accrual snapshots must not be added together.
 6. For concurrency/provenance cases, run `python3 scripts/reconciliation_e2e.py`. It exercises a +150/−140/−2/−8 sequence to zero, same-person denial, competing proposals, reserved IDs, retry after restart, frozen exports and no-overwrite behavior.
 
