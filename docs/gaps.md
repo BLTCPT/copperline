@@ -8,4 +8,4 @@
 - Live grid has candidate/last-approved lifecycle and lists have whole-document approval. Quotes may explicitly select active grid or published list prices, with exact-date/minimum-quantity qualification. Open-ended contract pricing and validity intervals remain gaps; nothing writes external systems.
 - Rebate agreements support approved retrospective tiers and frozen accruals. No amendments, renewals, progressive tiers, credit memos, settlement, reconciliation or payment posting.
 - Rules are single-winner. No arbitrary scripting, stacked promotions, formula editor or delegated/general approval routing. Quotes support frozen commercial → conditional Finance review.
-- Windows release compilation and CLI runtime passed M2 CI. Interactive Windows desktop behavior remains unverified. UI accessibility and small-screen coverage need deeper testing.
+- Windows release compilation, CLI workflows and concurrent API/recovery tests passed M3 CI. Interactive Windows desktop behavior remains unverified. UI accessibility and small-screen coverage need deeper testing.

@@ -33,7 +33,7 @@ The desktop uses a native Rust egui window with no browser or Node runtime. Wind
 - One command engine behind native UI, CLI, stdio and a bounded concurrent loopback JSON API.
 - Interrupted-write inspection and checksum-verified quarantine preserve evidence before retry.
 
-[Demo runbook](docs/demo.md) · [API contract](docs/api.md) · [Architecture](docs/architecture.md) · [Security boundaries](docs/security.md) · [Capability/parity matrix](docs/parity.md) · [Quote governance](docs/quote-governance.md) · [Approved pricing sources](docs/pricing-sources.md) · [Recovery](docs/recovery.md) · [Remaining gaps](docs/gaps.md) · [License](LICENSE)
+[Demo runbook](docs/demo.md) · [API contract](docs/api.md) · [Architecture](docs/architecture.md) · [Security boundaries](docs/security.md) · [Capability/parity matrix](docs/parity.md) · [Quote governance](docs/quote-governance.md) · [Approved pricing sources](docs/pricing-sources.md) · [Recovery](docs/recovery.md) · [Remaining gaps](docs/gaps.md) · [Next milestones](docs/roadmap.md) · [License](LICENSE)
 
 ## Development playbook
 

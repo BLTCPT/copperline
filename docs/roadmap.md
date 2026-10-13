@@ -1,0 +1,43 @@
+# Functional parity roadmap
+
+This sequences the remaining gaps in [the capability map](parity.md). Milestones are proposed implementation units, not completed features or a promised parity percentage. Every milestone must leave a runnable native/CLI/API workflow and preserve existing financial, audit and recovery invariants.
+
+## M4 — richer quoting and document delivery
+
+Build typed quote sections, explicit optional lines, reusable versioned quote templates and deterministic package quantities. Keep individual pricing and cost evidence visible; do not introduce an opaque bundle total. Freeze template/configuration versions in quote submissions and exports.
+
+Acceptance: choose a template, resolve required/optional products and allowed quantity relationships, reject an invalid configuration atomically, price the resolved lines, route review, export a readable quote document and reopen it unchanged. Test rounding, aggregate margins, missing products, stale template versions, mixed currencies and revision conflicts. Generated documents must identify synthetic demo identities and cannot imply an electronic signature or customer delivery.
+
+## M5 — agreement lifecycle, credits and reconciliation
+
+Add versioned prospective agreement amendments and credit documents that explicitly reference original invoice records. Define whether credits reverse eligible revenue, rebate basis and historical accrual calculations. Reconcile approved accrual snapshots into distinct, versioned settlement proposals with source links and a difference explanation.
+
+Acceptance: invoice → eligible accrual → linked credit → revised calculation → reviewed reconciliation proposal. Earlier snapshots remain immutable; repeated snapshots are never summed into liabilities. Currency, period boundaries, tier crossings, duplicate external IDs, negative/zero net activity and amendment overlap need independent arithmetic review. No bank/payment/ERP posting is part of this local milestone.
+
+## M6 — promotion and channel workflows
+
+Model effective periods, eligibility, budgets and explicit precedence/stacking decisions for promotion plans. Channel claims require a source invoice or other declared evidence, duplicate detection and independent review. Every plan must explain its impact on invoice and pocket values.
+
+Acceptance: plan approval, eligible/ineligible calculation, deterministic explanation, claim validation and audit. Historical projections must remain separate from recorded actuals. Do not claim uplift or causal effectiveness from synthetic scenarios.
+
+## M7 — governed data and enterprise boundaries
+
+Introduce an adapter boundary for authenticated immutable actor IDs, organization scope, delegated review rules and trusted role assignment. Replace caller-selected identities only after a concrete local or enterprise authentication design is reviewed. Add a storage adapter with explicit schema migrations, backups, restore drills and transaction-boundary tests before raising dataset limits.
+
+Acceptance: actor/tenant isolation, denied impersonation, contributor exclusions across identity changes, migration rollback/recovery, retention behavior and load tests. Real identity providers, credentials and external integrations require separately authorized setup; prototype role labels never count as enterprise access control.
+
+## M8 — integration delivery and operational analytics
+
+Implement synthetic adapter fixtures before any live system. Imports stage validation and record source provenance. Outbound approved-price or quote delivery uses an outbox, stable external keys, acknowledgements and reconciliation. Analytics require explicit grain, currency partitioning, source revision and actual/projection distinction.
+
+Acceptance: retries, partial failures, duplicate deliveries, out-of-order events, dead-letter inspection and exact reconciliation in a local simulator. A simulator does not establish SAP/BW/ERP API compatibility. Live read/write connections are separate deployment decisions.
+
+## M9 — optimization research
+
+Optimization starts with a stated decision, objective, constraints and data provenance. Demand/elasticity estimates need chronological validation and uncertainty measures. Compare against deterministic baselines and preserve guardrails, explanation, overrides and review provenance.
+
+Acceptance: reproducible data split and baseline, out-of-sample evaluation, leakage checks and documented failure modes. No AI or optimization label until a working model and defensible evidence exist. Synthetic demo data cannot validate commercial benefit.
+
+## Shared release gate
+
+For every milestone: update exact command/model contracts, add meaningful unit/property/invariant and process regressions, request independent financial/persistence/authorization review, run layer/attribution/fmt/strict-Clippy/test gates, verify native builds and process/transport tests on Windows/macOS/Linux, inspect native UI screens and preserve Library handoff identity. Record source commit, CI run, downloadable artifact URL and checksum. Windows visual/accessibility validation and signed distribution remain explicit release work.
