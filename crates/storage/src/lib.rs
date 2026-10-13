@@ -304,6 +304,7 @@ impl Store {
         // The destination directory was exclusively created while the Store lock is held.
         // Its unique path avoids overwriting any earlier recovery evidence on every platform.
         fs::rename(&source, &preserved_path).map_err(io)?;
+        #[cfg(unix)]
         let mut warnings = Vec::new();
         #[cfg(unix)]
         for dir in [&self.root, &recovery, &case] {
@@ -316,8 +317,8 @@ impl Store {
             }
         }
         #[cfg(not(unix))]
-        warnings
-            .push("Evidence was moved; directory sync is not available on this platform".into());
+        let warnings =
+            vec!["Evidence was moved; directory sync is not available on this platform".into()];
         Ok(QuarantineOutcome {
             preserved_path,
             sha256: actual_hash,
