@@ -1,0 +1,40 @@
+{
+  "source_commit": "f1a68639f0ae3b832f97b8acee93eb538ad59ebe",
+  "ci_url": "https://github.com/BLTCPT/copperline/actions/runs/38348721478",
+  "ci_conclusion": "success",
+  "platforms": [
+    "Windows x64",
+    "macOS arm64",
+    "Linux"
+  ],
+  "interactive_windows_ui_verified": false,
+  "artifacts": [
+    {
+      "path": "dist/m2-windows/copperline-0.1.0-windows-x64-portable.zip",
+      "size_bytes": 4613544,
+      "sha256": "388231992f7c44051477acc4042f17dad533a3eed33572cad4dfd7673c3c5cb6"
+    },
+    {
+      "path": "dist/m2-macos/copperline-cli",
+      "size_bytes": 1918208,
+      "sha256": "70716da6acc2399ee29653835febe814f2ef3efcd67b9bbc38a7bd5c31d5bd46"
+    },
+    {
+      "path": "dist/m2-macos/copperline-desktop",
+      "size_bytes": 8892064,
+      "sha256": "9571748512e38d53ec6e0e2c1cf4b11ffbb0cacc6f2922b6bda3b52a96e78b23"
+    }
+  ],
+  "windows_binaries": [
+    {
+      "name": "copperline-cli.exe",
+      "size_bytes": 1816576,
+      "sha256": "963487d2164b6f6beeb17869cf9a0eed791e3f81c35cc25ebd96e9ee4f3c6ff9"
+    },
+    {
+      "name": "copperline-desktop.exe",
+      "size_bytes": 8525312,
+      "sha256": "993c3a04a172034c24312ef9de3f59171a4b269240c425b43d3c671864bb06e6"
+    }
+  ]
+}

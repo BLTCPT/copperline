@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "transport": "127.0.0.1 TCP JSON lines",
+  "checks": [
+    "malformed request returns structured error",
+    "same connection accepts next valid request",
+    "over-2-MiB line disconnects client",
+    "server remains available with unchanged state after rejected oversized input"
+  ]
+}
