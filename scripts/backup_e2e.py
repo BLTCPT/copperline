@@ -158,7 +158,9 @@ with tempfile.TemporaryDirectory(prefix='copperline-m7-backup-') as directory:
         checks.append('restore refuses existing empty directories and files')
 
         restored = cli('restore', archive, destination)
-        assert Path(restored['workspace']).resolve() == destination.resolve()
+        # Rust canonical paths can retain a Windows verbatim prefix; compare
+        # the existing directory identity rather than its path spelling.
+        assert Path(restored['workspace']).samefile(destination)
         assert inventory(destination) == original and inventory(source) == original
         api = Api(destination)
         assert api.call('state') == state
